@@ -1,0 +1,30 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			// Start CSpect first with the DeZog plugin: mono CSpect.exe -w3 -zxnext -s28 -remote -tv
+			"type": "dezog",
+			"request": "launch",
+			"name": "CSpect",
+			"remoteType": "cspect",
+			"cspect": { "hostname": "localhost", "port": 11000 },
+			"sjasmplus": [ { "path": "build/roguelike.sld" } ],
+			"load": "build/roguelike.nex",
+			"rootFolder": "${workspaceFolder}",
+			"startAutomatically": false,
+			"preLaunchTask": "build"
+		},
+		{
+			"type": "dezog",
+			"request": "launch",
+			"name": "Simulator (ZX Next memory)",
+			"remoteType": "zsim",
+			"zsim": { "memoryModel": "ZXNEXT", "zxKeyboard": true, "ulaScreen": true, "vsyncInterrupt": true },
+			"sjasmplus": [ { "path": "build/roguelike.sld" } ],
+			"load": "build/roguelike.nex",
+			"rootFolder": "${workspaceFolder}",
+			"startAutomatically": false,
+			"preLaunchTask": "build"
+		}
+	]
+}
