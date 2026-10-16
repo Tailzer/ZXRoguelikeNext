@@ -15,26 +15,27 @@ try_move:
 	call map_addr						; HL = target square
 	pop de
 	ld a,(hl)
+	and TERRAIN_MASK
 	ld b,a								; B = terrain id
-	push hl
-	add a,a
-	add a,a
-	ld hl,terrain_table+2				; flags byte
-	add hl,a
-	ld a,(hl)
-	pop hl
+	call terrain_flags
 	bit TF_PASSABLE,a
 	jr z,.blocked
+	push de
+	call lamp_off
+	pop de
 	ld a,e
 	ld (player_x),a
 	ld a,d
 	ld (player_y),a
-	ret
+	jp light_arrive
 .blocked:
 	ld a,b
 	cp T_DOOR_CLOSED
 	jr nz,.wall
-	ld (hl),T_DOOR_OPEN
+	ld a,(hl)							; keep the square's flags
+	and ~TERRAIN_MASK
+	or T_DOOR_OPEN
+	ld (hl),a
 	ld hl,msg_door_open
 	jp show_message
 .wall:
@@ -53,6 +54,7 @@ player_square:
 go_down:
 	call player_square
 	ld a,(hl)
+	and TERRAIN_MASK
 	cp T_STAIR_DOWN
 	jr nz,.none
 	ld hl,dun_level
@@ -68,6 +70,7 @@ go_down:
 go_up:
 	call player_square
 	ld a,(hl)
+	and TERRAIN_MASK
 	cp T_STAIR_UP
 	jr nz,.none
 	ld a,(dun_level)
@@ -96,4 +99,4 @@ new_level:
 	ld (player_y),a
 	ld a,e
 	ld (player_x),a
-	ret
+	jp light_arrive

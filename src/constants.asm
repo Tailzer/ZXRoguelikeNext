@@ -81,10 +81,25 @@ T_TMP1				equ 10				; pillar (generation only)
 T_TMP2				equ 11				; wall a tunnel pierced (generation only)
 T_MAGMA				equ 12
 T_QUARTZ			equ 13
+T_FLOOR_LIT			equ 14				; room floor that lights up on entry
+TERRAIN_MASK		equ $0F				; terrain id is the low 4 bits
+
+; per-square flags in the top 4 bits of each map byte (like cave_type's
+; MSDOS bitfields: lr, pl, tl, fm)
+F_ROOM_BIT			equ 4				; part of a room (lr)
+F_PERM_BIT			equ 5				; lit for good / remembered (pl)
+F_LAMP_BIT			equ 6				; lit by the player's light (tl)
+F_ROOM				equ 1<<F_ROOM_BIT
+F_PERM				equ 1<<F_PERM_BIT
+F_LAMP				equ 1<<F_LAMP_BIT
+F_SEEN				equ F_PERM|F_LAMP	; drawn if either is set
+LIGHT_QUEUE			equ TUN_STACK		; room flood fill queue, reuses
+LIGHT_QUEUE_MAX		equ TUN_MAX*2		; tunnel+wall stacks (addresses)
 
 ; terrain flags (bit numbers)
 TF_PASSABLE			equ 0
 TF_WALL				equ 1				; counts as wall for door/stair placement
+TF_REMEMBER			equ 2				; stays on the map once your light touches it
 
 ; ---- level generation (GENERATE.C / CONSTANT.H DUN_*) ----
 ROOM_ROWS			equ 6				; room grid: 2*(MAP_H/22) x 2*(MAP_W/66)

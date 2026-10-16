@@ -137,28 +137,33 @@ random_open_spot:
 	call map_addr
 	pop de
 	ld a,(hl)
+	and TERRAIN_MASK
 	cp T_FLOOR
+	ret z
+	cp T_FLOOR_LIT
 	ret z
 	cp T_CORRIDOR
 	ret z
 	jr random_open_spot
 
 ; char, attribute, flags, spare
+REM		equ 1<<TF_REMEMBER
 terrain_table:
 	db '#',ATTR_GREY,0,0								; T_NULL
 	db '.',ATTR_WHITE,1<<TF_PASSABLE,0					; T_FLOOR
 	db '.',ATTR_WHITE,1<<TF_PASSABLE,0					; T_CORRIDOR
-	db '#',ATTR_GREY,1<<TF_WALL,0						; T_GRANITE
-	db '#',ATTR_DARK,1<<TF_WALL,0						; T_PERMWALL
-	db '+',ATTR_UMBER,0,0								; T_DOOR_CLOSED
-	db "'",ATTR_UMBER,1<<TF_PASSABLE,0					; T_DOOR_OPEN
-	db '#',ATTR_GREY,0,0								; T_DOOR_SECRET
-	db '>',ATTR_WHITE,1<<TF_PASSABLE,0					; T_STAIR_DOWN
-	db '<',ATTR_WHITE,1<<TF_PASSABLE,0					; T_STAIR_UP
+	db '#',ATTR_GREY,1<<TF_WALL|REM,0					; T_GRANITE
+	db '#',ATTR_DARK,1<<TF_WALL|REM,0					; T_PERMWALL
+	db '+',ATTR_UMBER,REM,0								; T_DOOR_CLOSED
+	db "'",ATTR_UMBER,1<<TF_PASSABLE|REM,0				; T_DOOR_OPEN
+	db '#',ATTR_GREY,REM,0								; T_DOOR_SECRET
+	db '>',ATTR_WHITE,1<<TF_PASSABLE|REM,0				; T_STAIR_DOWN
+	db '<',ATTR_WHITE,1<<TF_PASSABLE|REM,0				; T_STAIR_UP
 	db '#',ATTR_GREY,0,0								; T_TMP1
 	db '#',ATTR_GREY,0,0								; T_TMP2
-	db '%',ATTR_DARK,1<<TF_WALL,0						; T_MAGMA
-	db '%',ATTR_WHITE,1<<TF_WALL,0						; T_QUARTZ
+	db '%',ATTR_DARK,1<<TF_WALL|REM,0					; T_MAGMA
+	db '%',ATTR_WHITE,1<<TF_WALL|REM,0					; T_QUARTZ
+	db '.',ATTR_WHITE,1<<TF_PASSABLE,0					; T_FLOOR_LIT
 
 boundary_rects:
 	db 0,0,MAP_W,1,T_PERMWALL

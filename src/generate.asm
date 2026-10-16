@@ -196,12 +196,62 @@ generate_level:
 	call randint
 	ld b,a
 	ld a,T_STAIR_UP
-	jp place_stairs
+	call place_stairs
+	; fall through
+/* mark_rooms - every room floor square and its 8 neighbours (walls,
+	doors, doorways) get F_ROOM, as build_room sets lr in the C */
+mark_rooms:
+	ld hl,MAP_BASE+MAP_W
+	ld bc,MAP_W*(MAP_H-2)
+.loop:
+	ld a,(hl)
+	and TERRAIN_MASK
+	cp T_FLOOR
+	jr z,.room
+	cp T_FLOOR_LIT
+	jr nz,.next
+.room:
+	push hl
+	ld de,-MAP_W-1
+	add hl,de
+	call .mark3
+	ld de,MAP_W-3
+	add hl,de
+	call .mark3
+	add hl,de
+	call .mark3
+	pop hl
+.next:
+	inc hl
+	dec bc
+	ld a,b
+	or c
+	jr nz,.loop
+	ret
+.mark3:
+	set F_ROOM_BIT,(hl)
+	inc hl
+	set F_ROOM_BIT,(hl)
+	inc hl
+	set F_ROOM_BIT,(hl)
+	inc hl
+	ret
 
 /* build_room - room centred on room_yval, room_xval.
 	Deeper levels sometimes get an unusual room; for now that is always
 	type 1 (2-3 overlapping rectangles) */
 build_room:
+	ld a,25								; lit if dun_level <= 1d25
+	call randint
+	ld b,a
+	ld a,(dun_level)
+	cp b
+	ld a,T_FLOOR_LIT
+	jr z,.lit
+	jr c,.lit
+	ld a,T_FLOOR
+.lit:
+	ld (room_floor),a
 	ld a,DUN_UNUSUAL
 	call randint
 	ld b,a
@@ -293,7 +343,7 @@ room_rect:
 	sub d
 	inc a
 	ld c,a
-	ld a,T_FLOOR
+	ld a,(room_floor)
 	call carve_rect
 
 	ld a,(r_top)
@@ -320,6 +370,8 @@ wall_rect:
 .col:
 	ld a,(hl)
 	cp T_FLOOR
+	jr z,.keep
+	cp T_FLOOR_LIT
 	jr z,.keep
 	ld (hl),T_GRANITE
 .keep:
@@ -919,6 +971,7 @@ door_list:		dw 0,DOOR_MAX,DOOR_STACK
 
 ; generator state
 room_count:		db 0
+room_floor:		db 0
 gen_row:		db 0
 gen_col:		db 0
 room_yval:		db 0

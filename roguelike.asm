@@ -5,6 +5,8 @@
 	Milestone 1: Walkabout - 80x32 tilemap text, movement, doors, scrolling
 	Milestone 2: Dungeon generator - GENERATE.C rooms, tunnels, doors,
 		streamers and stairs; > and < change level
+	Milestone 3: Lighting - Moria-style lit rooms, 3x3 player light,
+		remembered walls/doors/stairs
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -86,6 +88,7 @@ memory_init:
 	include "src/random.asm"
 	include "src/map.asm"
 	include "src/generate.asm"
+	include "src/light.asm"
 	include "src/view.asm"
 	include "src/player.asm"
 	include "src/messages.asm"

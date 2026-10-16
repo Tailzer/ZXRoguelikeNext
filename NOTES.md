@@ -18,8 +18,8 @@ Walk into a closed door to open it. `>` (Symbol Shift+T) / `<` (Symbol Shift+R) 
 
 1. **Walkabout** — tilemap text, test level, movement, scrolling view *(done)*
 2. **Dungeon generator** — rooms and corridors (`GENERATE.C`), stairs, new levels *(done; vaults, pits and room types 2/3 still to come)*
-3. **Line of sight / lighting** — remembered squares, lit rooms (`MORIA1.C` los, `MISC1.C`)
-4. **Monsters** — ~10 hand-picked races, chase AI, melee (`CREATURE.C`, `MONSTERS.C`)
+3. **Lighting** — lit rooms light up on entry, 3x3 player light, remembered walls/doors/stairs (`MORIA1.C` light_room, move_light) *(done)*
+4. **Monsters** — ~10 hand-picked races, chase AI, melee, `los()` for seeing them (`CREATURE.C`, `MONSTERS.C`, `MISC1.C`)
 5. **Items** — pick up, inventory, wield, potions (`TREASURE.C`, `POTIONS.C`)
 6. **Data converter** — Mac-side script turning the C tables into `.bin` files
 7. Magic, stores, the town, saving to SD card
@@ -34,5 +34,5 @@ Walk into a closed door to open it. `>` (Symbol Shift+T) / `<` (Symbol Shift+R) 
 | `$8000-$BBFF` | code, data |
 | `$BC00-$BDBF` | IM2 vector table + jump |
 | `$BEC0-$BFFF` | stack |
-| `$C000-$F30B` | dungeon map, 198x66 bytes (pages 32/33) |
-| `$F400-$FEA3` | generator scratch: tunnel/wall/door stacks, room list |
+| `$C000-$F30B` | dungeon map, 198x66 bytes (pages 32/33): low 4 bits terrain, bit 4 room, bit 5 lit/remembered, bit 6 player light |
+| `$F400-$FEA3` | scratch: tunnel/wall/door stacks and room list while generating; room-lighting queue in play |

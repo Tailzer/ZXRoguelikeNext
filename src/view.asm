@@ -69,6 +69,11 @@ draw_view:
 .col:
 	ld a,(ix+0)
 	inc ix
+	ld l,a
+	and F_SEEN
+	jr z,.unknown
+	ld a,l
+	and TERRAIN_MASK
 	add a,a
 	add a,a
 	ld hl,terrain_table
@@ -81,6 +86,16 @@ draw_view:
 	ld (de),a
 	inc de
 	djnz .col
+	jr .row_done
+.unknown:
+	ld a,' '
+	ld (de),a
+	inc de
+	xor a
+	ld (de),a
+	inc de
+	djnz .col
+.row_done:
 	inc c
 	pop af
 	dec a
