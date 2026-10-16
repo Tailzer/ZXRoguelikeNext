@@ -100,46 +100,65 @@ print_str:
 	inc hl
 	jr print_str
 
-/* print_u8 - A = value, DE = cell, C = attribute. No leading zeros.
-	Clobbers A, B, HL */
+/* print_u8 - A = value, DE = cell, C = attribute. No leading zeros */
 print_u8:
-	ld h,0								; set once a digit is printed
-	ld b,100
-	call .digit
-	ld b,10
-	call .digit
-	add a,'0'
-	ld (de),a
-	inc de
+	ld l,a
+	ld h,0
+/* print_u16 - HL = value, DE = cell, C = attribute. No leading zeros.
+	Returns DE = next cell. Clobbers A, B, HL, IX */
+print_u16:
 	ld a,c
-	ld (de),a
-	inc de
-	ret
-.digit:									; A = value, B = divisor -> A = remainder
-	ld l,'0'
+	ld (print_attr),a
+	xor a
+	ld (print_started),a
+	ld ix,pow10_table
+.digit:
+	ld c,(ix+0)
+	ld b,(ix+1)
+	ld a,b
+	or c
+	jr z,.last
+	ld a,'0'
 .sub:
-	cp b
+	or a
+	sbc hl,bc
 	jr c,.got
-	sub b
-	inc l
+	inc a
 	jr .sub
 .got:
-	push af
-	ld a,l
+	add hl,bc
 	cp '0'
-	jr nz,.print
-	bit 0,h
+	jr nz,.emit
+	ld b,a
+	ld a,(print_started)
+	or a
+	ld a,b
 	jr z,.skip
-.print:
-	ld h,1
-	ld (de),a
-	inc de
-	ld a,c
-	ld (de),a
-	inc de
+.emit:
+	call .put
+	ld a,1
+	ld (print_started),a
 .skip:
-	pop af
+	inc ix
+	inc ix
+	jr .digit
+.last:
+	ld a,l
+	add a,'0'
+	call .put
+	ld a,(print_attr)
+	ld c,a
 	ret
+.put:
+	ld (de),a
+	inc de
+	ld a,(print_attr)
+	ld (de),a
+	inc de
+	ret
+
+pow10_table:
+	dw 10000,1000,100,10,0
 
 /* show_message - HL = string, printed on the message row */
 show_message:

@@ -2,11 +2,9 @@
 	Written from scratch in Z80N assembly, using Angband PC 1.2 (C source)
 	as the design reference.
 
-	Milestone 1: Walkabout
-		80x32 tilemap text display
-		Hand-built test level (rooms, corridors, doors)
-		Player '@' moves in 8 directions, walls block, doors open on bump
-		View scrolls when the player nears the edge
+	Milestone 1: Walkabout - 80x32 tilemap text, movement, doors, scrolling
+	Milestone 2: Dungeon generator - GENERATE.C rooms, tunnels, doors,
+		streamers and stairs; > and < change level
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -33,26 +31,38 @@ start:
 
 	call memory_init
 	call video_init
-	call map_build_test
 	call interrupt_init
 
-	ld a,PLAYER_START_X
-	ld (player_x),a
-	ld a,PLAYER_START_Y
-	ld (player_y),a
-
+	ld hl,msg_press_key
+	call show_message
+	call wait_any_key					; timing of the key press seeds the RNG
+enter_dungeon:
+	call new_level
 	ld hl,msg_welcome
 	call show_message
 
 main_loop:
 	call draw_view
 	call draw_status
-	call get_move_key					; B = dx, C = dy
+	call get_command					; D = command, B = dx, C = dy
 	push bc
+	push de
 	ld d,MSG_ROW
 	call clear_row						; old message goes once you act
+	pop de
 	pop bc
+	ld a,d
+	cp CMD_DOWN
+	jr z,.down
+	cp CMD_UP
+	jr z,.up
 	call try_move
+	jr main_loop
+.down:
+	call go_down
+	jr main_loop
+.up:
+	call go_up
 	jr main_loop
 
 /* memory_init - select ROM 3 (48K BASIC, has the font) and page in the map */
@@ -73,7 +83,9 @@ memory_init:
 
 	include "src/video.asm"
 	include "src/input.asm"
+	include "src/random.asm"
 	include "src/map.asm"
+	include "src/generate.asm"
 	include "src/view.asm"
 	include "src/player.asm"
 	include "src/messages.asm"

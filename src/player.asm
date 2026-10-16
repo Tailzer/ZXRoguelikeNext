@@ -40,3 +40,60 @@ try_move:
 .wall:
 	ld hl,msg_wall
 	jp show_message
+
+/* player_square - HL = map square under the player. Clobbers A, DE */
+player_square:
+	ld a,(player_y)
+	ld d,a
+	ld a,(player_x)
+	ld e,a
+	jp map_addr
+
+/* go_down - '>' command */
+go_down:
+	call player_square
+	ld a,(hl)
+	cp T_STAIR_DOWN
+	jr nz,.none
+	ld hl,dun_level
+	inc (hl)
+	call new_level
+	ld hl,msg_down
+	jp show_message
+.none:
+	ld hl,msg_no_down
+	jp show_message
+
+/* go_up - '<' command */
+go_up:
+	call player_square
+	ld a,(hl)
+	cp T_STAIR_UP
+	jr nz,.none
+	ld a,(dun_level)
+	cp 1
+	jr z,.no_town
+	ld hl,dun_level
+	dec (hl)
+	call new_level
+	ld hl,msg_up
+	jp show_message
+.no_town:
+	ld hl,msg_no_town
+	jp show_message
+.none:
+	ld hl,msg_no_up
+	jp show_message
+
+/* new_level - generate a level for dun_level and drop the player in it */
+new_level:
+	ld hl,msg_generating
+	call show_message
+	call rng_mix
+	call generate_level
+	call random_open_spot
+	ld a,d
+	ld (player_y),a
+	ld a,e
+	ld (player_x),a
+	ret

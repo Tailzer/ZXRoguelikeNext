@@ -30,7 +30,6 @@ NR_TILEMAP_CONTROL	equ $6B
 NR_TILEMAP_ATTR		equ $6C
 NR_TILEMAP_BASE		equ $6E
 NR_TILEDEF_BASE		equ $6F
-NR_LINE_LSB			equ $1F
 
 ; ---- screen layout (80x32 text) ----
 SCREEN_W			equ 80
@@ -68,19 +67,55 @@ MAP_W				equ 198
 MAP_H				equ 66
 
 ; terrain ids - index into terrain_table (map.asm)
-T_GRANITE			equ 0
-T_FLOOR				equ 1
-T_PERMWALL			equ 2
-T_DOOR_CLOSED		equ 3
-T_DOOR_OPEN			equ 4
-T_STAIR_DOWN		equ 5
-T_STAIR_UP			equ 6
+T_NULL				equ 0				; untouched rock (generation only)
+T_FLOOR				equ 1				; room floor
+T_CORRIDOR			equ 2
+T_GRANITE			equ 3
+T_PERMWALL			equ 4
+T_DOOR_CLOSED		equ 5
+T_DOOR_OPEN			equ 6
+T_DOOR_SECRET		equ 7				; looks like granite
+T_STAIR_DOWN		equ 8
+T_STAIR_UP			equ 9
+T_TMP1				equ 10				; pillar (generation only)
+T_TMP2				equ 11				; wall a tunnel pierced (generation only)
+T_MAGMA				equ 12
+T_QUARTZ			equ 13
 
-; terrain flags
-TF_PASSABLE			equ 0				; bit number
+; terrain flags (bit numbers)
+TF_PASSABLE			equ 0
+TF_WALL				equ 1				; counts as wall for door/stair placement
 
-PLAYER_START_X		equ 35
-PLAYER_START_Y		equ 23
+; ---- level generation (GENERATE.C / CONSTANT.H DUN_*) ----
+ROOM_ROWS			equ 6				; room grid: 2*(MAP_H/22) x 2*(MAP_W/66)
+ROOM_COLS			equ 6
+DUN_ROOMS_MIN		equ 42				; rooms picked = 42+1d6 (randnor(45,2))
+DUN_UNUSUAL			equ 200				; level/x chance of an unusual room
+DUN_TUN_RND			equ 9				; 1/x chance of a random direction
+DUN_TUN_CHG			equ 70				; % chance of changing direction
+DUN_TUN_CON			equ 15				; % chance of extra tunnelling
+DUN_TUN_PEN			equ 25				; % chance of a door where a tunnel enters a room
+DUN_TUN_JCT			equ 8				; % chance of doors at tunnel junctions
+DUN_STR_DEN			equ 5				; streamer density
+DUN_STR_MAG			equ 3				; number of magma streamers
+DUN_STR_QUA			equ 2				; number of quartz streamers
+TUN_STEPS_MAX		equ 2000
+
+; scratch buffers used while generating, in the map pages after the map
+TUN_MAX				equ 600
+DOOR_MAX			equ 100
+TUN_STACK			equ $F400			; TUN_MAX x (y, x)
+WALL_STACK			equ TUN_STACK+TUN_MAX*2
+DOOR_STACK			equ WALL_STACK+TUN_MAX*2
+ROOM_LIST			equ DOOR_STACK+DOOR_MAX*2	; up to 37 x (y, x)
+ROOM_MAP			equ ROOM_LIST+80			; ROOM_ROWS x ROOM_COLS
+	ASSERT MAP_BASE+MAP_W*MAP_H <= TUN_STACK
+	ASSERT ROOM_MAP+ROOM_ROWS*ROOM_COLS <= $10000
+
+; ---- commands ----
+CMD_MOVE			equ 0
+CMD_DOWN			equ 1
+CMD_UP				equ 2
 
 ; ---- input ----
 KEY_NONE			equ $FF

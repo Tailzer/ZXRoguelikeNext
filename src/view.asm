@@ -104,15 +104,27 @@ draw_view:
 	ld (hl),ATTR_YELLOW
 	ret
 
-/* draw_status - bottom line */
+/* draw_status - bottom line: depth, position, key help */
 draw_status:
 	ld d,STATUS_ROW
 	call clear_row
-	ld hl,txt_pos_x
+	ld hl,txt_depth
 	ld d,STATUS_ROW
 	ld e,0
 	ld c,ATTR_GREY
 	call print_at
+	push de
+	ld a,(dun_level)					; 50 feet per level
+	ld d,a
+	ld e,50
+	mul d,e
+	ex de,hl
+	pop de
+	call print_u16
+	ld hl,txt_feet
+	call print_str
+	ld hl,txt_pos_x
+	call print_str
 	ld a,(player_x)
 	call print_u8
 	ld hl,txt_pos_y
