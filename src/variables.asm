@@ -15,3 +15,8 @@ rng_state:		dw $ACE1
 
 print_attr:		db 0
 print_started:	db 0
+
+game_turn:		dw 0
+turn_taken:		db 0				; set when the player's action used a turn
+msg_ptr:		dw 0
+msg_buf:		ds 81

@@ -101,6 +101,46 @@ draw_view:
 	dec a
 	jr nz,.row
 
+	; visible monsters
+	ld ix,MON_LIST
+	ld b,MON_MAX
+.monster:
+	push bc
+	ld a,(ix+M_RACE)
+	cp MON_EMPTY
+	jr z,.next_monster
+	ld a,(ix+M_ML)
+	or a
+	jr z,.next_monster
+	ld a,(view_y)
+	ld b,a
+	ld a,(ix+M_Y)
+	sub b
+	cp VIEW_H
+	jr nc,.next_monster
+	add a,VIEW_TOP
+	ld d,a
+	ld a,(view_x)
+	ld b,a
+	ld a,(ix+M_X)
+	sub b
+	cp VIEW_W
+	jr nc,.next_monster
+	ld e,a
+	call screen_addr
+	ld a,(ix+M_RACE)
+	call race_addr
+	ld a,(iy+R_CHAR)
+	ld (hl),a
+	inc hl
+	ld a,(iy+R_ATTR)
+	ld (hl),a
+.next_monster:
+	ld de,MON_SIZE
+	add ix,de
+	pop bc
+	djnz .monster
+
 	; player
 	ld a,(view_y)
 	ld b,a

@@ -10,6 +10,10 @@ msg_up:			db "You enter a maze of up staircases.",0
 msg_no_down:	db "I see no down staircase here.",0
 msg_no_up:		db "I see no up staircase here.",0
 msg_no_town:	db "The town hasn't been built yet.",0
+msg_something:	db "Something is in the way.",0
+txt_the:		db "The ",0
+txt_in_way:		db " is in the way.",0
+txt_threatens:	db " is next to you!",0
 
 txt_depth:		db "Depth ",0
 txt_feet:		db " ft",0

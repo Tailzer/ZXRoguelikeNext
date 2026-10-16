@@ -20,6 +20,10 @@ try_move:
 	call terrain_flags
 	bit TF_PASSABLE,a
 	jr z,.blocked
+	bit F_MON_BIT,(hl)
+	jr nz,.monster
+	ld a,1
+	ld (turn_taken),a
 	push de
 	call lamp_off
 	pop de
@@ -36,10 +40,31 @@ try_move:
 	and ~TERRAIN_MASK
 	or T_DOOR_OPEN
 	ld (hl),a
+	ld a,1
+	ld (turn_taken),a
 	ld hl,msg_door_open
 	jp show_message
 .wall:
 	ld hl,msg_wall
+	jp show_message
+.monster:								; fighting comes in milestone 4b
+	call mon_at
+	ld a,(ix+M_ML)
+	or a
+	jr z,.unseen
+	call msg_begin
+	ld hl,txt_the
+	call msg_add
+	ld a,(ix+M_RACE)
+	call race_addr
+	ld l,(iy+R_NAME)
+	ld h,(iy+R_NAME+1)
+	call msg_add
+	ld hl,txt_in_way
+	call msg_add
+	jp msg_end
+.unseen:
+	ld hl,msg_something
 	jp show_message
 
 /* player_square - HL = map square under the player. Clobbers A, DE */
@@ -99,4 +124,7 @@ new_level:
 	ld (player_y),a
 	ld a,e
 	ld (player_x),a
-	jp light_arrive
+	call light_arrive
+	call alloc_monsters
+	call update_view
+	jp monsters_see_all

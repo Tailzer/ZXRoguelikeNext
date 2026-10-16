@@ -160,6 +160,30 @@ print_u16:
 pow10_table:
 	dw 10000,1000,100,10,0
 
+/* msg_begin / msg_add / msg_end - build a message from pieces.
+	msg_add: HL = zero-terminated string. msg_end shows it */
+msg_begin:
+	ld hl,msg_buf
+	ld (msg_ptr),hl
+	ret
+msg_add:
+	ld de,(msg_ptr)
+.copy:
+	ld a,(hl)
+	or a
+	jr z,.done
+	ld (de),a
+	inc hl
+	inc de
+	jr .copy
+.done:
+	ld (msg_ptr),de
+	ret
+msg_end:
+	ld hl,(msg_ptr)
+	ld (hl),0
+	ld hl,msg_buf
+	; fall through
 /* show_message - HL = string, printed on the message row */
 show_message:
 	push hl
@@ -181,3 +205,4 @@ palette_inks:
 	db %00011100						; green
 	db %01001111						; blue
 	db %10101100						; umber
+	db %11000011						; magenta ($E3 is the transparent colour)

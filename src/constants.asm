@@ -51,7 +51,8 @@ COL_RED				equ 4
 COL_GREEN			equ 5
 COL_BLUE			equ 6
 COL_UMBER			equ 7
-NUM_COLOURS			equ 8
+COL_MAGENTA			equ 8
+NUM_COLOURS			equ 9
 
 ATTR_WHITE			equ COL_WHITE*2
 ATTR_GREY			equ COL_GREY*2
@@ -61,6 +62,7 @@ ATTR_RED			equ COL_RED*2
 ATTR_GREEN			equ COL_GREEN*2
 ATTR_BLUE			equ COL_BLUE*2
 ATTR_UMBER			equ COL_UMBER*2
+ATTR_MAGENTA		equ COL_MAGENTA*2
 
 ; ---- dungeon (same size as Angband: CONSTANT.H MAX_HEIGHT/MAX_WIDTH) ----
 MAP_W				equ 198
@@ -93,6 +95,8 @@ F_ROOM				equ 1<<F_ROOM_BIT
 F_PERM				equ 1<<F_PERM_BIT
 F_LAMP				equ 1<<F_LAMP_BIT
 F_SEEN				equ F_PERM|F_LAMP	; drawn if either is set
+F_MON_BIT			equ 7				; a monster stands here (like cptr != 0)
+F_MON				equ 1<<F_MON_BIT
 LIGHT_QUEUE			equ TUN_STACK		; room flood fill queue, reuses
 LIGHT_QUEUE_MAX		equ TUN_MAX*2		; tunnel+wall stacks (addresses)
 
@@ -126,6 +130,49 @@ ROOM_LIST			equ DOOR_STACK+DOOR_MAX*2	; up to 37 x (y, x)
 ROOM_MAP			equ ROOM_LIST+80			; ROOM_ROWS x ROOM_COLS
 	ASSERT MAP_BASE+MAP_W*MAP_H <= TUN_STACK
 	ASSERT ROOM_MAP+ROOM_ROWS*ROOM_COLS <= $10000
+
+; ---- monsters (MONSTERS.C, MISC1.C place_monster, CREATURE.C) ----
+MON_LIST			equ $B000			; MON_MAX records of MON_SIZE bytes
+MON_MAX				equ 64
+MON_SIZE			equ 16
+MON_EMPTY			equ $FF				; M_RACE of a free slot
+; monster record
+M_RACE				equ 0
+M_Y					equ 1
+M_X					equ 2
+M_HP				equ 3				; word
+M_MAXHP				equ 5				; word
+M_SLEEP				equ 7				; word (csleep)
+M_SPEED				equ 9				; signed (cspeed = speed - 10)
+M_CDIS				equ 10				; distance from player
+M_ML				equ 11				; 1 if the player can see it
+; race record (race_table in races.asm)
+RACE_SIZE			equ 32
+R_NAME				equ 0				; word, pointer to name
+R_CHAR				equ 2
+R_ATTR				equ 3
+R_MOVE				equ 4				; RM_ flags
+R_EXP				equ 5
+R_SLEEP				equ 6
+R_AAF				equ 7				; how far away it notices you
+R_AC				equ 8
+R_SPEED				equ 9				; 11 = normal
+R_HD_DICE			equ 10
+R_HD_SIDES			equ 11
+R_LEVEL				equ 12
+R_RARITY			equ 13
+R_ATTACKS			equ 16				; 4 x (type, description, dice, sides)
+; R_MOVE bits (MONSTER.H cmove flags)
+RM_ONLY_ATT			equ 0				; MV_ONLY_ATT: never moves
+RM_NORMAL			equ 1				; MV_ATT_NORM: chases
+RM_20				equ 2				; MV_20: 20% random moves
+RM_40				equ 3
+RM_75				equ 4
+RM_GROUP			equ 5				; GROUP: appears in packs
+RM_OPEN_DOOR		equ 6				; THRO_DR: opens doors
+MAX_SIGHT			equ 20
+MIN_MALLOC_LEVEL	equ 14				; minimum monsters per level
+NOTICE_LIMIT		equ 512				; 1d1024 <= this to be noticed (stealth 2)
 
 ; ---- commands ----
 CMD_MOVE			equ 0
