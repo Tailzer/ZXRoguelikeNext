@@ -840,6 +840,9 @@ p_wt:			dw 0
 p_hitdie:		db 0
 p_bth:			db 0				; base to-hit, race + class
 p_cla_bth:		db 0				; class_level_adj[class][CLA_BTH]
+p_cla_dev:		db 0				; class_level_adj[class][CLA_DEVICE]
+p_save:			db 0				; saving throw, race + class (signed)
+p_int_adj:		db 0				; stat_adj(A_INT)
 p_stl:			db 0				; stealth (signed)
 p_infra:		db 0				; infravision, in 10 ft
 p_expfact:		db 100
@@ -849,7 +852,7 @@ p_stat_todam:	db 0				; from STR
 p_stat_toac:	db 0				; from DEX
 p_con_adj:		db 0				; hit points per level from CON
 p_dex_index:	db 0				; DEX column of blows_table
-p_kit:			ds 5				; starting kinds ($FF = none)
+p_kit:			ds 10				; starting kinds, words ($FFFF = none)
 ; from equipment (calc_bonuses)
 p_ac:			db 0
 p_tohit:		db 0				; signed

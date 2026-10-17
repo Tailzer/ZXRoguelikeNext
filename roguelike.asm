@@ -23,6 +23,8 @@
 		POTIONS.C, current/max stats, and DUNGEON.C's timed effects
 	Milestone 9a-2: Scrolls - the r command and 30 scrolls from SCROLLS.C,
 		titled per game; monster confusion, protection from evil
+	Milestone 9b: Devices - wands, staffs and rods (WANDS.C, STAFFS.C,
+		RODS.C): charges, bolts, balls and beams; 9-bit item kinds
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -180,6 +182,7 @@ item_commands:							; in CMD_INVEN order
 	dw cmd_inventory, cmd_equipment, cmd_wield, cmd_takeoff
 	dw cmd_quaff, cmd_eat, cmd_drop, cmd_pickup
 	dw 0, cmd_read						; (CMD_CHARACTER is handled above)
+	dw cmd_aim, cmd_use, cmd_zap
 player_died:
 	FARCALL PAGE_CREATE, player_died_screen
 	jp enter_dungeon
@@ -264,6 +267,11 @@ magic_end:
 	include "src/scrolls.asm"
 scroll_end:
 	ASSERT scroll_end <= $6000, "Scroll overlay is over 8K"
+
+	MMU 2, PAGE_DEVICE, $4000
+	include "src/devices.asm"
+device_end:
+	ASSERT device_end <= $6000, "Device overlay is over 8K"
 
 ; ---- data pages: paged into slot 1 ($2000-$3FFF) by race_addr / kind_addr ----
 ; (the ROM there is only needed at start-up, to copy the font)

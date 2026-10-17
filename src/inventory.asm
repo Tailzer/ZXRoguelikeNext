@@ -11,7 +11,7 @@
 	player_init[] in PLAYER.C (p_kit; torches, books and potions the game
 	can't use yet are left out) */
 starting_kit:
-	ld hl,PACK
+	ld hl,PACK+I_KIND_HI
 	ld b,PACK_MAX+EQ_SLOTS
 	ld de,ITEM_SIZE
 .clear:
@@ -23,10 +23,14 @@ starting_kit:
 .kit:
 	push bc
 	push hl
-	ld a,(hl)
+	ld e,(hl)
+	inc hl
+	ld d,(hl)
+	ld a,d
 	cp ITEM_EMPTY
 	jr z,.next
-	ld (kit_kind),a
+	ex de,hl
+	ld (kit_kind),hl
 	call kind_addr
 	ld a,(iy+K_CLASS)
 	sub IC_WEAPON
@@ -41,19 +45,23 @@ starting_kit:
 	call pack_count
 	call pack_slot
 .put:
-	ld a,(kit_kind)
 	call .make
 .next:
 	pop hl
 	pop bc
 	inc hl
+	inc hl
 	djnz .kit
 	jp calc_bonuses
 .make:
-	ld (ix+I_KIND),a
+	ld hl,(kit_kind)
+	ld (ix+I_KIND),l
+	ld (ix+I_KIND_HI),h
+	call kind_addr
+	call init_charges
 	ld (ix+I_NUMBER),1
 	ld (ix+I_MARKED),1
-	ld (ix+I_IDENT),1<<ID_STORE_BIT		; (player_outfit: store_bought)
+	ld (ix+I_IDENT),1<<ID_STORE_BIT|1<<ID_KNOWN2_BIT	; (store_bought)
 	ret
 
 /* calc_bonuses - armour class, to-hit/dam and the weapon's numbers from
@@ -68,10 +76,10 @@ calc_bonuses:
 	ld b,EQ_SLOTS
 .slot:
 	push bc
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	jr z,.next
-	call kind_addr
+	call item_kind_addr
 	ld a,(p_ac)
 	add a,(iy+K_AC)
 	ld (p_ac),a
@@ -151,7 +159,7 @@ calc_bonuses:
 	jp p,$+4
 	xor a								; (armour class can't go below 0)
 	ld (hl),a
-	ld a,(EQUIP+EQ_WEAPON*ITEM_SIZE+I_KIND)
+	ld a,(EQUIP+EQ_WEAPON*ITEM_SIZE+I_KIND_HI)
 	cp ITEM_EMPTY
 	jr nz,.armed
 	ld a,1								; bare hands: 2 blows of 1d1 at -3
@@ -166,6 +174,7 @@ calc_bonuses:
 	ld (p_tohit),a
 	ret
 .armed:
+	ld hl,(EQUIP+EQ_WEAPON*ITEM_SIZE+I_KIND)
 	call kind_addr
 	ld a,(iy+K_DICE)
 	ld (w_dice),a
@@ -240,7 +249,7 @@ calc_bonuses:
 
 /* the adj_weight thresholds for str_index 0-9 (anything more is 10) */
 str_index_limits:	db 2,3,4,6,8,10,13,15,18,20
-kit_kind:			db 0
+kit_kind:			dw 0
 
 ; ---------------------------------------------------------------- lists
 
@@ -268,7 +277,7 @@ show_equip:
 	mul d,e
 	ld ix,EQUIP
 	add ix,de
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	ld hl,txt_nothing
 	jr z,.empty
@@ -316,8 +325,7 @@ cmd_wield:
 	call choose_pack
 	ret nc
 	ld (cmd_slot),a
-	ld a,(ix+I_KIND)
-	call kind_addr
+	call item_kind_addr
 	ld a,(iy+K_CLASS)
 	sub IC_WEAPON
 	ld (cmd_equip),a
@@ -338,7 +346,7 @@ cmd_wield:
 	inc hl
 	inc de
 	djnz .swap
-	ld a,(ix+I_KIND)					; nothing was worn: close the gap
+	ld a,(ix+I_KIND_HI)					; nothing was worn: close the gap
 	cp ITEM_EMPTY
 	ld a,(cmd_slot)
 	call z,pack_remove
@@ -381,7 +389,7 @@ cmd_takeoff:
 	mul d,e
 	ld ix,EQUIP
 	add ix,de
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	ret z
 	call pack_carry
@@ -401,7 +409,7 @@ cmd_takeoff:
 	ld hl,txt_full_stop
 	call msg_add
 	call msg_end
-	ld (ix+I_KIND),ITEM_EMPTY
+	ld (ix+I_KIND_HI),ITEM_EMPTY
 	call calc_bonuses
 	ld a,1
 	ld (turn_taken),a
@@ -460,6 +468,46 @@ cmd_read:
 	ld (turn_taken),a
 	ret
 
+/* cmd_aim, cmd_use, cmd_zap - 'z' wand, 'Z' staff, 'a' rod: choose one,
+	and the device overlay does the rest (WANDS.C, STAFFS.C, RODS.C) */
+cmd_aim:
+	ld hl,txt_aim_which
+	ld de,msg_no_wands
+	ld bc,IC_WAND*256+PM_AIM
+	jr use_device
+cmd_use:
+	ld hl,txt_use_which
+	ld de,msg_no_staffs
+	ld bc,IC_STAFF*256+PM_USE
+	jr use_device
+cmd_zap:
+	ld hl,txt_zap_which
+	ld de,msg_no_rods
+	ld bc,IC_ROD*256+PM_ZAP
+use_device:
+	ld (ud_none),de
+	ld (ud_class),bc
+	call pack_count
+	or a
+	ld hl,msg_pack_empty
+	jp z,msg_print
+	ld hl,(ud_class)					; (H = class)
+	ld a,h
+	call choose_pack
+	jr c,.chosen
+	ld a,(ud_class+1)
+	call pack_has_class
+	ret c
+	ld hl,(ud_none)
+	jp msg_print
+.chosen:
+	ld (pending_arg),a
+	ld a,(ud_class)
+	ld (pending_magic),a
+	ld a,1
+	ld (turn_taken),a
+	ret
+
 /* cmd_eat - 'E': eat some food (EAT.C, add_food in MISC1.C) */
 cmd_eat:
 	ld hl,txt_eat_which
@@ -473,8 +521,7 @@ cmd_eat:
 	jp msg_print
 .eat:
 	ld (cmd_slot),a
-	ld a,(ix+I_KIND)
-	call kind_addr
+	call item_kind_addr
 	ld l,(iy+K_P1)
 	ld h,(iy+K_P1+1)
 	call add_food
@@ -550,7 +597,7 @@ carry_here:
 	ld e,a
 	call item_at
 	ret nc
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp KIND_GOLD
 	jr nz,.object
 	ld l,(ix+I_VALUE)					; "You have found 31 gold pieces
@@ -582,7 +629,7 @@ carry_here:
 	ld hl,txt_full_stop
 	call msg_add
 	call msg_end
-	ld (ix+I_KIND),ITEM_EMPTY
+	ld (ix+I_KIND_HI),ITEM_EMPTY
 	ret
 .object:
 	call pack_carry
@@ -596,7 +643,7 @@ carry_here:
 	jp msg_end
 .carried:
 	ld (cmd_slot),a
-	ld (ix+I_KIND),ITEM_EMPTY			; off the floor
+	ld (ix+I_KIND_HI),ITEM_EMPTY			; off the floor
 	call pack_slot						; "You have a Dagger (1d4) (c)."
 	call msg_begin
 	ld hl,txt_you_have
@@ -693,6 +740,14 @@ msg_no_scrolls:	db "You are not carrying any scrolls!",0
 msg_cant_see:	db "You can't see to read the scroll.",0
 msg_too_confused: db "You are too confused to read a scroll.",0
 txt_read_which:	db "Read which scroll? (letter, or space)",0
+txt_aim_which:	db "Aim which wand? (letter, or space)",0
+txt_use_which:	db "Use which staff? (letter, or space)",0
+txt_zap_which:	db "Activate which rod? (letter, or space)",0
+msg_no_wands:	db "You are not carrying any wands.",0
+msg_no_staffs:	db "You are not carrying any staffs.",0
+msg_no_rods:	db "You are not carrying any rods.",0
+ud_none:		dw 0
+ud_class:		dw 0				; action, class
 msg_no_food:	db "You are not carrying any food.",0
 msg_no_room:	db "You have no room in your pack.",0
 msg_already_item: db "There is already something here.",0

@@ -132,10 +132,10 @@ store_create:
 	cp STORE_BLACK
 	jr nz,.choice
 .black:									; (stands in for get_obj_num(40))
-	ld a,NUM_KINDS
-	call randint
-	dec a
-	ld (cs_kind),a
+	ld hl,NUM_KINDS
+	call randint16
+	dec hl
+	ld (cs_kind),hl
 	call kind_addr
 	ld a,(iy+K_LEVEL)
 	cp 41
@@ -152,19 +152,25 @@ store_create:
 	mul d,e
 	ld a,c
 	add de,a
-	ld hl,store_choice_table
+	ex de,hl
+	add hl,hl
+	ld de,store_choice_table
 	add hl,de
 	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	ld a,h
 	cp $FF
 	jr z,.failed						; nothing the game has yet
-	ld (cs_kind),a
+	ld (cs_kind),hl
 .chosen:
 	ld a,(cs_store)
 	ld b,a
-	ld a,(cs_kind)
+	ld hl,(cs_kind)
 	call store_has_room
 	jr nc,.failed
-	ld a,(cs_kind)						; must be worth something, and less
+	ld hl,(cs_kind)						; must be worth something, and less
 	call kind_addr						; than the owner can afford
 	ld l,(iy+K_COST)
 	ld h,(iy+K_COST+1)
@@ -184,10 +190,17 @@ store_create:
 	jr nc,.failed
 .affordable:
 	call special_offer
+	ld (cs_disc),a
+	ld hl,(cs_kind)						; wands and staffs come charged
+	call kind_addr
+	call kind_charges
+	ld e,a
+	ld a,(cs_disc)
 	ld c,a
 	ld a,(cs_store)
 	ld b,a
-	ld a,(cs_kind)
+	ld a,e
+	ld hl,(cs_kind)
 	call store_carry
 	pop bc
 	ret
@@ -233,19 +246,31 @@ store_entry:
 	ld d,STORE_INVEN_MAX
 	mul d,e
 	ld a,b
-	add de,a
-	ex de,hl
-	add hl,hl
-	add hl,hl
-	ld de,STORE_INV
+	add a,e								; (at most 191)
+	ld e,a
+	ld d,STORE_ITEM
+	mul d,e
+	ld hl,STORE_INV
 	add hl,de
 	ret
 
-/* stacks - A = kind -> Z set if it stacks (food and potions) */
+/* entry_is_kind - HL = stock entry, DE = kind -> Z if it's that kind.
+	Preserves HL, DE */
+entry_is_kind:
+	ld a,(hl)
+	cp e
+	ret nz
+	inc hl
+	ld a,(hl)
+	dec hl
+	cp d
+	ret
+
+/* stacks - HL = kind -> Z set if it stacks (food, potions, scrolls) */
 stacks:
 	call kind_addr
 	ld a,(iy+K_CLASS)
-	cp IC_WEAPON
+	cp IC_WAND
 	jr nc,.no
 	xor a
 	ret
@@ -253,15 +278,15 @@ stacks:
 	or 1
 	ret
 
-/* store_has_room - A = kind, B = store -> carry if it fits */
+/* store_has_room - HL = kind, B = store -> carry if it fits */
 store_has_room:
-	ld (hr_kind),a
+	ld (hr_kind),hl
 	ld a,b
 	ld (hr_store),a
 	call store_count_a
 	cp STORE_INVEN_MAX
 	ret c								; a free entry
-	ld a,(hr_kind)						; or a stack to join
+	ld hl,(hr_kind)						; or a stack to join
 	call stacks
 	ret nz
 	ld a,(hr_store)
@@ -273,8 +298,8 @@ store_has_room:
 	ld a,(hr_store)
 	call store_entry
 	pop bc
-	ld a,(hr_kind)
-	cp (hl)
+	ld de,(hr_kind)
+	call entry_is_kind
 	scf
 	ret z
 	inc b
@@ -284,15 +309,17 @@ store_has_room:
 	or a
 	ret
 
-/* store_carry - B = store, A = kind, C = discount: add one, joining a
-	stack of the same kind and price, else in order of tval, highest first */
+/* store_carry - B = store, HL = kind, C = discount, A = charges: add one,
+	joining a stack of the same kind and price, else in order of tval,
+	highest first */
 store_carry:
-	ld (sc_kind),a
+	ld (sc_pval),a
+	ld (sc_kind),hl
 	ld a,b
 	ld (sc_store),a
 	ld a,c
 	ld (sc_discount),a
-	ld a,(sc_kind)
+	ld hl,(sc_kind)
 	call stacks
 	jr nz,.insert
 	ld a,(sc_store)
@@ -307,9 +334,10 @@ store_carry:
 	ld a,(sc_store)
 	call store_entry
 	pop bc
-	ld a,(sc_kind)
-	cp (hl)
+	ld de,(sc_kind)
+	call entry_is_kind
 	jr nz,.next_stack
+	inc hl
 	inc hl
 	inc hl
 	ld a,(sc_discount)
@@ -326,7 +354,7 @@ store_carry:
 	call store_count_a
 	cp STORE_INVEN_MAX
 	ret nc								; (full: callers check, but be safe)
-	ld a,(sc_kind)						; tval of the new item
+	ld hl,(sc_kind)						; tval of the new item
 	call kind_addr
 	ld a,(iy+K_TVAL)
 	ld (sc_tval),a
@@ -342,6 +370,9 @@ store_carry:
 	ld a,(sc_store)
 	call store_entry
 	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
 	call kind_addr
 	pop bc
 	ld a,(sc_tval)
@@ -355,8 +386,10 @@ store_carry:
 	ld a,c
 	sub b
 	jr z,.write							; at the end: nothing to move
-	add a,a
-	add a,a
+	ld e,a
+	ld d,STORE_ITEM
+	mul d,e
+	ld a,e
 	ld (sc_bytes),a
 	push bc
 	ld a,(sc_store)
@@ -376,15 +409,18 @@ store_carry:
 .write:
 	ld a,(sc_store)
 	call store_entry
-	ld a,(sc_kind)
-	ld (hl),a
+	ld de,(sc_kind)
+	ld (hl),e
+	inc hl
+	ld (hl),d
 	inc hl
 	ld (hl),1
 	inc hl
 	ld a,(sc_discount)
 	ld (hl),a
 	inc hl
-	ld (hl),0
+	ld a,(sc_pval)
+	ld (hl),a
 	ld a,(sc_store)						; one more entry
 	ld hl,STORE_COUNT
 	add hl,a
@@ -398,6 +434,7 @@ store_destroy:
 	ld (sd_pos),a
 	ld a,(sd_store)
 	call store_entry
+	inc hl
 	inc hl
 	push hl
 	ld a,(hl)
@@ -426,8 +463,12 @@ store_remove:
 	sub b								; entries after this one
 	pop de
 	jr z,.last
-	add a,a
-	add a,a
+	push de
+	ld e,a
+	ld d,STORE_ITEM
+	mul d,e
+	ld a,e
+	pop de
 	ld c,a
 	ld b,0
 	ld hl,STORE_ITEM
@@ -488,17 +529,46 @@ at_least_1:
 	inc hl
 	ret
 
-/* item_cost - A = kind, C = discount -> HL = its value after any offer */
+/* item_cost - HL = kind, C = discount, cost_pval = charges (when known) ->
+	HL = its value: the cost, cut by any special offer, plus 1/20 of that
+	for each charge (special_offer, item_value in STORE1.C) */
 item_cost:
 	push bc
 	call kind_addr
 	pop bc
 	ld l,(iy+K_COST)
 	ld h,(iy+K_COST+1)
-	ld a,(cost_unknown)					; (store_value: unknown potions)
-	or a
-	jr z,$+5
+	ld a,(cost_unknown)					; not known: a flat 20 for potions
+	or a								; and scrolls, 50 wands, 70 staffs
+	jr z,.known
 	ld hl,20
+	ld a,(iy+K_CLASS)
+	cp IC_WAND
+	jr nz,$+5
+	ld hl,50
+	cp IC_STAFF
+	jr nz,.offer
+	ld hl,70
+	jr .offer
+.known:
+	call .offer
+	ld a,(iy+K_CLASS)					; charges add 1/20 of the cost each
+	cp IC_WAND
+	jr z,.charged
+	cp IC_STAFF
+	ret nz
+.charged:
+	push hl
+	ld c,20
+	call div16_8
+	ld a,(cost_pval)
+	ld e,a
+	ld d,l
+	mul d,e								; (cost/20 is under 256 for devices)
+	pop hl
+	add hl,de
+	ret
+.offer:
 	ld a,c
 	or a
 	ret z
@@ -522,7 +592,7 @@ item_cost:
 	call pct
 	jr at_least_1
 
-/* buy_price - (cur_store) A = kind, C = discount -> HL = what you pay:
+/* buy_price - (cur_store) HL = kind, C = discount -> HL = what you pay:
 	value * race adjustment * final markup (x2 black market) * charisma */
 buy_price:
 	call item_cost
@@ -549,7 +619,7 @@ buy_price:
 	call pct
 	jp at_least_1
 
-/* sell_offer - (cur_store) A = kind -> HL = what they'll pay for one:
+/* sell_offer - (cur_store) HL = kind -> HL = what they'll pay for one:
 	value less the charisma and race adjustments, at their final offer,
 	never more than they can afford */
 sell_offer:
@@ -616,10 +686,9 @@ race_adjust:
 	ld a,(hl)
 	ret
 
-/* store_buys - A = kind -> carry if cur_store deals in its tval
+/* store_buys - IY = kind -> carry if cur_store deals in its tval
 	(general_store, armory... in SETS.C; black market and home take all) */
 store_buys:
-	call kind_addr
 	ld a,(cur_store)
 	cp STORE_BLACK						; the black market and home take
 	jr c,.list							; anything
@@ -764,7 +833,7 @@ draw_store:
 	push ix
 	call store_objdes
 	pop ix
-	ld a,(ix+2)							; any discount?
+	ld a,(ix+3)							; any discount?
 	or a
 	jr z,.no_offer
 	dec a
@@ -789,10 +858,7 @@ draw_store:
 	ld a,(cur_store)					; price, but not at home
 	cp STORE_HOME
 	jr z,.next_line
-	ld a,(ix+2)
-	ld c,a
-	ld a,(ix+0)
-	call buy_price
+	call entry_price
 	ld a,(list_pos)
 	add a,LIST_ROW
 	ld d,a
@@ -881,10 +947,7 @@ store_purchase:
 	ld a,(cur_store)
 	cp STORE_HOME
 	jr z,.priced
-	ld a,(ix+2)
-	ld c,a
-	ld a,(ix+0)
-	call buy_price
+	call entry_price
 .priced:
 	ld (deal_price),hl
 	ld de,(p_gold+2)					; enough gold?
@@ -901,10 +964,16 @@ store_purchase:
 .afford:
 	ld a,(ix+0)							; one of them, as a pack item
 	ld (deal_item+I_KIND),a
-	ld a,1
+	ld a,(ix+1)
+	ld (deal_item+I_KIND_HI),a
+	ld a,(ix+4)
+	ld (deal_item+I_PVAL),a
+	xor a
+	ld (deal_item+I_PVAL+1),a
+	inc a
 	ld (deal_item+I_NUMBER),a
 	ld (deal_item+I_MARKED),a
-	ld a,1<<ID_STORE_BIT				; store bought: known
+	ld a,1<<ID_STORE_BIT|1<<ID_KNOWN2_BIT	; store bought: known
 	ld (deal_item+I_IDENT),a
 	push ix
 	ld ix,deal_item
@@ -924,7 +993,7 @@ store_purchase:
 	ld de,0
 	sbc hl,de
 	ld (p_gold+2),hl
-	dec (ix+1)							; one fewer in the store
+	dec (ix+2)							; one fewer in the store
 	jr nz,.described
 	ld a,(cur_store)
 	ld hl,list_pos
@@ -955,9 +1024,10 @@ store_sell:
 .list:
 	ld a,(list_pos)
 	call pack_slot
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	jr z,.listed
+	call item_kind_addr
 	call store_buys
 	jr nc,.skip
 	call msg_begin
@@ -1005,14 +1075,16 @@ store_sell:
 	jp nc,enter_store.redraw
 	ld (deal_slot),a
 	call pack_slot
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	jp z,enter_store.redraw
+	call item_kind_addr
 	call store_buys
 	jp nc,enter_store.redraw
 	ld a,(cur_store)					; room?
 	ld b,a
-	ld a,(ix+I_KIND)
+	ld l,(ix+I_KIND)
+	ld h,(ix+I_KIND_HI)
 	call store_has_room
 	jr c,.room
 	ld hl,txt_store_full
@@ -1022,16 +1094,18 @@ store_sell:
 	ld a,(cur_store)
 	cp STORE_HOME
 	jr z,.offered
-	ld a,(ix+I_KIND)					; unknown potions fetch 20 (value)
-	call kind_addr
+	call item_kind_addr					; unknown potions fetch 20 (value)
 	call item_known
 	sbc a,a
 	cpl
 	ld (cost_unknown),a
-	ld a,(ix+I_KIND)
+	call item_pval_known
+	ld (cost_pval),a
+	call item_kind_addr
 	call sell_offer
 	xor a
 	ld (cost_unknown),a
+	ld (cost_pval),a
 	ld a,h
 	or l
 	jr nz,.offered
@@ -1048,17 +1122,21 @@ store_sell:
 	ld (p_gold+2),hl
 	ld a,(deal_slot)
 	call pack_slot
-	ld a,(ix+I_KIND)
-	ld (deal_item+I_KIND),a
+	ld l,(ix+I_KIND)
+	ld h,(ix+I_KIND_HI)
+	ld (deal_item+I_KIND),hl
+	ld a,(ix+I_PVAL)
+	ld (deal_item+I_PVAL),a
 	ld a,(cur_store)					; selling identifies it (STORE2.C),
 	cp STORE_HOME						; which may combine stacks
 	jr z,.known
-	ld a,(deal_item+I_KIND)
+	ld hl,(deal_item+I_KIND)
 	call learn_kind
+	ld hl,(deal_item+I_KIND)
 	call kind_addr
 	call ident_addr
 	jr nc,.known						; (no flavour: nothing moved)
-	ld a,(deal_item+I_KIND)
+	ld hl,(deal_item+I_KIND)
 	call find_pack_kind
 	ld (deal_slot),a
 .known:
@@ -1066,7 +1144,7 @@ store_sell:
 	call pack_slot
 	ld a,1								; describe one of them
 	ld (deal_item+I_NUMBER),a
-	ld a,1<<ID_STORE_BIT
+	ld a,1<<ID_STORE_BIT|1<<ID_KNOWN2_BIT
 	ld (deal_item+I_IDENT),a
 	call msg_begin
 	ld hl,txt_you_sold
@@ -1093,8 +1171,10 @@ store_sell:
 	call msg_add
 	ld a,(cur_store)					; into the store, out of the pack
 	ld b,a
-	ld a,(ix+I_KIND)
+	ld l,(ix+I_KIND)
+	ld h,(ix+I_KIND_HI)
 	ld c,0
+	ld a,(ix+I_PVAL)
 	call store_carry
 	ld a,(deal_slot)
 	call use_one
@@ -1105,11 +1185,27 @@ store_objdes:
 	ld a,(ix+0)
 	ld (show_item+I_KIND),a
 	ld a,(ix+1)
+	ld (show_item+I_KIND_HI),a
+	ld a,(ix+2)
 	ld (show_item+I_NUMBER),a
-	ld a,1<<ID_STORE_BIT
+	ld a,(ix+4)
+	ld (show_item+I_PVAL),a
+	ld a,1<<ID_STORE_BIT|1<<ID_KNOWN2_BIT
 	ld (show_item+I_IDENT),a
 	ld ix,show_item
 	jp objdes_msg
+
+/* entry_price - IX = stock entry -> HL = its price */
+entry_price:
+	ld a,(ix+4)
+	ld (cost_pval),a
+	ld c,(ix+3)
+	ld l,(ix+0)
+	ld h,(ix+1)
+	call buy_price
+	xor a
+	ld (cost_pval),a
+	ret
 
 /* clear_rows - D = first row: clear down to the prompt row */
 clear_rows:
@@ -1217,13 +1313,16 @@ deal_slot:		db 0
 deal_item:		ds ITEM_SIZE
 show_item:		ds ITEM_SIZE
 cost_unknown:	db 0				; $FF: price a flavour not yet known
+cost_pval:		db 0				; charges, for pricing wands and staffs
 max_buy:		dw 0
 maint_store:	db 0
 cs_store:		db 0
-cs_kind:		db 0
-hr_kind:		db 0
+cs_kind:		dw 0
+cs_disc:		db 0
+hr_kind:		dw 0
 hr_store:		db 0
-sc_kind:		db 0
+sc_kind:		dw 0
+sc_pval:		db 0
 sc_store:		db 0
 sc_discount:	db 0
 sc_tval:		db 0

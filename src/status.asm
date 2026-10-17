@@ -37,10 +37,31 @@ pending_actions:
 	cp PM_READ
 	ld a,(pending_arg)
 	jr z,.read
+	jr nc,.device
 	FARCALL PAGE_MAGIC, magic_action	; B = action, A = argument
 	ret
 .read:
 	FARCALL PAGE_SCROLL, read_scroll
+	ret
+.device:
+	FARCALL PAGE_DEVICE, device_action	; B = action, A = slot
+	ret
+
+/* device_xcall - B = an overlay, xc_target = a routine in it: called from
+	the device overlay, which is paged back in afterwards. A, HL, DE and
+	flags pass through (staffs and rods share scroll and potion effects) */
+device_xcall:
+	push af
+	ld a,b
+	nextreg NR_MMU2,a
+	pop af
+	call .go
+	nextreg NR_MMU2,PAGE_DEVICE
+	ret
+.go:
+	push hl
+	ld hl,(xc_target)
+	ex (sp),hl
 	ret
 
 /* level_call - HL = a routine in the level overlay, called from the scroll
@@ -83,6 +104,10 @@ stat_bonuses:
 	ld hl,dex_blows
 	call threshold
 	ld (p_dex_index),a
+	ld a,(p_stat+A_INT)
+	ld hl,int_adj
+	call threshold
+	ld (p_int_adj),a
 	ret
 
 /* threshold - A = stat, HL = table of (limit, value) pairs ending with
@@ -112,6 +137,8 @@ con_hp:		db 4,-4, 5,-3, 6,-2, 7,-1, 17,0, 18,1, 94,2, 117,3, 119,4, 128,5
 			db 138,6, 158,7, 168,8, 178,9, 188,10, 198,11, 208,12, 228,13, 255,14
 dex_blows:	db 10,0, 19,1, 68,2, 108,3, 118,4, 119,5, 128,6, 138,7, 148,8, 158,9
 			db 168,10, 255,11
+int_adj:	db 8,0, 15,1, 18,2, 68,3, 88,4, 108,5, 118,6, 119,7, 129,8, 139,9
+			db 149,10, 159,11, 169,12, 179,13, 189,14, 199,15, 219,16, 229,18, 255,20
 
 /* calc_hitpoints - p_mhp = player_hp[lev-1] + con_adj * lev, at least
 	lev + 1, +10 heroic, +20 berserk. When it changes, current hit points
@@ -266,7 +293,8 @@ update_max_exp:
 ; ---------------------------------------------------------------- flavours
 
 /* flavour_class - IY = kind -> carry and A = its object_offset() if the
-	kind has a flavour (potions and scrolls so far) */
+	kind has a flavour (potions, scrolls, staffs, wands, rods).
+	Changes only A */
 flavour_class:
 	ld a,(iy+K_TVAL)
 	cp TV_POTION1
@@ -277,7 +305,25 @@ flavour_class:
 	jr z,.scroll
 	cp TV_SCROLL2
 	jr z,.scroll
+	cp TV_STAFF
+	jr z,.staff
+	cp TV_WAND
+	jr z,.wand
+	cp TV_ROD
+	jr z,.rod
 	or a
+	ret
+.staff:
+	ld a,OFS_STAFF
+	scf
+	ret
+.wand:
+	ld a,OFS_WAND
+	scf
+	ret
+.rod:
+	ld a,OFS_ROD
+	scf
 	ret
 .scroll:
 	ld a,OFS_SCROLL
@@ -321,8 +367,42 @@ item_known:
 /* flavour_index - IY = flavoured kind -> A = its colour (after this game's
 	shuffle). Clobbers HL */
 flavour_index:
+	call flavour_tables
 	ld a,(iy+K_FLAVOUR)
+	add hl,a
+	ld a,(hl)
+	ret
+
+/* flavour_tables - IY = flavoured kind (not a scroll) -> HL = this game's
+	order for its class, DE = the names, BC = the colours (on FLAVOUR_PAGE).
+	Clobbers A */
+flavour_tables:
+	call flavour_class
 	ld hl,flavour_map
+	ld de,colour_names
+	ld bc,colour_attrs
+	cp OFS_POTION
+	ret z
+	ld hl,wood_map
+	ld de,wood_names
+	ld bc,wood_attrs
+	cp OFS_STAFF
+	ret z
+	ld hl,metal_map						; wands and rods: metals
+	ld de,metal_names
+	ld bc,metal_attrs
+	ret
+
+/* flavour_attr - IY = flavoured kind (not a scroll) -> A = its colour.
+	Leaves FLAVOUR_PAGE in the data window */
+flavour_attr:
+	call flavour_index
+	push af
+	call flavour_tables
+	pop af
+	nextreg NR_MMU1,FLAVOUR_PAGE
+	ld h,b
+	ld l,c
 	add hl,a
 	ld a,(hl)
 	ret
@@ -343,9 +423,12 @@ flavour_name:
 	ret
 .colour:
 	call flavour_index
+	push af
+	call flavour_tables
+	pop af
 	nextreg NR_MMU1,FLAVOUR_PAGE
 	add a,a
-	ld hl,colour_names
+	ex de,hl
 	add hl,a
 	ld a,(hl)
 	inc hl
@@ -353,22 +436,22 @@ flavour_name:
 	ld l,a
 	ret
 
-/* learn_kind - A = kind: the player now knows what it is (identify):
+/* learn_kind - HL = kind: the player now knows what it is (identify):
 	known, no longer just tried, and stacks of it in the pack combine */
 learn_kind:
-	push af
+	push hl
 	call kind_addr
 	call ident_addr
 	jr nc,.done
 	set OD_KNOWN_BIT,(hl)
 	res OD_TRIED_BIT,(hl)
-	pop af
+	pop hl
 	jp pack_combine
 .done:
-	pop af
+	pop hl
 	ret
 
-/* try_kind - A = kind: the player tried it without learning what it is
+/* try_kind - HL = kind: the player tried it without learning what it is
 	(sample). Clobbers DE, HL */
 try_kind:
 	call kind_addr
@@ -386,11 +469,10 @@ try_kind:
 item_used:
 	ld a,(u_slot)						; still where it was?
 	call pack_slot
-	ld a,(ix+I_KIND)
-	ld hl,u_kind
-	cp (hl)
+	ld hl,(u_kind)
+	call item_is_kind
 	call nz,.refind
-	ld a,(u_kind)
+	ld hl,(u_kind)
 	call kind_addr
 	call ident_addr
 	bit OD_KNOWN_BIT,(hl)
@@ -412,15 +494,20 @@ item_used:
 	call div16_8
 	call add_exp
 	call check_level_up
-	ld a,(u_kind)
+	ld hl,(u_kind)
 	call learn_kind
-.refind:								; learning combines stacks
-	ld a,(u_kind)
+.refind:								; learning combines stacks (of the
+	ld hl,(u_kind)						; things that stack)
+	call kind_addr
+	ld a,(iy+K_CLASS)
+	cp IC_WAND
+	ret nc
+	ld hl,(u_kind)
 	call find_pack_kind
 	ld (u_slot),a
 	ret
 .sample:
-	ld a,(u_kind)
+	ld hl,(u_kind)
 	jp try_kind
 
 /* ident - the item being used did something noticeable */
@@ -507,8 +594,13 @@ p_update:		db 0				; PU_ bits
 p_new_level:	db 0				; set when word of recall fires
 pending_magic:	db 0				; PM_ action for the magic overlay
 pending_arg:	db 0
+xc_target:		dw 0				; device_xcall's routine
+summon_max:		db 3				; summon_some: up to 1d(this), 1d4 staffs
+gen_strain:		db 1				; genocide hurts (scrolls), not staffs
+dispel_mask:	db 1<<RF_UNDEAD		; dispel_creature: R_FLAGS bits, 0 = all
+dispel_dam:		db 60
 u_slot:			db 0				; the item being quaffed or read
-u_kind:			db 0
+u_kind:			dw 0
 u_level:		db 0
 u_ident:		db 0
 ; timed effects, words, cleared together by player_init
@@ -535,6 +627,8 @@ P_TIMED_SIZE	equ $-p_timed
 ; what the player knows (object_ident, 64 per object_offset class)
 object_ident:	ds 8*64
 flavour_map:	ds MAX_FLAVOURS		; colour shown for each flavour slot
+wood_map:		ds 32				; wood for each staff
+metal_map:		ds 32				; metal for each wand and rod
 ; scratch
 ch_new:			dw 0
 ch_val:			dd 0

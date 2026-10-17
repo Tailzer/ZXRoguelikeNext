@@ -21,7 +21,7 @@ Walk into a closed door to open it, or into a monster to attack it; walking onto
 
 `C` (Caps Shift+C) shows the character sheet.
 
-Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels.
+Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `z` aim a wand, `Z` (Caps Shift+Z) use a staff, `a` activate a rod, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels. Directions: `1`-`9` or `hjklyubn`.
 
 ## Milestones
 
@@ -65,7 +65,16 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - monsters can be confused (Monster Confusion's glowing hands, on your next hit or theirs) and wander at random until it wears off (1 in 8 a turn); protection from evil repels evil monsters up to your level
      - item classes renumbered: food 1, potion 2, scroll 3, weapon 4 ... boots 10
      - not yet: enchant/curse scrolls, Rune of Protection, Trap Creation, Recharging, Acquirement (not generated until their milestones)
-   - 9b: wands, staffs, rods; 9c: rings, amulets, magical pluses (enchant/curse scrolls); 9d: spells and monster spells
+   - 9b: wands, staffs and rods *(done)* — `WANDS.C`, `STAFFS.C`, `RODS.C`, `SPELLS.C`
+     - all 29 wands, 29 staffs and 26 rods; unknown ones go by metal (wands, rods) or wood (staffs), shuffled each game, drawn in that colour; identified by use like potions
+     - charges (`magic_treasure`'s table per kind), shown once known: "a Wand of Magic Missile (7 charges)", "{empty}" when found dry; rods recharge over their C timeouts, a turn at a time while carried
+     - using one can fail: saving throw + INT adjustment - level + class device skill x level / 3, as in the C (halved when confused)
+     - bolts (magic missile, lightning, frost, fire, acid) hit the first monster in line, with the C's immunities (a ninth) and pain messages ("The Kobold squeals in pain."); balls burst over radius 2, damage falling with distance, burning or freezing items on the floor and burning doors; beams of light hurt light-haters
+     - Stone to Mud, Polymorph, Clone, Teleport Away, Slow/Haste/Confuse/Sleep Monster, Drain Life, Disarming, Trap/Door Destruction, Wonder, the dragon wands; staffs of Earthquakes, Starlight, Holiness, Power, Probing, Detect Evil and the rest; rods of Healing, Restoration, Detection, Recall...
+     - the Recharging scroll (may blow the wand up); the Magic shop stocks wands and staffs
+     - item kinds are now 9 bits (270 kinds, room for 510): item records are 9 bytes with a word kind, store stock 5 bytes with charges
+     - not yet: traps (Trap Location finds none), mana (the Magi restore INT only), monsters escaping walls an earthquake drops on them (survivors keep their floor)
+   - 9c: rings, amulets, magical pluses (enchant/curse scrolls); 9d: spells and monster spells
 10. Saving to SD card
 
 ## Memory map
@@ -79,10 +88,10 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
 | `$7400-$7BFF` | tile definitions (1-bit text mode) |
 | `$8000-$AFFF` | resident code and data (bank 2) |
 | `$B000-$B3FF` | monster list, 64 x 16 bytes |
-| `$B400-$B5FF` | floor items, 64 x 8 bytes |
-| `$B600-$B697` | pack (12 x 8) then equipment (7 x 8) |
-| `$B6A0-$B7CF` | the character's hit points per level (50 words) and experience needed per level (50 dwords) |
-| `$B7E0-$BAFF` | store stock (8 stores x 24 x 4 bytes), owners, entry counts, door positions |
+| `$B400-$B63F` | floor items, 64 x 9 bytes (kind word, number, y, x, marked, value/charges/timeout, ident) |
+| `$B640-$B6EA` | pack (12 x 9) then equipment (7 x 9) |
+| `$B6EB-$B816` | the character's hit points per level (50 words) and experience needed per level (50 dwords) |
+| `$B817-$BBF6` | store stock (8 stores x 24 x 5 bytes: kind word, number, discount, charges), owners, entry counts, door positions |
 | `$BC00-$BDBF` | IM2 vector table + jump |
 | `$BEC0-$BFFF` | stack |
 | `$C000-$F30B` | dungeon map, 198x66 bytes (pages 32/33): low 4 bits terrain, bit 4 room, bit 5 lit/remembered, bit 6 player light, bit 7 monster here |
@@ -101,11 +110,12 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 | 51 `PAGE_STORE` | `store.asm`, `data/stores.asm` | the stores: stock, prices, buying and selling |
 | 52 `PAGE_MAGIC` | `potions.asm`, `effects.asm` | quaffing, stat changes, timed effects (every turn), the colour and title shuffle |
 | 53 `PAGE_SCROLL` | `scrolls.asm` | reading scrolls (summons go through `level_call` to the level overlay) |
+| 54 `PAGE_DEVICE` | `devices.asm` | wands, staffs, rods: bolts, balls, beams (borrows scroll and potion effects through `device_xcall`) |
 
-Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 49-50 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page) followed on page 50 (`FLAVOUR_PAGE`) by `data/flavours.asm`: the potion colours, the title syllables and the buffer this game's scroll titles are written into. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
+Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 60-62 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page) followed on the last of them (`FLAVOUR_PAGE`) by `data/flavours.asm`: the potion colours, woods and metals, the title syllables and the buffer this game's scroll titles are written into. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
 
-Resident code ends around `$ABFC` after milestone 9a-2 (`status.asm` holds the stat tables, timed-effect counters, what the player knows, the colour order and the after-use identify logic; `pack.asm` the item lists and chooser), about 1K below the monster list. The creation overlay is at 7.6K of 8K, the magic overlay 6.3K, the scroll overlay 2.6K.
+Resident code ends around `$ADFE` after milestone 9b (only about 500 bytes left: later milestones should move code out of it) (`status.asm` holds the stat tables, timed-effect counters, what the player knows, the colour order and the after-use identify logic; `pack.asm` the item lists and chooser), the monster list starting at `$B000`. The creation overlay is at 7.6K of 8K, the magic overlay 6.4K, the scroll overlay 2.9K, the device overlay 6.3K.
 
 Overlays that change stats or bonuses set `p_update`; `draw_view` (main loop only) runs `update_stuff`, which pages the items overlay to recalculate. Item commands that need the magic overlay leave `pending_magic` for `pending_actions` in the main loop.
 
-Rules: only resident code uses `FARCALL` (one exception: `level_call`, which the scroll overlay uses to reach the level overlay and which pages the scroll overlay back before returning); overlay code may call resident code but never another overlay; data an overlay owns stays in that overlay. New overlays go in the next free pages (42, 43...) with an `MMU 2, page, $4000` block in `roguelike.asm`.
+Rules: only resident code uses `FARCALL` (exceptions: `level_call`, which the scroll overlay uses to reach the level overlay, and `device_xcall`, which the device overlay uses to borrow scroll, potion and level routines; both page the caller back in before returning); overlay code may call resident code but never another overlay; data an overlay owns stays in that overlay. New overlays go in the next free pages (42, 43...) with an `MMU 2, page, $4000` block in `roguelike.asm`.

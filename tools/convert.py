@@ -189,6 +189,16 @@ def monsters():
     return races
 
 
+def resists(r):
+    """R_RESIST: what elements it shrugs off, and what hurts it"""
+    bits = 0
+    for bit, flag in enumerate(("IM_FROST", "IM_FIRE", "IM_LIGHTNING", "IM_POISON", "IM_ACID",
+                                "HURT_LIGHT", "HURT_ROCK")):
+        if r["cdefense"] & value(flag):
+            bits |= 1 << bit
+    return bits
+
+
 def race_record(r):
     move = 0
     for bit, flag in ((0, "MV_ONLY_ATT"), (1, "MV_ATT_NORM"), (2, "MV_20"), (3, "MV_40"),
@@ -209,7 +219,10 @@ def race_record(r):
     rec[0:16] = bytes([r["char"], (16 + (r["colour"] or 15)) * 2, move, exp & 255, exp >> 8,
                        min(r["sleep"], 255), min(r["aaf"], 255), min(r["ac"], 255),
                        min(r["speed"], 255), r["hd"][0], r["hd"][1], min(r["level"], 255),
-                       min(r["rarity"], 255), flags, 1 if r["cmove"] & 0x80000000 else 0, 0])
+                       min(r["rarity"], 255), flags,
+                       (1 if r["cmove"] & 0x80000000 else 0) | (2 if r["cmove"] & value("CM_PHASE") else 0)
+                       | (4 if r["cdefense"] & value("BREAK_WALL") else 0),
+                       resists(r)])
     for i, a in enumerate(r["attacks"][:4]):
         rec[16 + i * 4:20 + i * 4] = bytes(a)
     rec[RACE_NAME_OFS:] = db_name(r["name"], RACE_SIZE - RACE_NAME_OFS)
@@ -221,12 +234,14 @@ def race_record(r):
 # tval -> (class, equipment) for the kinds the game can use so far
 CLASSES = {"TV_FOOD": 1, "TV_POTION1": 2, "TV_POTION2": 2,
            "TV_SCROLL1": 3, "TV_SCROLL2": 3,
-           "TV_SWORD": 4, "TV_HAFTED": 4, "TV_POLEARM": 4,
-           "TV_SOFT_ARMOR": 5, "TV_HARD_ARMOR": 5, "TV_SHIELD": 6, "TV_HELM": 7,
-           "TV_CLOAK": 8, "TV_GLOVES": 9, "TV_BOOTS": 10}
+           "TV_WAND": 4, "TV_STAFF": 5, "TV_ROD": 6,
+           "TV_SWORD": 7, "TV_HAFTED": 7, "TV_POLEARM": 7,
+           "TV_SOFT_ARMOR": 8, "TV_HARD_ARMOR": 8, "TV_SHIELD": 9, "TV_HELM": 10,
+           "TV_CLOAK": 11, "TV_GLOVES": 12, "TV_BOOTS": 13}
+DEVICE_NOUN = {4: "Wand", 5: "Staff", 6: "Rod"}
 # scroll effects that wait for later milestones: enchanting and cursing
 # (magical pluses), glyphs, traps, recharging (wands), acquirement
-SCROLL_LATER = {"TV_SCROLL1": 0x00000001 | 0x00000002 | 0x00000004 | 0x00002000 | 0x00200000 | 0x01000000,
+SCROLL_LATER = {"TV_SCROLL1": 0x00000001 | 0x00000002 | 0x00000004 | 0x00002000 | 0x00200000,
                 "TV_SCROLL2": 0x00000001 | 0x00000002 | 0x00000004 | 0x00000008 | 0x00000400 | 0x00000800}
 # potion flag bits the game understands: Cure Light/Serious/Critical Wounds
 HEAL_DICE = {0x00001000: 2, 0x00002000: 4, 0x00004000: 6}
@@ -266,7 +281,29 @@ def display_name(o, cls):
         name = "& Potion~ of " + name
     elif cls == 3:
         name = "& Scroll~ of " + name
+    elif cls in DEVICE_NOUN:
+        name = f"& {DEVICE_NOUN[cls]}~ of " + name
     return name
+
+
+def device_charges():
+    """magic_treasure's p1 = randint(range) + base for each wand and staff
+    subval, and the staffs whose level it changes"""
+    src = read("MISC1.C")
+    start = src.index("void magic_treasure")
+    out = {}
+    for tv in ("TV_WAND", "TV_STAFF"):
+        a = src.index(f"case {tv}:", start)
+        b = src.index("break;\n\n", a) if False else src.index("default", a)
+        body = src[a:b]
+        table = {}
+        for m in re.finditer(r"case (\d+):\s*t_ptr->p1 = randint\((\d+)\)\s*\+\s*(\d+);(\s*t_ptr->level = (\d+);)?", body):
+            table[int(m.group(1))] = (int(m.group(2)), int(m.group(3)), int(m.group(5)) if m.group(5) else None)
+        out[tv] = table
+    return out
+
+
+CHARGES = None
 
 
 def kind_record(o, cls):
@@ -287,11 +324,20 @@ def kind_record(o, cls):
     rec[18:22] = flags.to_bytes(4, "little")         # effects: bit n = case n+1
     rec[22] = o["subval"] & 63                       # flavour slot
     rec[23] = 1 if o["tval_name"] in ("TV_POTION2", "TV_SCROLL2") else 0
+    if o["tval_name"] in ("TV_WAND", "TV_STAFF"):     # p1: charge range, base
+        rng, base, lev = CHARGES[o["tval_name"]][o["subval"] & 63]
+        rec[12:14] = bytes([rng, base])
+        if lev is not None:
+            rec[4] = lev
+    elif o["tval_name"] == "TV_ROD":
+        rec[12:14] = bytes([0, 0])
     rec[KIND_NAME_OFS:] = db_name(name, KIND_SIZE - KIND_NAME_OFS)
     return bytes(rec)
 
 
 def main():
+    global CHARGES
+    CHARGES = device_charges()
     races = monsters()
     objs = objects()
     max_dungeon_obj = value("MAX_DUNGEON_OBJ")
@@ -318,7 +364,7 @@ def main():
             kinds.append((o, cls))
         if i < max_dungeon_obj:
             alloc.append((o["level"], kind_of[key], o["rare"]))
-    assert len(kinds) < 254, "kind numbers must fit a byte"
+    assert len(kinds) < 512, "kind numbers are 9 bits"
     lines = [note, f"; {len(kinds)} usable item kinds, {KIND_SIZE} bytes each", ""]
     for i, (o, cls) in enumerate(kinds):
         lines += db_lines(kind_record(o, cls), f"{i}: {display_name(o, cls)} (level {o['level']})")
@@ -343,7 +389,7 @@ def main():
              f"KIND_RATION\t\tequ {kind_named('Ration', 1)}",
              f"KIND_SLIME_MOLD\tequ {kind_named('Slime Mold', 1)}",
              f"KIND_CLW\t\tequ {kind_named('Cure Light', 2)}",
-             f"KIND_BROADSWORD\tequ {kind_named('Broadsword', 4)}",
+             f"KIND_BROADSWORD\tequ {kind_named('Broadsword', 7)}",
              f"KIND_CHAIN_MAIL\tequ {[i for i, (o, c) in enumerate(kinds) if o['name'] == 'Chain Mail'][0]}",
              ""]
     lines = [note, "; m_level[]: how many races have level <= n (n = 0-99)", "mon_level_table:"]
@@ -352,9 +398,9 @@ def main():
     lines += ["", "; t_level[]: how many dungeon objects have level <= n (n = 0-255)", "obj_level_table:"]
     for i in range(0, len(t_level), 16):
         lines.append("\tdw " + ",".join(str(v) for v in t_level[i:i + 16]))
-    lines += ["", "; sorted_objects[]: kind, rarity and level of each dungeon object", "obj_alloc_table:"]
+    lines += ["", "; sorted_objects[]: kind (word), rarity and level of each dungeon object", "obj_alloc_table:"]
     for lv, k, rare in alloc:
-        lines.append(f"\tdb {k},{rare},{min(lv, 255)}\t\t; {kinds[k][0]['name']}")
+        lines.append(f"\tdw {k}\n\tdb {rare},{min(lv, 255)}\t\t; {kinds[k][0]['name']}")
     open(os.path.join(OUT, "alloc.asm"), "w").write("\n".join(lines) + "\n")
     lines = consts + ["; the treasures: name, symbol, colour, base value", "gold_table:"]
     for g in gold:
@@ -412,6 +458,17 @@ def flavour_tables(note):
     for i, n in enumerate(syl):
         lines.append(f"syl_{i}:\tdb {asm_string(n)},0")
     lines += ["scroll_titles:\tds MAX_TITLES*10\t\t; (filled by magic_init)"]
+    for what, arr, tc in (("wood", "woods[", "tcwoods["), ("metal", "metals[", "tcmetals[")):
+        nm = [x.strip('"') for x in c_array(src, arr)]
+        cols = [value(x) for x in c_array(src, tc)]
+        lines += ["", f"NUM_{what.upper()}S\t\tequ {len(nm)}\t\t\t; staff woods / wand and rod metals",
+                  f"{what}_names:"]
+        for i in range(0, len(nm), 8):
+            lines.append("\tdw " + ",".join(f"{what}_{j}" for j in range(i, min(i + 8, len(nm)))))
+        lines.append(f"{what}_attrs:")
+        lines.append("\tdb " + ",".join(str((16 + (c or 15)) * 2) for c in cols))
+        for i, n in enumerate(nm):
+            lines.append(f"{what}_{i}:\tdb {asm_string(n)},0")
     open(os.path.join(OUT, "flavours.asm"), "w").write("\n".join(lines) + "\n")
 
 
@@ -437,14 +494,14 @@ def store_tables(note, objs, kind_of):
     mdo = value("MAX_DUNGEON_OBJ")
     choices = c_array(src, "store_choice[")
     per = value("STORE_CHOICES")
-    lines += ["", "; store_choice[store][30] as kinds; $FF = not something the game has yet",
+    lines += ["", "; store_choice[store][30] as kinds; $FFFF = not something the game has yet",
               "store_choice_table:"]
     for st in range(len(choices) // per):
         ks = []
         for x in choices[st * per:(st + 1) * per]:
             o = objs[value(x.replace("MDO", str(mdo)))]
-            ks.append(kind_of.get((o["name"], o["tval"]), 255))
-        lines.append("\tdb " + ",".join(str(k) for k in ks))
+            ks.append(kind_of.get((o["name"], o["tval"]), 0xFFFF))
+        lines.append("\tdw " + ",".join(str(k) for k in ks))
     open(os.path.join(OUT, "stores.asm"), "w").write("\n".join(lines) + "\n")
 
 
@@ -487,13 +544,13 @@ def player_tables(note, objs, kinds, kind_of):
     # starting kits: player_init[class][5] object numbers -> kinds ($FF: not usable yet)
     mdo = value("MAX_DUNGEON_OBJ")
     inits = c_array(src, "player_init[")
-    lines += ["", "; starting kit for each class: 5 kinds, $FF = nothing the game can use yet", "kit_table:"]
+    lines += ["", "; starting kit for each class: 5 kinds, $FFFF = nothing the game can use yet", "kit_table:"]
     for ci in range(len(classes)):
         ks = []
         for x in inits[ci * 5:ci * 5 + 5]:
             o = objs[value(x.replace("MDO", str(mdo)))]
-            ks.append(kind_of.get((o["name"], o["tval"]), 255))
-        lines.append("\tdb " + ",".join(str(k) for k in ks) + f"\t; {cnames[ci]}")
+            ks.append(kind_of.get((o["name"], o["tval"]), 0xFFFF))
+        lines.append("\tdw " + ",".join(str(k) for k in ks) + f"\t; {cnames[ci]}")
     # titles
     titles = c_array(src, "player_title[")
     per = value("MAX_PLAYER_LEVEL")

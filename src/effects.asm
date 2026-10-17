@@ -38,7 +38,36 @@ timed_tick:
 	call status_effect
 	ld ix,te_tim_infra
 	call status_effect
+	call rod_tick
 	jp recall_tick
+
+/* rod_tick - rods in the pack recharge, a turn at a time */
+rod_tick:
+	xor a
+.each:
+	ld (rt_slot),a
+	call pack_slot
+	ld a,(ix+I_KIND_HI)
+	cp ITEM_EMPTY
+	ret z
+	call item_kind_addr
+	ld a,(iy+K_CLASS)
+	cp IC_ROD
+	jr nz,.next
+	ld l,(ix+I_TIMEOUT)
+	ld h,(ix+I_TIMEOUT+1)
+	ld a,h
+	or l
+	jr z,.next
+	dec hl
+	ld (ix+I_TIMEOUT),l
+	ld (ix+I_TIMEOUT+1),h
+.next:
+	ld a,(rt_slot)
+	inc a
+	cp PACK_MAX
+	jr c,.each
+	ret
 
 /* status_effect - IX = (counter, status byte, bit mask, on, off): if it's
 	running, set its status bit the first turn (calling on), count down, and
@@ -476,4 +505,5 @@ msg_no_res_heat:	db "You no longer feel safe from flame.",0
 msg_no_res_cold:	db "You no longer feel safe from cold.",0
 
 cs_num:			db 0
+rt_slot:		db 0
 st_old:			dw 0

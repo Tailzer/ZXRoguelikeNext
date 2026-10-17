@@ -6,24 +6,30 @@
 	Not yet: magical pluses (magic_treasure).
  */
 
-/* kind_addr - A = kind -> IY = kind record, paged into DATA_WINDOW
-	(128 kinds per page). Preserves A. Clobbers DE */
+/* kind_addr - HL = kind -> IY = kind record, paged into DATA_WINDOW
+	(128 kinds per page). Preserves HL. Clobbers A, DE */
 kind_addr:
-	push af
-	ld e,a
-	rlca								; page = KIND_PAGE + kind / 128
-	and 1
+	ld a,l								; page = KIND_PAGE + kind / 128
+	rla
+	ld a,h
+	rla
 	add a,KIND_PAGE
 	nextreg NR_MMU1,a
-	ld a,e
+	ld a,l
 	and $7F
 	ld e,a
 	ld d,KIND_SIZE
 	mul d,e
 	ld iy,DATA_WINDOW
 	add iy,de
-	pop af
 	ret
+
+/* item_kind_addr - IX = item -> HL = its kind, IY = the kind's record.
+	Clobbers A, DE */
+item_kind_addr:
+	ld l,(ix+I_KIND)
+	ld h,(ix+I_KIND_HI)
+	jr kind_addr
 
 /* kind_name - IY = kind record -> HL = its name. Clobbers DE */
 kind_name:
@@ -31,6 +37,48 @@ kind_name:
 	pop hl
 	ld de,K_NAME
 	add hl,de
+	ret
+
+/* kind_charges - IY = kind -> A = charges for a new one: 1d(range) + base
+	for wands and staffs (magic_treasure), 0 for anything else.
+	Clobbers DE, HL */
+kind_charges:
+	ld a,(iy+K_CLASS)
+	cp IC_WAND
+	jr z,.charged
+	cp IC_STAFF
+	jr z,.charged
+	xor a
+	ret
+.charged:
+	ld a,(iy+K_P1)
+	call randint
+	add a,(iy+K_P1+1)
+	ret
+
+/* init_charges - IX = a new item, IY = its kind: its charges, or a rod
+	that's ready. Clobbers A, DE, HL */
+init_charges:
+	call kind_charges
+	ld (ix+I_PVAL),a
+	ld (ix+I_PVAL+1),0
+	ret
+
+/* item_pval_known - IX = item, IY = its kind -> A = its charges if the
+	player knows them (known2), else 0 */
+item_pval_known:
+	ld a,(iy+K_CLASS)
+	cp IC_WAND
+	jr z,.device
+	cp IC_STAFF
+	jr nz,.none
+.device:
+	bit ID_KNOWN2_BIT,(ix+I_IDENT)
+	jr z,.none
+	ld a,(ix+I_PVAL)
+	ret
+.none:
+	xor a
 	ret
 
 /* gold_addr - A = gold type -> HL = gold_table entry. Clobbers DE */
@@ -44,7 +92,7 @@ gold_addr:
 
 /* items_clear - empty the floor list */
 items_clear:
-	ld hl,ITEM_LIST
+	ld hl,ITEM_LIST+I_KIND_HI
 	ld de,ITEM_SIZE
 	ld b,ITEM_MAX
 .loop:
@@ -59,7 +107,7 @@ item_at:
 	ld ix,ITEM_LIST
 	ld b,ITEM_MAX
 .loop:
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	jr z,.next
 	ld a,(ix+I_Y)
@@ -85,7 +133,7 @@ item_free_slot:
 	ld b,ITEM_MAX
 	ld de,ITEM_SIZE
 .loop:
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	scf
 	ret z
@@ -101,7 +149,7 @@ draw_items:
 	ld b,ITEM_MAX
 .loop:
 	push bc
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	jr z,.next
 	ld a,(view_y)
@@ -149,21 +197,20 @@ draw_items:
 /* item_glyph - IX = item -> B = character, C = attribute. Preserves HL */
 item_glyph:
 	push hl
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp KIND_GOLD
 	jr z,.gold
-	call kind_addr
+	call item_kind_addr
 	ld b,(iy+K_CHAR)
 	ld c,(iy+K_ATTR)
 	call flavour_class
 	jr nc,.plain
-	cp OFS_POTION						; (only potions have colours)
-	jr nz,.plain
-	call flavour_index
-	nextreg NR_MMU1,FLAVOUR_PAGE
-	ld hl,colour_attrs
-	add hl,a
-	ld c,(hl)
+	cp OFS_SCROLL						; (scrolls have no colours)
+	jr z,.plain
+	push bc
+	call flavour_attr
+	pop bc
+	ld c,a
 .plain:
 	pop hl
 	ret

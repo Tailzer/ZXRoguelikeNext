@@ -45,6 +45,10 @@ magic_init:
 	inc a
 	cp MAX_FLAVOURS
 	jr c,.shuffle
+	ld hl,wood_map						; woods and metals: all shuffled
+	call .shuffle32
+	ld hl,metal_map
+	call .shuffle32
 	; scroll titles: 2 or 3 words of 1 or 2 syllables each, cut at 9
 	nextreg NR_MMU1,FLAVOUR_PAGE
 	ld hl,scroll_titles
@@ -117,6 +121,37 @@ magic_init:
 	dec a
 	jr nz,.title
 	ret
+.shuffle32:								; HL = 32 entries: in order, then
+	ld (mi_dst),hl						; each swapped with a random one
+	xor a
+.order:
+	ld (hl),a
+	inc hl
+	inc a
+	cp 32
+	jr c,.order
+	xor a
+.swap:
+	ld (mi_i),a
+	ld a,32
+	call randint
+	dec a
+	ld hl,(mi_dst)
+	add hl,a
+	ex de,hl							; DE = &map[j]
+	ld a,(mi_i)
+	ld hl,(mi_dst)
+	add hl,a							; HL = &map[i]
+	ld a,(de)
+	ld c,(hl)
+	ld (hl),a
+	ld a,c
+	ld (de),a
+	ld a,(mi_i)
+	inc a
+	cp 32
+	jr c,.swap
+	ret
 
 ; ---------------------------------------------------------------- quaff
 
@@ -124,9 +159,8 @@ magic_init:
 quaff_potion:
 	ld (u_slot),a
 	call pack_slot
-	ld a,(ix+I_KIND)
-	ld (u_kind),a
-	call kind_addr
+	call item_kind_addr
+	ld (u_kind),hl
 	ld a,(iy+K_LEVEL)
 	ld (u_level),a
 	ld l,(iy+K_P1)
@@ -1270,9 +1304,11 @@ identify_pack:
 .each:
 	ld (ip_slot),a
 	call pack_slot
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	ret z
+	ld l,(ix+I_KIND)
+	ld h,a
 	call learn_kind
 	ld a,(ip_slot)
 	inc a

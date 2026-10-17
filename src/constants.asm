@@ -16,10 +16,11 @@ PAGE_CREATE			equ 43				; overlay: character creation, sheet, death
 PAGE_STORE			equ 51				; overlay: the town's stores
 PAGE_MAGIC			equ 52				; overlay: potions, timed effects, stats
 PAGE_SCROLL			equ 53				; overlay: reading scrolls
+PAGE_DEVICE			equ 54				; overlay: wands, staffs, rods
 DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
 RACE_PAGE			equ 44				; 5 pages of races (data/races.asm)
-KIND_PAGE			equ 49				; 2 pages of item kinds (data/kinds.asm)
-FLAVOUR_PAGE		equ KIND_PAGE+1		; potion colours follow the kinds
+KIND_PAGE			equ 60				; item kinds, 128 per page (data/kinds.asm)
+FLAVOUR_PAGE		equ KIND_PAGE+(NUM_KINDS-1)/128	; the flavours follow the kinds
 IM2_TABLE			equ $BC00			; 257 bytes of $BD
 IM2_JUMP			equ $BDBD			; jp im2_handler
 
@@ -199,6 +200,16 @@ RF_NO_INFRA			equ 6
 RF_CHARM_SLEEP		equ 7				; can't be confused or slept
 R_FLAGS2			equ 14				; RF2_ bits
 RF2_WIN				equ 0				; CM_WIN: Sauron, Morgoth
+RF2_PHASE			equ 1				; CM_PHASE: passes through walls
+RF2_BREAK_WALL		equ 2				; BREAK_WALL: digs through them
+R_RESIST			equ 15				; RR_ bits
+RR_FROST			equ 0				; IM_FROST
+RR_FIRE				equ 1
+RR_LIGHTNING		equ 2
+RR_POISON			equ 3
+RR_ACID				equ 4
+RR_HURT_LIGHT		equ 5
+RR_HURT_ROCK		equ 6
 ; R_MOVE bits (MONSTER.H cmove flags)
 RM_ONLY_ATT			equ 0				; MV_ONLY_ATT: never moves
 RM_NORMAL			equ 1				; MV_ATT_NORM: chases
@@ -213,7 +224,7 @@ MIN_MALLOC_LEVEL	equ 14				; minimum monsters per level
 ; ---- items (TREASURE.C, MORIA2.C carry, MISC2.C alloc_object) ----
 ITEM_LIST			equ $B400			; floor items, ITEM_MAX x ITEM_SIZE
 ITEM_MAX			equ 64
-PACK				equ $B600			; PACK_MAX carried items
+PACK				equ ITEM_LIST+ITEM_MAX*ITEM_SIZE	; PACK_MAX carried items
 PACK_MAX			equ 12				; slots a-l
 EQUIP				equ PACK+PACK_MAX*ITEM_SIZE	; EQ_SLOTS worn/wielded items
 EQ_SLOTS			equ 7
@@ -224,19 +235,24 @@ EQ_HELM				equ 3
 EQ_CLOAK			equ 4
 EQ_GLOVES			equ 5
 EQ_BOOTS			equ 6
-ITEM_SIZE			equ 8
-ITEM_EMPTY			equ $FF				; I_KIND of a free slot
-KIND_GOLD			equ $FE				; I_KIND of a pile of treasure
+ITEM_SIZE			equ 9
+ITEM_EMPTY			equ $FF				; I_KIND_HI of a free slot
+KIND_GOLD			equ $FE				; I_KIND_HI of a pile of treasure
 ; item record
-I_KIND				equ 0
-I_NUMBER			equ 1
-I_Y					equ 2
-I_X					equ 3
-I_MARKED			equ 4				; seen on the floor (the C's fm)
-I_VALUE				equ 5				; word, gold only
-I_SUB				equ 7				; gold type
-I_IDENT				equ 7				; everything else: ID_ flags
+I_KIND				equ 0				; word: kinds are 9 bits
+I_KIND_HI			equ 1				; (also holds ITEM_EMPTY / KIND_GOLD)
+I_NUMBER			equ 2
+I_Y					equ 3
+I_X					equ 4
+I_MARKED			equ 5				; seen on the floor (the C's fm)
+I_VALUE				equ 6				; word, gold only
+I_PVAL				equ 6				; wands and staffs: charges
+I_TIMEOUT			equ 6				; rods: word, turns until it's ready
+I_SUB				equ 8				; gold type
+I_IDENT				equ 8				; everything else: ID_ flags
 ID_STORE_BIT		equ 0				; store bought (the C's ID_STOREBOUGHT)
+ID_EMPTY_BIT		equ 1				; found to be empty (ID_EMPTY)
+ID_KNOWN2_BIT		equ 2				; charges known (known2)
 ; kind record (data/kinds.asm, made by tools/convert.py from TREASURE.C)
 KIND_SIZE			equ 64				; 128 per 8K page
 K_CHAR				equ 0
@@ -261,18 +277,26 @@ K_NAME				equ 24				; the name itself, '~' where plurals add 's'
 IC_FOOD				equ 1
 IC_POTION			equ 2
 IC_SCROLL			equ 3
-IC_WEAPON			equ 4
-IC_BODY				equ 5
-IC_SHIELD			equ 6
-IC_HELM				equ 7
-IC_CLOAK			equ 8
-IC_GLOVES			equ 9
-IC_BOOTS			equ 10
+IC_WAND				equ 4
+IC_STAFF			equ 5
+IC_ROD				equ 6
+IC_WEAPON			equ 7
+IC_BODY				equ 8
+IC_SHIELD			equ 9
+IC_HELM				equ 10
+IC_CLOAK			equ 11
+IC_GLOVES			equ 12
+IC_BOOTS			equ 13
+FILTER_CHARGED		equ $FE				; choose_pack filter: wand or staff
 TREAS_ROOM_ALLOC	equ 9				; mean objects in rooms
 TREAS_ANY_ALLOC		equ 3				; mean objects anywhere
 TREAS_GOLD_ALLOC	equ 3				; mean piles of treasure
 OBJ_GREAT			equ 11
 MAX_GOLD			equ 18
+
+; the character's tables, after the pack (create.asm fills them)
+P_HP_TABLE			equ EQUIP+EQ_SLOTS*ITEM_SIZE	; player_hp[50], words
+P_EXP_TABLE			equ P_HP_TABLE+100	; experience needed, 50 dwords
 
 ; ---- the town (GENERATE.C town_gen, STORE1.C, STORE2.C) ----
 TOWN_H				equ 22				; SCREEN_HEIGHT
@@ -281,12 +305,12 @@ NUM_STORES			equ 8				; 6 shops, the black market, home
 STORE_BLACK			equ 6
 STORE_HOME			equ 7
 STORE_INVEN_MAX		equ 24
-STORE_ITEM			equ 4				; stock entry: kind, number, discount, spare
-STORE_INV			equ $B7E0			; NUM_STORES x STORE_INVEN_MAX entries
+STORE_ITEM			equ 5				; stock entry: kind (word), number, discount, charges
+STORE_INV			equ P_EXP_TABLE+200	; NUM_STORES x STORE_INVEN_MAX entries
 STORE_OWNER			equ STORE_INV+NUM_STORES*STORE_INVEN_MAX*STORE_ITEM
 STORE_COUNT			equ STORE_OWNER+NUM_STORES
 STORE_DOOR			equ STORE_COUNT+NUM_STORES	; (y, x) for each store
-	ASSERT STORE_DOOR+NUM_STORES*2 <= $BB00
+	ASSERT STORE_DOOR+NUM_STORES*2 <= IM2_TABLE
 MIN_MALLOC_TD		equ 4				; townsfolk by day
 MIN_MALLOC_TN		equ 8				; and by night
 
@@ -313,8 +337,6 @@ A_WIS				equ 2
 A_DEX				equ 3
 A_CON				equ 4
 A_CHR				equ 5
-P_HP_TABLE			equ $B6A0			; player_hp[50], words
-P_EXP_TABLE			equ P_HP_TABLE+100	; experience needed, 50 dwords
 ; player race record (data/player.asm prace_table)
 PR_NAME				equ 0				; word
 PR_ADJ				equ 2				; 6 stat adjustments
@@ -387,12 +409,21 @@ TV_SCROLL1			equ 70
 TV_SCROLL2			equ 71
 TV_POTION1			equ 75
 TV_POTION2			equ 76
-OFS_SCROLL			equ 4				; object_offset() for scrolls
-OFS_POTION			equ 5				; and potions
+TV_STAFF			equ 55
+TV_WAND				equ 65
+TV_ROD				equ 66
+OFS_STAFF			equ 2				; object_offset() for staffs
+OFS_WAND			equ 3
+OFS_SCROLL			equ 4
+OFS_POTION			equ 5
+OFS_ROD				equ 7
 MAX_FLAVOURS		equ 57				; MAX_COLORS
 ; pending actions for the magic overlay (pending_magic)
 PM_QUAFF			equ 1
 PM_READ				equ 2
+PM_AIM				equ 3
+PM_USE				equ 4
+PM_ZAP				equ 5
 
 ; ---- commands ----
 CMD_MOVE			equ 0
@@ -409,6 +440,9 @@ CMD_DROP			equ 10
 CMD_PICKUP			equ 11
 CMD_CHARACTER		equ 12
 CMD_READ			equ 13
+CMD_AIM				equ 14				; z: aim a wand
+CMD_USE				equ 15				; Z: use a staff
+CMD_ZAP				equ 16				; a: activate a rod
 ; key modifiers in key_table
 KM_ANY				equ 0
 KM_SYMBOL			equ 1

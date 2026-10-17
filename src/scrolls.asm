@@ -12,9 +12,8 @@
 read_scroll:
 	ld (u_slot),a
 	call pack_slot
-	ld a,(ix+I_KIND)
-	ld (u_kind),a
-	call kind_addr
+	call item_kind_addr
+	ld (u_kind),hl
 	ld a,(iy+K_LEVEL)
 	ld (u_level),a
 	ld a,(iy+K_GROUP2)
@@ -82,7 +81,7 @@ scroll_effects:
 	dw sc_summon, sc_phase, sc_teleport, sc_tele_level, sc_confuse	; 7-11
 	dw sc_map, sc_none, sc_none, sc_treasure, sc_objects, sc_none	; 12-17
 	dw sc_doors, sc_mass_genocide, sc_det_inv, sc_aggravate, sc_none	; 18-22
-	dw sc_td_destroy, sc_none, sc_none, sc_genocide, sc_darkness		; 23-27
+	dw sc_td_destroy, sc_none, sc_recharge, sc_genocide, sc_darkness	; 23-27
 	dw sc_protevil, sc_food, sc_dispel_undead, ident, sc_none		; 28-32
 	dw sc_none, sc_none, sc_none, sc_none, sc_summon_undead			; 33-37
 	dw sc_bless, sc_chant, sc_prayer, sc_recall, sc_destruction		; 38-42
@@ -99,6 +98,8 @@ sc_none:
 sc_identify:
 	ld hl,msg_identify_scroll
 	call msg_print
+/* sc_identify_item - ident_spell (staffs and rods use it too) */
+sc_identify_item:
 	call ident
 	ld hl,txt_ident_which
 	xor a
@@ -109,14 +110,14 @@ sc_identify:
 	ret
 .chosen:
 	ld (r_slot),a
-	ld a,(ix+I_KIND)
-	ld (r_kind),a
+	call item_kind_addr
+	ld (r_kind),hl
 	call learn_kind
-	ld a,(r_kind)						; flavoured: stacks may have joined
+	ld hl,(r_kind)						; flavoured: stacks may have joined
 	call kind_addr
 	call flavour_class
 	jr nc,.say
-	ld a,(r_kind)
+	ld hl,(r_kind)
 	call find_pack_kind
 	ld (r_slot),a
 .say:
@@ -286,7 +287,7 @@ summon_some:
 	xor a
 	ld (r_k),a
 .loop:
-	ld a,3
+	ld a,(summon_max)
 	call randint
 	ld b,a
 	ld a,(r_k)
@@ -578,7 +579,7 @@ detect_items:
 	ld b,ITEM_MAX
 .each:
 	push bc
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	jr z,.next
 	cp KIND_GOLD
@@ -745,6 +746,9 @@ sc_genocide:
 	jr nz,.spared
 	call mon_remove
 	call ident
+	ld a,(gen_strain)					; (staffs don't hurt)
+	or a
+	jr z,.next
 	ld a,4
 	call randint
 	call strain
@@ -871,8 +875,12 @@ sc_dispel_undead:
 	cp 100
 	jr nc,.next
 	call mon_race
-	bit RF_UNDEAD,(iy+R_FLAGS)
+	ld a,(dispel_mask)					; (0: anything)
+	or a
+	jr z,.kind
+	and (iy+R_FLAGS)
 	jr z,.next
+.kind:
 	ld d,(ix+M_Y)
 	ld e,(ix+M_X)
 	call los
@@ -884,7 +892,7 @@ sc_dispel_undead:
 	ld (name_cap),a
 	call mon_race
 	call mon_name_to_msg
-	ld a,60
+	ld a,(dispel_dam)
 	call randint
 	ld l,a
 	ld h,0
@@ -956,7 +964,8 @@ sc_food:
 	jp c,msg_print
 	call item_free_slot
 	ret nc
-	ld (ix+I_KIND),KIND_SLIME_MOLD
+	ld (ix+I_KIND),low KIND_SLIME_MOLD
+	ld (ix+I_KIND_HI),high KIND_SLIME_MOLD
 	ld (ix+I_NUMBER),1
 	ld a,(player_y)
 	ld (ix+I_Y),a
@@ -966,6 +975,81 @@ sc_food:
 	ld (ix+I_IDENT),0
 	ld hl,msg_roll_beneath
 	jp msg_print
+
+; ---------------------------------------------------------------- 25
+
+/* sc_recharge - recharge(60): more charges for a wand or staff, but it
+	may explode (recharge in SPELLS.C) */
+sc_recharge:
+	ld hl,msg_recharge_scroll
+	call msg_print
+	call ident
+	ld a,FILTER_CHARGED
+	call pack_has_class
+	ld hl,msg_nothing_to_charge
+	jp nc,msg_print
+	ld hl,txt_recharge_which
+	ld a,FILTER_CHARGED
+	call choose_pack
+	jr c,.chosen
+	xor a								; (not used up)
+	ld (r_used),a
+	ret
+.chosen:
+	ld (r_slot),a
+	call item_kind_addr
+	ld a,(ix+I_PVAL)					; fails 1 in (160 - level - 10*charges)/15
+	ld e,a
+	ld d,10
+	mul d,e
+	ld hl,60+100
+	or a
+	sbc hl,de
+	ld e,(iy+K_LEVEL)
+	ld d,0
+	or a
+	sbc hl,de
+	bit 7,h
+	jr nz,.boom
+	ld c,15
+	call div16_8
+	ld a,h
+	or a
+	jr nz,.roll
+	ld a,l
+	cp 2
+	jr c,.boom							; (1 in 1)
+.roll:
+	call randint16
+	dec hl
+	ld a,h
+	or l
+	jr nz,.charge
+.boom:
+	ld hl,msg_bright_flash
+	call msg_print
+	ld a,(r_slot)						; the wand is gone; the scroll's slot
+	call pack_remove					; may move up
+	ld a,(r_slot)
+	ld hl,u_slot
+	cp (hl)
+	ret nc
+	dec (hl)
+	ret
+.charge:								; p1 += 2 + 1d(60/(level+2) + 1)
+	ld a,(iy+K_LEVEL)
+	add a,2
+	ld c,a
+	ld a,60
+	call div8
+	inc a
+	call randint
+	add a,2
+	add a,(ix+I_PVAL)
+	ld (ix+I_PVAL),a
+	res ID_KNOWN2_BIT,(ix+I_IDENT)		; how many is no longer known
+	res ID_EMPTY_BIT,(ix+I_IDENT)
+	ret
 
 ; ---------------------------------------------------------------- 38-42
 
@@ -1089,7 +1173,7 @@ replace_spot:
 	push de
 	call item_at
 	jr nc,.no_item
-	ld (ix+I_KIND),ITEM_EMPTY
+	ld (ix+I_KIND_HI),ITEM_EMPTY
 .no_item:
 	pop de
 	pop hl
@@ -1103,6 +1187,10 @@ replace_walls:	db T_GRANITE,T_MAGMA,T_QUARTZ
 ; ---------------------------------------------------------------- text
 
 msg_identify_scroll: db "This is an identify scroll.",0
+msg_recharge_scroll: db "This is a Recharge-Item scroll.",0
+msg_nothing_to_charge: db "You have nothing to recharge.",0
+txt_recharge_which:	db "Recharge which item? (letter, or space)",0
+msg_bright_flash:	db "There is a bright flash of light.",0
 txt_ident_which:	db "Item you wish identified? (letter, or space)",0
 msg_white_light:	db "You are surrounded by a white light.",0
 msg_darkness:		db "Darkness surrounds you.",0
@@ -1128,7 +1216,7 @@ r_flags:		dd 0
 r_bit:			db 0
 r_used:			db 0
 r_slot:			db 0
-r_kind:			db 0
+r_kind:			dw 0
 r_any:			db 0
 r_k:			db 0
 r_gold:			db 0

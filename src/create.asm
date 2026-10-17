@@ -415,6 +415,11 @@ derive:
 	ld (p_infra),a
 	ld a,(ix+PC_LADJ)
 	ld (p_cla_bth),a
+	ld a,(ix+PC_LADJ+2)					; device skill per level
+	ld (p_cla_dev),a
+	ld a,(iy+PR_BSAV)					; saving throw
+	add a,(ix+PC_SAV)
+	ld (p_save),a
 	ld a,(p_stl)						; monsters' noticing roll
 	add a,4
 	bit 7,a
@@ -712,12 +717,12 @@ finish_character:
 	; kit
 	ld a,(p_class)
 	ld e,a
-	ld d,5
+	ld d,10
 	mul d,e
 	ld hl,kit_table
 	add hl,de
 	ld de,p_kit
-	ld bc,5
+	ld bc,10
 	ldir
 	ret
 

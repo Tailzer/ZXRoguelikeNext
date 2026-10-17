@@ -7,8 +7,7 @@
 	"a Dagger (1d4)", "2 Rations of Food", "Chain Mail [14]", and for
 	flavours not yet known "a Cloudy Potion {tried}" (objdes in DESC.C) */
 objdes_msg:
-	ld a,(ix+I_KIND)
-	call kind_addr
+	call item_kind_addr
 	call item_known
 	sbc a,a
 	cpl
@@ -58,18 +57,28 @@ objdes_msg:
 	call .name
 	jr .suffix
 .flavoured:								; B = 1 for plural
-	ld a,(ix+I_KIND)					; (the colours may be paged in)
-	call kind_addr
+	call item_kind_addr					; (the colours may be paged in)
 	call flavour_class
 	cp OFS_SCROLL
 	jr z,.titled
+	ld (od_class),a
 	push bc
 	call flavour_name
 	call msg_add
-	ld a,(ix+I_KIND)
-	call kind_addr
+	call item_kind_addr
 	pop bc
+	ld a,(od_class)						; "& %s Potion~", "& %s Staff"...
 	ld hl,txt_potion_tilde
+	cp OFS_POTION
+	jr z,.noun
+	ld hl,txt_staff_
+	cp OFS_STAFF
+	jr z,.noun
+	ld hl,txt_wand_
+	cp OFS_WAND
+	jr z,.noun
+	ld hl,txt_rod_
+.noun:
 	call .copy_hl
 	jr .suffix
 .titled:								; Scroll~ titled "abra kadab"
@@ -77,18 +86,55 @@ objdes_msg:
 	call .copy_hl
 	call flavour_name
 	call msg_add
-	ld a,(ix+I_KIND)
-	call kind_addr
+	call item_kind_addr
 	ld hl,txt_quote
 	call msg_add
 .suffix:
-	ld a,(od_unknown)					; " {tried}"
+	ld a,(iy+K_CLASS)					; " (5 charges)" once they're known
+	cp IC_WAND
+	jr z,.charges
+	cp IC_STAFF
+	jr nz,.notes
+.charges:
+	bit ID_KNOWN2_BIT,(ix+I_IDENT)
+	jr z,.notes
+	ld hl,txt_open_br
+	call msg_add
+	ld a,(ix+I_PVAL)
+	call msg_add_u8
+	ld hl,txt_charges_
+	call msg_add
+.notes:									; " {tried}", " {empty}", both
+	xor a
+	ld (od_note),a
+	ld a,(od_unknown)
 	or a
-	jr z,.class
+	jr z,.empty
 	call ident_addr
 	bit OD_TRIED_BIT,(hl)
-	jr z,.class
+	jr z,.empty
 	ld hl,txt_tried
+	call msg_add
+	ld a,1
+	ld (od_note),a
+.empty:
+	bit ID_EMPTY_BIT,(ix+I_IDENT)
+	jr z,.close
+	bit ID_KNOWN2_BIT,(ix+I_IDENT)
+	jr nz,.close
+	ld a,(od_note)
+	or a
+	ld hl,txt_empty
+	jr z,$+5
+	ld hl,txt_empty_too
+	call msg_add
+	ld a,1
+	ld (od_note),a
+.close:
+	ld a,(od_note)
+	or a
+	jr z,.class
+	ld hl,txt_brace
 	call msg_add
 .class:
 	ld a,(iy+K_CLASS)
@@ -176,7 +222,7 @@ is_vowel:
 
 /* pack_count - A = how many pack slots are in use */
 pack_count:
-	ld hl,PACK+I_KIND
+	ld hl,PACK+I_KIND_HI
 	ld de,ITEM_SIZE
 	ld b,PACK_MAX
 	ld c,0
@@ -189,6 +235,15 @@ pack_count:
 	djnz .loop
 .done:
 	ld a,c
+	ret
+
+/* item_is_kind - IX = item, HL = kind -> Z if it is one */
+item_is_kind:
+	ld a,(ix+I_KIND)
+	cp l
+	ret nz
+	ld a,(ix+I_KIND_HI)
+	cp h
 	ret
 
 /* pack_slot - A = slot -> IX = its record. Clobbers DE */
@@ -210,11 +265,11 @@ pack_carry:
 	ld ix,(carry_src)
 	ret
 .carry:
-	ld a,(ix+I_KIND)
-	call kind_addr
+	call item_kind_addr
+	ld (carry_kind),hl
 	ld a,(iy+K_CLASS)
-	cp IC_WEAPON
-	jr nc,.new_slot						; only food and potions stack
+	cp IC_WAND
+	jr nc,.new_slot						; only food, potions and scrolls stack
 	call item_known
 	sbc a,a
 	ld (carry_known),a
@@ -222,9 +277,8 @@ pack_carry:
 .stack:
 	ld (carry_try),a
 	call pack_slot
-	ld a,(ix+I_KIND)
-	ld hl,(carry_src)
-	cp (hl)								; (I_KIND is offset 0)
+	ld hl,(carry_kind)
+	call item_is_kind
 	jr nz,.not_same
 	call kind_addr
 	call item_known
@@ -233,7 +287,8 @@ pack_carry:
 	cp (hl)
 	jr nz,.not_same
 	ld hl,(carry_src)
-	inc hl								; I_NUMBER
+	ld de,I_NUMBER
+	add hl,de
 	ld a,(ix+I_NUMBER)
 	add a,(hl)
 	ld (ix+I_NUMBER),a
@@ -262,17 +317,20 @@ pack_carry:
 	scf
 	ret
 
-/* pack_combine - A = a kind just identified: its stacks in the pack join
+/* pack_combine - HL = a kind just identified: its stacks in the pack join
 	the first one (identify in DESC.C) */
 pack_combine:
-	ld (comb_kind),a
+	ld (comb_kind),hl
+	call kind_addr						; (wands and the like never merge)
+	ld a,(iy+K_CLASS)
+	cp IC_WAND
+	ret nc
 	xor a
 	ld (comb_first),a
 .find:
 	call pack_slot
-	ld a,(ix+I_KIND)
-	ld hl,comb_kind
-	cp (hl)
+	ld hl,(comb_kind)
+	call item_is_kind
 	jr z,.found
 	ld a,(comb_first)
 	inc a
@@ -289,9 +347,8 @@ pack_combine:
 	ret nc
 	ld (comb_try),a
 	call pack_slot
-	ld a,(ix+I_KIND)
-	ld hl,comb_kind
-	cp (hl)
+	ld hl,(comb_kind)
+	call item_is_kind
 	ld a,(comb_try)
 	jr nz,.next
 	ld a,(ix+I_NUMBER)
@@ -306,23 +363,19 @@ pack_combine:
 	dec a
 	jr .next
 
-/* find_pack_kind - A = kind -> A = the first pack slot holding it */
+/* find_pack_kind - HL = kind -> A = the first pack slot holding it.
+	Preserves HL */
 find_pack_kind:
-	ld hl,PACK+I_KIND
-	ld de,ITEM_SIZE
-	ld c,0
+	xor a
 .loop:
-	cp (hl)
-	jr z,.found
-	add hl,de
-	inc c
-	ld b,a
-	ld a,c
+	ld (fk_slot),a
+	call pack_slot
+	call item_is_kind
+	ld a,(fk_slot)
+	ret z
+	inc a
 	cp PACK_MAX
-	ld a,b
 	jr c,.loop
-.found:
-	ld a,c
 	ret
 
 /* pack_remove - A = slot: close the gap so the pack stays packed */
@@ -344,7 +397,7 @@ pack_remove:
 	pop bc
 	djnz .shift
 .last:
-	ld hl,PACK+(PACK_MAX-1)*ITEM_SIZE
+	ld hl,PACK+(PACK_MAX-1)*ITEM_SIZE+I_KIND_HI
 	ld (hl),ITEM_EMPTY
 	ret
 
@@ -370,7 +423,7 @@ show_pack:
 .each:
 	ld a,(list_slot)
 	call pack_slot
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	jr z,.done
 	call filter_ok
@@ -401,14 +454,25 @@ filter_ok:
 	scf
 	ret z
 	ld b,a
-	ld a,(ix+I_KIND)
-	call kind_addr
+	call item_kind_addr
 	ld a,(iy+K_CLASS)
 	ld c,a
 	ld a,b
 	cp IC_WEAPON
 	jr z,.wearable
+	cp FILTER_CHARGED
+	jr z,.charged
 	cp c
+	scf
+	ret z
+	or a
+	ret
+.charged:								; wands and staffs (recharging)
+	ld a,c
+	cp IC_WAND
+	scf
+	ret z
+	cp IC_STAFF
 	scf
 	ret z
 	or a
@@ -467,7 +531,7 @@ choose_pack:
 	ret nc								; not a letter in range: cancel
 	ld (list_slot),a
 	call pack_slot
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	jr z,.cancel
 	call filter_ok
@@ -489,7 +553,7 @@ pack_has_class:
 	ld ix,PACK
 	ld b,PACK_MAX
 .loop:
-	ld a,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	jr z,.next
 	push bc
@@ -515,15 +579,26 @@ txt_no_more_:	db "no more ",0
 txt_potion_tilde: db " Potion~",0
 txt_scroll_tilde: db "Scroll~ titled \"",0
 txt_quote:		db "\"",0
-txt_tried:		db " {tried}",0
+txt_tried:		db " {tried",0
+txt_empty:		db " {empty",0
+txt_empty_too:	db " empty",0
+txt_brace:		db "}",0
+txt_staff_:		db " Staff",0
+txt_wand_:		db " Wand",0
+txt_rod_:		db " Rod",0
+txt_charges_:	db " charges)",0
 txt_you_have_r:	db "You have ",0
 txt_slot_r:		db " (a).",0
 msg_combine:	db "You combine similar objects from the shop and dungeon.",0
 carry_src:		dw 0
 carry_known:	db 0
+carry_kind:		dw 0
+fk_slot:		db 0
 carry_try:		db 0
 od_unknown:		db 0
-comb_kind:		db 0
+od_class:		db 0
+od_note:		db 0
+comb_kind:		dw 0
 comb_first:		db 0
 comb_try:		db 0
 comb_dst:		dw 0

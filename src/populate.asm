@@ -445,11 +445,60 @@ summon_undead:
 	djnz .look
 	jr .pick
 
+/* poly_at - D = y, E = x: the monster there becomes a random non-unique
+	dungeon race, awake (poly_monster in SPELLS.C) */
+poly_at:
+	push de
+	call mon_at
+	call c,mon_remove
+.pick:
+	ld hl,(mon_level_table+MAX_MONS_LEVEL*2)	; randint(m_level[MAX] - m_level[0])
+	ld de,(mon_level_table)						; - 1 + m_level[0]
+	or a
+	sbc hl,de
+	call randint16
+	dec hl
+	ld de,(mon_level_table)
+	add hl,de
+	push hl
+	call race_addr
+	pop hl
+	bit RF_UNIQUE,(iy+R_FLAGS)
+	jr nz,.pick
+	ld (place_race),hl
+	xor a
+	ld (place_sleep),a
+	pop de
+	jp place_monster
+
+/* clone_at - D = y, E = x: another of the monster there appears beside it
+	(multiply_monster in CREATURE.C) -> carry if one did */
+clone_at:
+	push de
+	call mon_at
+	pop de
+	ret nc
+	ld (ix+M_SLEEP),0
+	ld (ix+M_SLEEP+1),0
+	ld l,(ix+M_RACE)
+	ld h,(ix+M_RACE_HI)
+	ld (place_race),hl
+	ld b,19								; (multiply_monster's tries)
+	call summon_spot_n
+	ret nc
+	xor a
+	ld (place_sleep),a
+	call place_monster
+	scf
+	ret
+
 /* summon_spot - D = y, E = x -> D, E = a random empty open square next to
 	it (10 tries), carry if found */
 summon_spot:
-	ld (ss_centre),de
 	ld b,10
+/* summon_spot_n - the same with B tries */
+summon_spot_n:
+	ld (ss_centre),de
 .try:
 	push bc
 	ld a,3
@@ -635,10 +684,13 @@ place_object:
 	ld (ix+I_NUMBER),1
 	ld (ix+I_MARKED),0
 	call get_obj_num
-	ld (ix+I_KIND),a
-	ret
+	ld (ix+I_KIND),l
+	ld (ix+I_KIND_HI),h
+	ld (ix+I_IDENT),0
+	call kind_addr
+	jp init_charges
 
-/* get_obj_num - A = a kind for this depth (get_obj_num in MISC2.C):
+/* get_obj_num - HL = a kind for this depth (get_obj_num in MISC2.C):
 	1 in OBJ_GREAT looks much deeper; half the time it picks one dungeon
 	object up to the level, otherwise the best of three; then any object of
 	that object's exact level; rarer objects are often picked again */
@@ -697,6 +749,7 @@ get_obj_num:
 	call alloc_entry
 	inc hl
 	inc hl
+	inc hl
 	ld a,(hl)							; that object's level
 	or a
 	jr nz,.levelled
@@ -722,7 +775,9 @@ get_obj_num:
 .entry:
 	call alloc_entry					; rare ones: 1d(rare) must come up 1
 	inc hl
+	inc hl
 	ld a,(hl)
+	dec hl
 	dec hl
 	or a
 	jr z,.done
@@ -733,6 +788,9 @@ get_obj_num:
 	jp nz,get_obj_num
 .done:
 	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
 	ret
 
 /* t_level - A = level -> HL = obj_level_table[level]. Clobbers A */
@@ -746,13 +804,11 @@ t_level:
 	ld l,a
 	ret
 
-/* alloc_entry - HL = index -> HL = its obj_alloc_table entry (kind, rare,
-	level). Clobbers DE */
+/* alloc_entry - HL = index -> HL = its obj_alloc_table entry (kind word,
+	rare, level). Clobbers DE */
 alloc_entry:
-	ld d,h
-	ld e,l
 	add hl,hl
-	add hl,de
+	add hl,hl
 	ld de,obj_alloc_table
 	add hl,de
 	ret
@@ -766,7 +822,7 @@ place_gold:
 	ret nc
 	ld (ix+I_Y),d
 	ld (ix+I_X),e
-	ld (ix+I_KIND),KIND_GOLD
+	ld (ix+I_KIND_HI),KIND_GOLD
 	ld (ix+I_NUMBER),1
 	ld (ix+I_MARKED),0
 	ld a,(dun_level)					; i = (1d(level+2) + 2) / 2 - 1

@@ -260,3 +260,85 @@ syl_155:	db "zun",0
 syl_156:	db "tri",0
 syl_157:	db "blaa",0
 scroll_titles:	ds MAX_TITLES*10		; (filled by magic_init)
+
+NUM_WOODS		equ 32			; staff woods / wand and rod metals
+wood_names:
+	dw wood_0,wood_1,wood_2,wood_3,wood_4,wood_5,wood_6,wood_7
+	dw wood_8,wood_9,wood_10,wood_11,wood_12,wood_13,wood_14,wood_15
+	dw wood_16,wood_17,wood_18,wood_19,wood_20,wood_21,wood_22,wood_23
+	dw wood_24,wood_25,wood_26,wood_27,wood_28,wood_29,wood_30,wood_31
+wood_attrs:
+	db 44,62,60,44,56,44,44,44,44,36,52,44,48,44,48,44,44,44,44,40,56,44,44,44,44,56,44,60,62,48,60,46
+wood_0:	db "Aspen",0
+wood_1:	db "Balsa",0
+wood_2:	db "Banyan",0
+wood_3:	db "Birch",0
+wood_4:	db "Cedar",0
+wood_5:	db "Cottonwood",0
+wood_6:	db "Cypress",0
+wood_7:	db "Dogwood",0
+wood_8:	db "Elm",0
+wood_9:	db "Eucalyptus",0
+wood_10:	db "Hemlock",0
+wood_11:	db "Hickory",0
+wood_12:	db "Ironwood",0
+wood_13:	db "Locust",0
+wood_14:	db "Mahogany",0
+wood_15:	db "Maple",0
+wood_16:	db "Mulberry",0
+wood_17:	db "Oak",0
+wood_18:	db "Pine",0
+wood_19:	db "Redwood",0
+wood_20:	db "Rosewood",0
+wood_21:	db "Spruce",0
+wood_22:	db "Sycamore",0
+wood_23:	db "Teak",0
+wood_24:	db "Walnut",0
+wood_25:	db "Mistletoe",0
+wood_26:	db "Hawthorn",0
+wood_27:	db "Bamboo",0
+wood_28:	db "Silver",0
+wood_29:	db "Runed",0
+wood_30:	db "Golden",0
+wood_31:	db "Ashen",0
+
+NUM_METALS		equ 32			; staff woods / wand and rod metals
+metal_names:
+	dw metal_0,metal_1,metal_2,metal_3,metal_4,metal_5,metal_6,metal_7
+	dw metal_8,metal_9,metal_10,metal_11,metal_12,metal_13,metal_14,metal_15
+	dw metal_16,metal_17,metal_18,metal_19,metal_20,metal_21,metal_22,metal_23
+	dw metal_24,metal_25,metal_26,metal_27,metal_28,metal_29,metal_30,metal_31
+metal_attrs:
+	db 46,48,62,44,60,48,46,46,46,40,62,46,46,48,48,52,44,46,44,60,46,62,46,46,44,54,54,48,44,60,62,48
+metal_0:	db "Aluminum",0
+metal_1:	db "Cast Iron",0
+metal_2:	db "Chromium",0
+metal_3:	db "Copper",0
+metal_4:	db "Gold",0
+metal_5:	db "Iron",0
+metal_6:	db "Magnesium",0
+metal_7:	db "Molybdenum",0
+metal_8:	db "Nickel",0
+metal_9:	db "Rusty",0
+metal_10:	db "Silver",0
+metal_11:	db "Steel",0
+metal_12:	db "Tin",0
+metal_13:	db "Titanium",0
+metal_14:	db "Tungsten",0
+metal_15:	db "Zirconium",0
+metal_16:	db "Zinc",0
+metal_17:	db "Aluminum-Plated",0
+metal_18:	db "Copper-Plated",0
+metal_19:	db "Gold-Plated",0
+metal_20:	db "Nickel-Plated",0
+metal_21:	db "Silver-Plated",0
+metal_22:	db "Steel-Plated",0
+metal_23:	db "Tin-Plated",0
+metal_24:	db "Zinc-Plated",0
+metal_25:	db "Mithril-Plated",0
+metal_26:	db "Mithril",0
+metal_27:	db "Runed",0
+metal_28:	db "Bronze",0
+metal_29:	db "Brass",0
+metal_30:	db "Platinum",0
+metal_31:	db "Lead",0
