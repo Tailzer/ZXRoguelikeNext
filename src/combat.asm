@@ -178,14 +178,16 @@ mon_name_to_msg:
 	ld a,(ix+M_ML)
 	or a
 	jr z,.unseen
+	bit RF_UNIQUE,(iy+R_FLAGS)			; uniques go by name alone
+	jr nz,.name
 	ld a,(name_cap)
 	or a
 	ld hl,txt_the
 	jr nz,$+5
 	ld hl,txt_the_lc
 	call msg_add
-	ld l,(iy+R_NAME)
-	ld h,(iy+R_NAME+1)
+.name:
+	call race_name
 	jp msg_add
 .unseen:
 	ld a,(name_cap)
@@ -201,8 +203,7 @@ py_attack:
 	ld (turn_taken),a
 	ld (ix+M_SLEEP),0					; it wakes up
 	ld (ix+M_SLEEP+1),0
-	ld a,(ix+M_RACE)
-	call race_addr
+	call mon_race
 	; base to-hit: bth if we can see it, otherwise
 	; bth/2 - tohit*(BTH_PLUS_ADJ-1) - lev*adj/2
 	ld hl,P_BTH
@@ -369,36 +370,56 @@ mon_take_hit:
 	jr nz,.dead
 	or a								; still alive: carry clear
 	ret
-.dead:									; experience: mexp * level / plev, remainder kept as a fraction
-	ld a,(ix+M_RACE)
-	call race_addr
-	ld d,(iy+R_EXP)
+.dead:									; experience: mexp * level / plev,
+	call mon_race						; the remainder kept as a fraction
 	ld e,(iy+R_LEVEL)
+	ld d,(iy+R_EXP)
 	mul d,e
-	ex de,hl
+	push de
+	ld e,(iy+R_LEVEL)
+	ld d,(iy+R_EXP+1)
+	mul d,e								; high byte's product, shifted 8
+	pop hl
+	ld a,h
+	add a,e
+	ld h,a
+	ld a,d
+	adc a,0
+	ld e,a								; E:HL = mexp * level
 	ld a,(p_lev)
 	ld c,a
-	call div16_8						; HL = whole exp, A = remainder
+	call div24_8						; E:HL = whole exp, A = remainder
 	push hl
+	push de
 	ld e,a								; frac += remainder * 65536 / plev
 	ld hl,0
-	call div24_8						; E:HL = (rem << 16) / plev
+	call div24_8
 	ld de,(p_exp_frac)
 	add hl,de
 	ld (p_exp_frac),hl
+	pop de
 	pop hl
-	jr nc,$+3
-	inc hl
-	ld de,(p_exp)						; p_exp += HL (32 bit)
-	add hl,de
+	ld bc,0								; + 1 if the fraction overflowed
+	adc hl,bc
+	ld a,e
+	adc a,0
+	ld e,a
+	ld bc,(p_exp)						; p_exp += E:HL
+	add hl,bc
 	ld (p_exp),hl
 	ld hl,(p_exp+2)
-	ld de,0
+	ld d,0
 	adc hl,de
 	ld (p_exp+2),hl
+	bit RF_UNIQUE,(iy+R_FLAGS)			; a unique stays dead
+	call nz,unique_killed
 	; message, then remove it
 	call msg_begin
-	ld hl,txt_you_slain
+	ld hl,txt_you_slain					; undead and demons are destroyed
+	ld a,(iy+R_FLAGS)
+	and 1<<RF_UNDEAD|1<<RF_DEMON
+	jr z,$+5
+	ld hl,txt_you_destroyed
 	call msg_add
 	xor a
 	ld (name_cap),a
@@ -417,8 +438,38 @@ mon_remove:
 	ld e,(ix+M_X)
 	call map_addr
 	res F_MON_BIT,(hl)
-	ld (ix+M_RACE),MON_EMPTY
+	ld (ix+M_RACE_HI),MON_EMPTY
 	ret
+
+/* unique_killed - IX = a unique monster that died: mark its race dead */
+unique_killed:
+	call unique_bit
+	or (hl)
+	ld (hl),a
+	ret
+
+/* unique_bit - IX = monster -> HL = byte in uniques_dead, A = its bit */
+unique_bit:
+	ld l,(ix+M_RACE)
+	ld h,(ix+M_RACE_HI)
+	ld a,l
+	and 7
+	ld b,a
+	srl h
+	rr l
+	srl h
+	rr l
+	srl h
+	rr l
+	ld de,uniques_dead
+	add hl,de
+	ld a,1
+	inc b
+.shift:
+	dec b
+	ret z
+	add a,a
+	jr .shift
 
 /* check_level_up - gain levels while exp >= player_exp[lev-1]
 	(expfact is 100 for a human warrior) */
@@ -472,6 +523,8 @@ check_level_up:
 mon_attack:
 	ld a,(ix+M_RACE)
 	ld (killer_race),a
+	ld a,(ix+M_RACE_HI)
+	ld (killer_race+1),a
 	xor a
 	ld (attack_num),a
 .blow:
@@ -492,6 +545,8 @@ mon_attack:
 	ld a,(hl)							; type, 0 = no more blows
 	or a
 	ret z
+	cp 26
+	ret nc								; (no blow types above 25 in the data)
 	ld (atk_type),a
 	inc hl
 	ld a,(hl)
@@ -527,6 +582,9 @@ mon_attack:
 	ld hl,txt_space
 	call msg_add
 	ld a,(atk_desc)
+	ld hl,txt_attacks					; anything unknown just "attacks you."
+	cp NUM_ATTACK_DESCS+1
+	jr nc,.say_it
 	dec a
 	add a,a
 	ld hl,attack_descs
@@ -535,6 +593,7 @@ mon_attack:
 	inc hl
 	ld h,(hl)
 	ld l,a
+.say_it:
 	call msg_add
 	call msg_end
 	ld a,(atk_dice)
@@ -542,7 +601,14 @@ mon_attack:
 	ld a,(atk_sides)
 	ld c,a
 	call damroll
+	ld (atk_damage),hl
+	ld a,(atk_type)						; stealing and eating attacks don't
+	ld hl,no_damage_types				; hurt (their effects come later)
+	ld bc,NUM_NO_DAMAGE
+	cpir
+	jp z,.blow
 	ld a,(atk_type)
+	ld hl,(atk_damage)
 	cp 1
 	jr nz,.hurt
 	; normal attacks: armour absorbs (min(ac,150)*3/4 * dam) / 200
@@ -630,7 +696,14 @@ attack_descs:
 	dw txt_hits, txt_bites, txt_claws, txt_stings, txt_touches, txt_kicks
 	dw txt_gazes, txt_breathes, txt_spits, txt_wails, txt_embraces
 	dw txt_crawls, txt_spores, txt_begs, txt_slimed, txt_crushes
-	dw txt_tramples, txt_drools
+	dw txt_tramples, txt_drools, txt_insults, txt_butts, txt_charges
+	dw txt_engulfs, txt_mumbles
+NUM_ATTACK_DESCS	equ 23
+
+; blow types that do no damage: steal gold/object, aggravate, eat food,
+; eat light, drain charges
+no_damage_types:	db 12,13,20,22,23,24
+NUM_NO_DAMAGE		equ $-no_damage_types
 
 player_exp:								; PLAYER.C player_exp[]
 	dd 10, 25, 45, 70, 100, 140, 200, 280
@@ -649,7 +722,8 @@ p_mhp:			dw 0
 p_chp:			dw 0				; signed: below 0 is dead
 p_chp_frac:		dw 0
 p_dead:			db 0
-killer_race:	db 0
+killer_race:	dw 0				; race, or KILLER_STARVATION
+uniques_dead:	ds (NUM_RACES+7)/8	; one bit per race
 p_food:			dw 0				; signed
 p_hunger:		db 0				; HUNGER_ state
 p_paralysed:	db 0				; turns left fainted
@@ -677,3 +751,4 @@ atk_type:		db 0
 atk_desc:		db 0
 atk_dice:		db 0
 atk_sides:		db 0
+atk_damage:		dw 0

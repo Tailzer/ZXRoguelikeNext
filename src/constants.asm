@@ -12,6 +12,9 @@ OVERLAY_WINDOW		equ $4000			; MMU slot 2
 PAGE_LEVEL			equ 40				; overlay: level generation, monster placement
 PAGE_MISC			equ 41				; overlay: start-up, death screen
 PAGE_ITEMS			equ 42				; overlay: inventory and item commands
+DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
+RACE_PAGE			equ 44				; 5 pages of races (data/races.asm)
+KIND_PAGE			equ 49				; 1 page of item kinds (data/kinds.asm)
 IM2_TABLE			equ $BC00			; 257 bytes of $BD
 IM2_JUMP			equ $BDBD			; jp im2_handler
 
@@ -64,7 +67,7 @@ COL_GREEN			equ 5
 COL_BLUE			equ 6
 COL_UMBER			equ 7
 COL_MAGENTA			equ 8
-NUM_COLOURS			equ 9
+NUM_COLOURS			equ 32
 
 ATTR_WHITE			equ COL_WHITE*2
 ATTR_GREY			equ COL_GREY*2
@@ -75,6 +78,8 @@ ATTR_GREEN			equ COL_GREEN*2
 ATTR_BLUE			equ COL_BLUE*2
 ATTR_UMBER			equ COL_UMBER*2
 ATTR_MAGENTA		equ COL_MAGENTA*2
+; colours 16-31 are the 16 PC (Turbo C) colours the data uses
+COL_TC				equ 16
 
 ; ---- dungeon (same size as Angband: CONSTANT.H MAX_HEIGHT/MAX_WIDTH) ----
 MAP_W				equ 198
@@ -147,9 +152,9 @@ ROOM_MAP			equ ROOM_LIST+80			; ROOM_ROWS x ROOM_COLS
 MON_LIST			equ $B000			; MON_MAX records of MON_SIZE bytes
 MON_MAX				equ 64
 MON_SIZE			equ 16
-MON_EMPTY			equ $FF				; M_RACE of a free slot
+MON_EMPTY			equ $FF				; M_RACE_HI of a free slot
 ; monster record
-M_RACE				equ 0
+M_RACE				equ 0				; race number, low byte
 M_Y					equ 1
 M_X					equ 2
 M_HP				equ 3				; word
@@ -158,22 +163,31 @@ M_SLEEP				equ 7				; word (csleep)
 M_SPEED				equ 9				; signed (cspeed = speed - 10)
 M_CDIS				equ 10				; distance from player
 M_ML				equ 11				; 1 if the player can see it
-; race record (race_table in races.asm)
-RACE_SIZE			equ 32
-R_NAME				equ 0				; word, pointer to name
-R_CHAR				equ 2
-R_ATTR				equ 3
-R_MOVE				equ 4				; RM_ flags
-R_EXP				equ 5
-R_SLEEP				equ 6
-R_AAF				equ 7				; how far away it notices you
-R_AC				equ 8
-R_SPEED				equ 9				; 11 = normal
-R_HD_DICE			equ 10
-R_HD_SIDES			equ 11
-R_LEVEL				equ 12
-R_RARITY			equ 13
+M_RACE_HI			equ 12				; race number, high byte ($FF = free slot)
+; race record (data/races.asm, made by tools/convert.py from MONSTERS.C)
+RACE_SIZE			equ 64				; 128 per 8K page
+R_CHAR				equ 0
+R_ATTR				equ 1
+R_MOVE				equ 2				; RM_ flags
+R_EXP				equ 3				; word
+R_SLEEP				equ 5
+R_AAF				equ 6				; how far away it notices you
+R_AC				equ 7
+R_SPEED				equ 8				; 11 = normal
+R_HD_DICE			equ 9
+R_HD_SIDES			equ 10
+R_LEVEL				equ 11
+R_RARITY			equ 12
+R_FLAGS				equ 13				; RF_ bits
 R_ATTACKS			equ 16				; 4 x (type, description, dice, sides)
+R_NAME				equ 32				; the name itself, zero-terminated
+; R_FLAGS bits (MONSTER.H cdefense / cmove)
+RF_UNIQUE			equ 0
+RF_MAX_HP			equ 1
+RF_INVISIBLE		equ 2
+RF_EVIL				equ 3
+RF_UNDEAD			equ 4
+RF_DEMON			equ 5
 ; R_MOVE bits (MONSTER.H cmove flags)
 RM_ONLY_ATT			equ 0				; MV_ONLY_ATT: never moves
 RM_NORMAL			equ 1				; MV_ATT_NORM: chases
@@ -192,11 +206,14 @@ ITEM_MAX			equ 64
 PACK				equ $B600			; PACK_MAX carried items
 PACK_MAX			equ 12				; slots a-l
 EQUIP				equ PACK+PACK_MAX*ITEM_SIZE	; EQ_SLOTS worn/wielded items
-EQ_SLOTS			equ 4
+EQ_SLOTS			equ 7
 EQ_WEAPON			equ 0
 EQ_BODY				equ 1
 EQ_SHIELD			equ 2
 EQ_HELM				equ 3
+EQ_CLOAK			equ 4
+EQ_GLOVES			equ 5
+EQ_BOOTS			equ 6
 ITEM_SIZE			equ 8
 ITEM_EMPTY			equ $FF				; I_KIND of a free slot
 KIND_GOLD			equ $FE				; I_KIND of a pile of treasure
@@ -208,22 +225,22 @@ I_X					equ 3
 I_MARKED			equ 4				; seen on the floor (the C's fm)
 I_VALUE				equ 5				; word, gold only
 I_SUB				equ 7				; gold type
-; kind record (kind_table in items.asm)
-KIND_SIZE			equ 16
-K_NAME				equ 0
-K_CHAR				equ 2
-K_ATTR				equ 3
-K_CLASS				equ 4
-K_EFFECT			equ 5				; potions: dice of 7 healed
-K_LEVEL				equ 6
-K_WEIGHT			equ 7				; tenths of a pound
-K_DICE				equ 8
-K_SIDES				equ 9
-K_AC				equ 10
-K_TOHIT				equ 11				; signed
-K_TODAM				equ 12				; signed
-K_P1				equ 13				; word: food value
-K_ALLOC				equ 15				; how common
+; kind record (data/kinds.asm, made by tools/convert.py from TREASURE.C)
+KIND_SIZE			equ 64				; 128 per 8K page
+K_CHAR				equ 0
+K_ATTR				equ 1
+K_CLASS				equ 2
+K_EFFECT			equ 3				; potions: dice of 7 healed
+K_LEVEL				equ 4
+K_WEIGHT			equ 5				; word, tenths of a pound
+K_DICE				equ 7
+K_SIDES				equ 8
+K_AC				equ 9
+K_TOHIT				equ 10				; signed
+K_TODAM				equ 11				; signed
+K_P1				equ 12				; word: food value
+K_ARTICLE			equ 14				; 1 if the name takes "a"/"an"
+K_NAME				equ 16				; the name itself, '~' where plurals add 's'
 ; item classes; wearable ones map to equipment slot class - IC_WEAPON
 IC_FOOD				equ 1
 IC_POTION			equ 2
@@ -231,6 +248,9 @@ IC_WEAPON			equ 3
 IC_BODY				equ 4
 IC_SHIELD			equ 5
 IC_HELM				equ 6
+IC_CLOAK			equ 7
+IC_GLOVES			equ 8
+IC_BOOTS			equ 9
 TREAS_ROOM_ALLOC	equ 9				; mean objects in rooms
 TREAS_ANY_ALLOC		equ 3				; mean objects anywhere
 TREAS_GOLD_ALLOC	equ 3				; mean piles of treasure
@@ -251,7 +271,7 @@ HUNGER_WEAK			equ 2
 REGEN_NORMAL		equ 197				; PLAYER_REGEN_NORMAL (x 2^-16)
 REGEN_WEAK			equ 98
 REGEN_FAINT			equ 33
-KILLER_STARVATION	equ $FE				; killer_race for starving
+KILLER_STARVATION	equ $FE00			; killer_race (a word) for starving
 
 ; ---- commands ----
 CMD_MOVE			equ 0

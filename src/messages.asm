@@ -49,6 +49,13 @@ txt_slimed:		db "slimes you.",0
 txt_crushes:	db "crushes you.",0
 txt_tramples:	db "tramples you.",0
 txt_drools:		db "drools on you.",0
+txt_insults:	db "insults you!",0
+txt_butts:		db "butts you.",0
+txt_charges:	db "charges you.",0
+txt_engulfs:	db "engulfs you.",0
+txt_mumbles:	db "mumbles.",0
+txt_attacks:	db "attacks you.",0
+txt_you_destroyed: db "You have destroyed ",0
 ; status line
 txt_lev:		db "Lv ",0
 txt_exp:		db "  Exp ",0

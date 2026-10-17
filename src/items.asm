@@ -1,115 +1,29 @@
 /* items.asm - item kinds, the floor item list, hunger  [resident]
-	Kinds are hand-copied from TREASURE.C object_list[] (Angband PC 1.2):
-	name, symbol, level, weight, damage dice, AC and to-hit. alloc is how
-	many copies of the kind the C table has, which sets how common it is.
-	Names use the C's conventions: '~' marks where a plural 's' goes.
+	Kinds and treasures come from TREASURE.C via tools/convert.py
+	(data/kinds.asm in KIND_PAGE, data/tables.asm here). Names use the C's
+	conventions: '~' marks where a plural 's' goes.
 	Not yet: magical pluses (magic_treasure), unknown potion flavours.
  */
 
-NUM_KINDS			equ 13
-KIND_RATION			equ 0
-KIND_CLW			equ 1
-KIND_BROADSWORD		equ 6
-KIND_CHAIN_MAIL		equ 10
 P_STR				equ 17				; fixed stats until character creation
 
-	MACRO KIND p_nm, p_ch, p_at, p_cl, p_ef, p_lv, p_wt, p_dd, p_ds, p_ac, p_th, p_td, p_p1, p_al
-		dw p_nm
-		db p_ch, p_at, p_cl, p_ef, p_lv, p_wt, p_dd, p_ds, p_ac, p_th, p_td
-		dw p_p1
-		db p_al
-	ENDM
-
-; name, char, colour, class, effect, level, weight, dice, ac, to-hit,
-; to-dam, p1, alloc
-kind_table:
-	KIND kn_ration,   ',', ATTR_UMBER,  IC_FOOD,   0, 0,  10, 0,0,  0,  0, 0, 5000, 3
-	KIND kn_clw,      '!', ATTR_BLUE,   IC_POTION, 2, 0,   4, 0,0,  0,  0, 0,    0, 3
-	KIND kn_csw,      '!', ATTR_RED,    IC_POTION, 4, 3,   4, 0,0,  0,  0, 0,    0, 1
-	KIND kn_dagger,   '|', ATTR_WHITE,  IC_WEAPON, 0, 0,  12, 1,4,  0,  0, 0,    0, 4
-	KIND kn_gauche,   '|', ATTR_WHITE,  IC_WEAPON, 0, 2,  30, 1,5,  0,  0, 0,    0, 1
-	KIND kn_shortsw,  '|', ATTR_WHITE,  IC_WEAPON, 0, 6,  80, 1,7,  0,  0, 0,    0, 1
-	KIND kn_broadsw,  '|', ATTR_WHITE,  IC_WEAPON, 0, 9, 150, 2,5,  0,  0, 0,    0, 2
-	KIND kn_mace,     $5C, ATTR_GREY,   IC_WEAPON, 0, 6, 120, 2,4,  0,  0, 0,    0, 1
-	KIND kn_softarm,  '(', ATTR_UMBER,  IC_BODY,   0, 2,  80, 0,0,  4,  0, 0,    0, 1
-	KIND kn_hardarm,  '(', ATTR_UMBER,  IC_BODY,   0, 5, 100, 1,1,  6, -1, 0,    0, 1
-	KIND kn_chain,    '[', ATTR_GREY,   IC_BODY,   0,26, 220, 1,4, 14, -2, 0,    0, 1
-	KIND kn_shield,   ')', ATTR_UMBER,  IC_SHIELD, 0, 3,  50, 1,1,  2,  0, 0,    0, 1
-	KIND kn_cap,      ']', ATTR_UMBER,  IC_HELM,   0, 4,  15, 0,0,  2,  0, 0,    0, 1
-kind_table_end:
-	ASSERT kind_table_end - kind_table == NUM_KINDS * KIND_SIZE
-
-kn_ration:		db "Ration~ of Food",0
-kn_clw:			db "Potion~ of Cure Light Wounds",0
-kn_csw:			db "Potion~ of Cure Serious Wounds",0
-kn_dagger:		db "Dagger~",0
-kn_gauche:		db "Main Gauche~",0
-kn_shortsw:		db "Short Sword~",0
-kn_broadsw:		db "Broadsword~",0
-kn_mace:		db "Mace~",0
-kn_softarm:		db "Soft Leather Armour",0
-kn_hardarm:		db "Hard Leather Armour",0
-kn_chain:		db "Chain Mail",0
-kn_shield:		db "Small Leather Shield~",0
-kn_cap:			db "Hard Leather Cap~",0
-
-; the 18 kinds of treasure (TREASURE.C, after OBJ_GOLD_LIST): name, symbol,
-; colour, base value
-gold_table:
-	dw gn_copper
-	db '$', ATTR_UMBER, 3
-	dw gn_copper
-	db '$', ATTR_UMBER, 4
-	dw gn_copper
-	db '$', ATTR_UMBER, 5
-	dw gn_silver
-	db '$', ATTR_GREY, 6
-	dw gn_silver
-	db '$', ATTR_GREY, 7
-	dw gn_silver
-	db '$', ATTR_GREY, 8
-	dw gn_garnets
-	db '*', ATTR_RED, 9
-	dw gn_garnets
-	db '*', ATTR_RED, 10
-	dw gn_gold
-	db '$', ATTR_YELLOW, 12
-	dw gn_gold
-	db '$', ATTR_YELLOW, 14
-	dw gn_gold
-	db '$', ATTR_YELLOW, 16
-	dw gn_opals
-	db '*', ATTR_WHITE, 18
-	dw gn_sapphires
-	db '*', ATTR_BLUE, 20
-	dw gn_gold
-	db '$', ATTR_YELLOW, 24
-	dw gn_rubies
-	db '*', ATTR_RED, 28
-	dw gn_diamonds
-	db '*', ATTR_WHITE, 32
-	dw gn_emeralds
-	db '*', ATTR_GREEN, 40
-	dw gn_mithril
-	db '$', ATTR_WHITE, 80
-gn_copper:		db "copper",0
-gn_silver:		db "silver",0
-gn_garnets:		db "garnets",0
-gn_gold:		db "gold",0
-gn_opals:		db "opals",0
-gn_sapphires:	db "sapphires",0
-gn_rubies:		db "rubies",0
-gn_diamonds:	db "diamonds",0
-gn_emeralds:	db "emeralds",0
-gn_mithril:		db "mithril",0
-
-/* kind_addr - A = kind -> IY = kind record. Clobbers DE */
+/* kind_addr - A = kind -> IY = kind record, paged into DATA_WINDOW.
+	Clobbers DE */
 kind_addr:
+	nextreg NR_MMU1,KIND_PAGE
 	ld e,a
 	ld d,KIND_SIZE
 	mul d,e
-	ld iy,kind_table
+	ld iy,DATA_WINDOW
 	add iy,de
+	ret
+
+/* kind_name - IY = kind record -> HL = its name. Clobbers DE */
+kind_name:
+	push iy
+	pop hl
+	ld de,K_NAME
+	add hl,de
 	ret
 
 /* gold_addr - A = gold type -> HL = gold_table entry. Clobbers DE */
@@ -271,8 +185,8 @@ hunger_tick:
 	rr l
 	srl h
 	rr l
-	ld a,KILLER_STARVATION
-	ld (killer_race),a
+	ld de,KILLER_STARVATION
+	ld (killer_race),de
 	call take_hit
 	xor a
 	ret

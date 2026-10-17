@@ -14,16 +14,18 @@ player_died_screen:
 	call msg_begin						; "Killed by a Jackal"
 	ld hl,txt_killed_by
 	call msg_add
-	ld a,(killer_race)
-	cp KILLER_STARVATION
+	ld hl,(killer_race)
+	ld a,h
+	cp high KILLER_STARVATION
 	jr nz,.monster
 	ld hl,txt_starvation
 	call msg_add
 	jr .killer_done
 .monster:
 	call race_addr
-	ld l,(iy+R_NAME)
-	ld h,(iy+R_NAME+1)
+	bit RF_UNIQUE,(iy+R_FLAGS)			; "Killed by Grip, Farmer Maggot's dog"
+	jr nz,.unique
+	call race_name
 	ld a,(hl)
 	ld hl,txt_a
 	cp 'A'
@@ -40,8 +42,8 @@ player_died_screen:
 	ld hl,txt_an
 .article:
 	call msg_add
-	ld l,(iy+R_NAME)
-	ld h,(iy+R_NAME+1)
+.unique:
+	call race_name
 	call msg_add
 .killer_done:
 	ld hl,(msg_ptr)

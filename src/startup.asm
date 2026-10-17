@@ -56,3 +56,9 @@ palette_inks:
 	db %01001111						; blue
 	db %10101100						; umber
 	db %11000011						; magenta ($E3 is the transparent colour)
+	ds 7, 0								; (unused)
+	; the 16 PC colours (Turbo C order) the converted data uses: COL_TC + n
+	db %00000000, %00000010, %00010100, %00010110	; black, blue, green, cyan
+	db %10100000, %10100010, %10101000, %10110110	; red, magenta, brown, light grey
+	db %01001001, %01001011, %01011101, %01011111	; dark grey, light blue/green/cyan
+	db %11101001, %11101011, %11111101, %11111111	; light red, light magenta, yellow, white

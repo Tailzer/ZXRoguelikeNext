@@ -108,7 +108,7 @@ draw_view:
 	ld b,MON_MAX
 .monster:
 	push bc
-	ld a,(ix+M_RACE)
+	ld a,(ix+M_RACE_HI)
 	cp MON_EMPTY
 	jr z,.next_monster
 	ld a,(ix+M_ML)
@@ -130,8 +130,9 @@ draw_view:
 	jr nc,.next_monster
 	ld e,a
 	call screen_addr
-	ld a,(ix+M_RACE)
-	call race_addr
+	push hl
+	call mon_race						; (uses HL)
+	pop hl
 	ld a,(iy+R_CHAR)
 	ld (hl),a
 	inc hl

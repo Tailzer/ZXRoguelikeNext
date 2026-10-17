@@ -1,10 +1,16 @@
-/* populate.asm - putting monsters on a new level  [overlay: PAGE_LEVEL]
-	References: MISC1.C alloc_monster/place_monster/place_group/test_place
+/* populate.asm - putting monsters and items on a new level  [overlay: PAGE_LEVEL]
+	References: MISC1.C alloc_monster/place_monster/place_group/test_place/
+	get_mons_num, MISC2.C alloc_object/place_object/place_gold/get_obj_num.
+	The level tables come from tools/convert.py (data/alloc.asm).
  */
+
+MON_NASTY			equ 50				; 1/x chance of a deeper monster
+MAX_MONS_LEVEL		equ 99
+MAX_OBJ_LEVEL		equ 255
 
 /* mon_clear_all - empty the monster list */
 mon_clear_all:
-	ld hl,MON_LIST
+	ld hl,MON_LIST+M_RACE_HI
 	ld de,MON_SIZE
 	ld b,MON_MAX
 .loop:
@@ -13,15 +19,24 @@ mon_clear_all:
 	djnz .loop
 	ret
 
-/* place_monster - D = y, E = x, A = race, place_sleep = asleep or not */
+/* place_monster - D = y, E = x, place_race = race (word), place_sleep =
+	asleep or not. A unique isn't placed if it's dead or already here */
 place_monster:
-	ld (place_race),a
 	push de
+	ld hl,(place_race)
+	call race_addr
+	bit RF_UNIQUE,(iy+R_FLAGS)
+	jr z,.ok
+	call unique_absent
+	jr c,.ok
+	pop de
+	ret
+.ok:
 	ld ix,MON_LIST						; find a free slot
 	ld b,MON_MAX
 	ld de,MON_SIZE
 .find:
-	ld a,(ix+M_RACE)
+	ld a,(ix+M_RACE_HI)
 	cp MON_EMPTY
 	jr z,.found
 	add ix,de
@@ -30,18 +45,28 @@ place_monster:
 	ret									; list full
 .found:
 	pop de
-	ld a,(place_race)
-	ld (ix+M_RACE),a
+	ld hl,(place_race)
+	ld (ix+M_RACE),l
+	ld (ix+M_RACE_HI),h
 	ld (ix+M_Y),d
 	ld (ix+M_X),e
 	push de
 	call map_addr
 	set F_MON_BIT,(hl)
-	ld a,(place_race)
+	ld hl,(place_race)
 	call race_addr
-	ld b,(iy+R_HD_DICE)					; hp = hit dice roll
+	ld b,(iy+R_HD_DICE)					; hp: hit dice roll, or the maximum
 	ld c,(iy+R_HD_SIDES)
+	bit RF_MAX_HP,(iy+R_FLAGS)
+	jr z,.roll
+	ld d,b
+	ld e,c
+	mul d,e
+	ex de,hl
+	jr .hp
+.roll:
 	call damroll
+.hp:
 	ld (ix+M_HP),l
 	ld (ix+M_HP+1),h
 	ld (ix+M_MAXHP),l
@@ -78,6 +103,53 @@ place_monster:
 	pop de
 	call mon_distance
 	ld (ix+M_CDIS),a
+	ret
+
+/* unique_absent - place_race is a unique: carry set if it may appear
+	(not killed, not already on the level) */
+unique_absent:
+	ld hl,(place_race)					; dead? bit (race & 7) of byte race/8
+	ld a,l
+	and 7
+	ld b,a
+	srl h
+	rr l
+	srl h
+	rr l
+	srl h
+	rr l
+	ld de,uniques_dead
+	add hl,de
+	ld a,(hl)
+	inc b
+.shift:
+	dec b
+	jr z,.bit
+	rrca
+	jr .shift
+.bit:
+	rrca
+	ccf
+	ret nc								; dead
+	ld ix,MON_LIST						; already here?
+	ld b,MON_MAX
+	ld de,(place_race)
+.scan:
+	ld a,(ix+M_RACE)
+	cp e
+	jr nz,.next
+	ld a,(ix+M_RACE_HI)
+	cp d
+	jr nz,.next
+	or a
+	ret
+.next:
+	push de
+	ld de,MON_SIZE
+	add ix,de
+	pop de
+	djnz .scan
+	scf
 	ret
 
 /* test_place - D = y, E = x -> carry if a monster could stand there.
@@ -141,10 +213,8 @@ alloc_monsters:
 .spot_ok:
 	push de
 .pick:									; get_mons_num + rarity check
-	ld a,NUM_RACES						; all races are level 1 for now
-	call randint
-	dec a
-	ld (place_race),a
+	call get_mons_num
+	ld (place_race),hl
 	call race_addr
 	ld a,(iy+R_RARITY)
 	call randint
@@ -155,7 +225,6 @@ alloc_monsters:
 	jr nz,.group
 	ld a,1
 	ld (place_sleep),a
-	ld a,(place_race)
 	call place_monster
 	jr .next
 .group:
@@ -166,13 +235,108 @@ alloc_monsters:
 	jr nz,.each
 	ret
 
+/* get_mons_num - HL = a race for this depth (get_mons_num in MISC1.C):
+	usually the higher of two picks from everything up to the dungeon
+	level, then any race of that exact level; 1 in MON_NASTY looks a few
+	levels deeper. Out-of-depth uniques are picked again */
+get_mons_num:
+	ld a,(dun_level)
+	cp MAX_MONS_LEVEL+1
+	jr c,$+4
+	ld a,MAX_MONS_LEVEL
+	ld (gm_base),a
+.again:
+	ld a,(gm_base)
+	ld (gm_target),a
+	ld a,MON_NASTY
+	call randint
+	dec a
+	jr nz,.usual
+	ld a,4								; level + |randnor(0,4)| + 1, taken
+	call randint						; as level + 1d4 + 1d4 - 1
+	ld b,a
+	push bc
+	ld a,4
+	call randint
+	pop bc
+	add a,b
+	dec a
+	ld hl,gm_target
+	add a,(hl)
+	cp MAX_MONS_LEVEL+1
+	jr c,$+4
+	ld a,MAX_MONS_LEVEL
+	ld (hl),a
+	jr .exact
+.usual:
+	ld a,(gm_target)					; num = m_level[level] - m_level[0]
+	call m_level
+	ld de,(mon_level_table)
+	or a
+	sbc hl,de
+	ld (gm_num),hl
+	call randint16						; the higher of two picks
+	ld (gm_pick),hl
+	ld hl,(gm_num)
+	call randint16
+	ld de,(gm_pick)
+	or a
+	sbc hl,de
+	jr c,.keep
+	add hl,de
+	ld (gm_pick),hl
+.keep:
+	ld hl,(gm_pick)						; its level becomes the target
+	dec hl
+	ld de,(mon_level_table)
+	add hl,de
+	call race_addr
+	ld a,(iy+R_LEVEL)
+	ld (gm_target),a
+.exact:									; any race of exactly that level
+	ld a,(gm_target)
+	dec a
+	call m_level
+	ld (gm_pick),hl						; m_level[level-1]
+	ld a,(gm_target)
+	call m_level
+	ld de,(gm_pick)
+	or a
+	sbc hl,de
+	ld a,h
+	or l
+	jr nz,$+3
+	inc hl
+	call randint16
+	dec hl
+	ld de,(gm_pick)
+	add hl,de
+	push hl
+	call race_addr						; deeper than the level and unique?
+	pop hl
+	ld a,(dun_level)
+	cp (iy+R_LEVEL)
+	ret nc
+	bit RF_UNIQUE,(iy+R_FLAGS)
+	ret z
+	jp .again
+
+/* m_level - A = level -> HL = mon_level_table[level]. Clobbers A */
+m_level:
+	ld hl,mon_level_table
+	add hl,a
+	add hl,a
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	ret
+
 /* place_group - D = y, E = x, place_race. 1d13 awake members spread
 	round the spot, as place_group()'s fall-through switch does */
 place_group:
 	xor a
 	ld (place_sleep),a
-	ld a,(place_race)
-	ld (group_race),a
 	ld a,13
 	push de
 	call randint
@@ -195,10 +359,7 @@ place_group:
 	add a,e
 	ld e,a
 	call test_place
-	jr nc,.skip
-	ld a,(group_race)
-	call place_monster
-.skip:
+	call c,place_monster
 	pop de
 	pop hl
 	pop bc
@@ -210,11 +371,13 @@ place_group:
 group_offsets:							; dy, dx for cases 13 down to 1
 	db 0,-2, 0,2, 2,0, -2,0, 1,1, 1,-1, -1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0, 0,0
 
-
-place_race:		db 0
+place_race:		dw 0
 place_sleep:	db 0
-group_race:		db 0
 alloc_left:		db 0
+gm_base:		db 0
+gm_target:		db 0
+gm_num:			dw 0
+gm_pick:		dw 0
 
 /* alloc_items - objects and treasure for a new level (end of cave_gen):
 	about 9 objects in rooms, about 3 anywhere, about 3 piles of treasure.
@@ -293,9 +456,7 @@ item_spot:
 	ret nz
 	jr item_spot
 
-/* place_object - D = y, E = x: a random object for this depth
-	(get_obj_num in MISC2.C: anything up to the dungeon level, with a 1 in
-	OBJ_GREAT chance of looking deeper; common kinds weigh more) */
+/* place_object - D = y, E = x: a random object for this depth */
 place_object:
 	push de
 	call item_free_slot
@@ -305,53 +466,127 @@ place_object:
 	ld (ix+I_X),e
 	ld (ix+I_NUMBER),1
 	ld (ix+I_MARKED),0
+	call get_obj_num
+	ld (ix+I_KIND),a
+	ret
+
+/* get_obj_num - A = a kind for this depth (get_obj_num in MISC2.C):
+	1 in OBJ_GREAT looks much deeper; half the time it picks one dungeon
+	object up to the level, otherwise the best of three; then any object of
+	that object's exact level; rarer objects are often picked again */
+get_obj_num:
 	ld a,(dun_level)
-	ld (obj_level),a
+	ld (go_level),a
 	ld a,OBJ_GREAT
 	call randint
 	dec a
 	jr nz,.level_set
-	ld a,10
+	ld a,255							; level = level * 255 / 1d255 + 1
 	call randint
-	ld hl,obj_level
-	add a,(hl)
-	ld (hl),a
+	ld c,a
+	ld a,(dun_level)
+	ld h,a
+	ld l,0
+	ld d,0
+	ld e,a
+	or a
+	sbc hl,de							; level * 255
+	call div16_8
+	inc hl
+	ld a,h
+	or a
+	ld a,l
+	jr z,$+4
+	ld a,MAX_OBJ_LEVEL
+	ld (go_level),a
 .level_set:
-	ld iy,kind_table					; total weight of kinds allowed
-	ld b,NUM_KINDS
-	ld c,0
-.sum:
-	ld a,(obj_level)
-	cp (iy+K_LEVEL)
-	jr c,.skip_sum
-	ld a,c
-	add a,(iy+K_ALLOC)
-	ld c,a
-.skip_sum:
-	ld de,KIND_SIZE
-	add iy,de
-	djnz .sum
-	ld a,c
-	call randint						; pick by weight
-	ld c,a
-	ld iy,kind_table
-	ld b,0								; kind number
-.pick:
-	ld a,(obj_level)
-	cp (iy+K_LEVEL)
-	jr c,.skip_pick
-	ld a,c
-	sub (iy+K_ALLOC)
-	ld c,a
-	jr z,.picked
-	jr c,.picked
-.skip_pick:
-	ld de,KIND_SIZE
-	add iy,de
-	inc b
-	jr .pick
+	ld a,(go_level)						; count = t_level[level]
+	call t_level
+	ld (go_count),hl
+	call randint16
+	ld (go_pick),hl
+	ld a,2
+	call randint
+	dec a
+	jr z,.picked						; half the time: just the one
+	ld b,2								; otherwise the best of three
+.best:
+	push bc
+	ld hl,(go_count)
+	call randint16
+	ld de,(go_pick)
+	or a
+	sbc hl,de
+	jr c,.lower
+	add hl,de
+	ld (go_pick),hl
+.lower:
+	pop bc
+	djnz .best
 .picked:
-	ld (ix+I_KIND),b
+	ld hl,(go_pick)						; its level -> any object of that level
+	dec hl
+	call alloc_entry
+	inc hl
+	inc hl
+	ld a,(hl)							; that object's level
+	or a
+	jr nz,.levelled
+	xor a
+	call t_level
+	call randint16
+	dec hl
+	jr .entry
+.levelled:
+	ld (go_level),a
+	dec a
+	call t_level
+	ld (go_pick),hl						; t_level[j-1]
+	ld a,(go_level)
+	call t_level
+	ld de,(go_pick)
+	or a
+	sbc hl,de
+	call randint16
+	dec hl
+	ld de,(go_pick)
+	add hl,de
+.entry:
+	call alloc_entry					; rare ones: 1d(rare) must come up 1
+	inc hl
+	ld a,(hl)
+	dec hl
+	or a
+	jr z,.done
+	push hl
+	call randint
+	pop hl
+	dec a
+	jp nz,get_obj_num
+.done:
+	ld a,(hl)
+	ret
+
+/* t_level - A = level -> HL = obj_level_table[level]. Clobbers A */
+t_level:
+	ld hl,obj_level_table
+	add hl,a
+	add hl,a
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	ret
+
+/* alloc_entry - HL = index -> HL = its obj_alloc_table entry (kind, rare,
+	level). Clobbers DE */
+alloc_entry:
+	ld d,h
+	ld e,l
+	add hl,hl
+	add hl,de
+	ld de,obj_alloc_table
+	add hl,de
 	ret
 
 /* place_gold - D = y, E = x: treasure worth more deeper down
@@ -411,6 +646,8 @@ place_gold:
 	ld (ix+I_VALUE+1),h
 	ret
 
-obj_level:		db 0
+go_level:		db 0
+go_count:		dw 0
+go_pick:		dw 0
 gold_type:		db 0
 gold_cost:		db 0

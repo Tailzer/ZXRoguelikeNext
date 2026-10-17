@@ -13,9 +13,13 @@
 		and levels, hit point regeneration, death and restart
 	Milestone 5: Items - 13 kinds and 18 treasures from TREASURE.C on the
 		floor, pack and equipment, wield/wear, quaff, eat, hunger
+	Milestone 6: Data - tools/convert.py turns MONSTERS.C and TREASURE.C into
+		data pages: all 549 races, every usable item kind, level tables
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
+		$2000-$3FFF  data window: race/kind pages, paged in by race_addr and
+		             kind_addr (ROM until start-up has copied the font)
 		$4000-$5FFF  overlay window: PAGE_LEVEL / PAGE_MISC paged in by
 		             FARCALL (normally the unused ULA screen)
 		$6000-$73FF  tilemap, 80x32 cells x 2 bytes (char, attribute)
@@ -157,7 +161,7 @@ memory_init:
 	include "src/light.asm"
 	include "src/los.asm"
 	include "src/monsters.asm"
-	include "src/races.asm"
+	include "data/tables.asm"			; generated: constants, treasures
 	include "src/combat.asm"
 	include "src/items.asm"
 	include "src/view.asm"
@@ -174,6 +178,7 @@ code_end:
 	MMU 2, PAGE_LEVEL, $4000
 	include "src/generate.asm"
 	include "src/populate.asm"
+	include "data/alloc.asm"			; generated: level tables
 level_end:
 	ASSERT level_end <= $6000, "Level overlay is over 8K"
 
@@ -187,6 +192,19 @@ misc_end:
 	include "src/inventory.asm"
 items_end:
 	ASSERT items_end <= $6000, "Items overlay is over 8K"
+
+; ---- data pages: paged into slot 1 ($2000-$3FFF) by race_addr / kind_addr ----
+; (the ROM there is only needed at start-up, to copy the font)
+
+	MMU 1 n, RACE_PAGE, DATA_WINDOW		; 128 races per page, onto the next page
+	include "data/races.asm"
+races_end:
+	ASSERT $$races_end < RACE_PAGE+5 || (races_end == DATA_WINDOW && $$races_end == RACE_PAGE+5), "Races run past their pages"
+
+	MMU 1, KIND_PAGE, DATA_WINDOW
+	include "data/kinds.asm"
+kinds_end:
+	ASSERT kinds_end <= DATA_WINDOW+$2000, "Kinds are over one page"
 
 	SAVENEX OPEN "build/roguelike.nex", start, stack_top
 	SAVENEX CORE 3,0,0

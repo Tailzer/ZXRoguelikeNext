@@ -6,13 +6,36 @@
 	Convention: IX = monster record, IY = its race record.
  */
 
-/* race_addr - A = race -> IY = race record. Clobbers DE */
+/* race_addr - HL = race -> IY = its record, paged into DATA_WINDOW
+	(128 races per page). Clobbers A, DE */
 race_addr:
+	ld a,l								; page = RACE_PAGE + race / 128
+	rla
+	ld a,h
+	rla
+	add a,RACE_PAGE
+	nextreg NR_MMU1,a
+	ld a,l								; offset = (race & 127) * 64
+	and $7F
 	ld e,a
 	ld d,RACE_SIZE
 	mul d,e
-	ld iy,race_table
+	ld iy,DATA_WINDOW
 	add iy,de
+	ret
+
+/* mon_race - IX = monster -> IY = its race record. Clobbers A, DE, HL */
+mon_race:
+	ld l,(ix+M_RACE)
+	ld h,(ix+M_RACE_HI)
+	jr race_addr
+
+/* race_name - IY = race record -> HL = its name. Clobbers DE */
+race_name:
+	push iy
+	pop hl
+	ld de,R_NAME
+	add hl,de
 	ret
 
 /* mon_at - D = y, E = x -> IX = monster there, carry set if found */
@@ -20,7 +43,7 @@ mon_at:
 	ld ix,MON_LIST
 	ld b,MON_MAX
 .loop:
-	ld a,(ix+M_RACE)
+	ld a,(ix+M_RACE_HI)
 	cp MON_EMPTY
 	jr z,.next
 	ld a,(ix+M_Y)
@@ -109,7 +132,7 @@ monsters_see_all:
 	ld b,MON_MAX
 .loop:
 	push bc
-	ld a,(ix+M_RACE)
+	ld a,(ix+M_RACE_HI)
 	cp MON_EMPTY
 	jr z,.next
 	ld d,(ix+M_Y)
@@ -125,8 +148,12 @@ monsters_see_all:
 	ret
 
 /* update_mon - IX = monster. Visible if within MAX_SIGHT, on screen, on a
-	lit or remembered-lit square, and in line of sight */
+	lit or remembered-lit square, in line of sight, and not invisible (no
+	see invisible yet). Clobbers everything but IX */
 update_mon:
+	call mon_race
+	bit RF_INVISIBLE,(iy+R_FLAGS)
+	jr nz,.hidden
 	ld a,(ix+M_CDIS)
 	cp MAX_SIGHT+1
 	jr nc,.hidden
@@ -169,7 +196,7 @@ monsters_act:
 	or a
 	ret nz
 	push bc
-	ld a,(ix+M_RACE)
+	ld a,(ix+M_RACE_HI)
 	cp MON_EMPTY
 	call nz,mon_turn
 	ld de,MON_SIZE
@@ -185,8 +212,7 @@ mon_turn:
 	ld e,(ix+M_X)
 	call mon_distance
 	ld (ix+M_CDIS),a
-	ld a,(ix+M_RACE)
-	call race_addr
+	call mon_race
 	ld a,(ix+M_SPEED)					; movement_rate()
 	or a
 	jr z,.slow

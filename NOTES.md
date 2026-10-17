@@ -7,6 +7,7 @@ Design reference: Angband PC 1.2 C source (`~/Downloads/angband-pc1.2/SRC`).
 
 - `./build.sh` — assembles `roguelike.asm` to `build/roguelike.nex` (plus `.sld`, `.lst`, `.map`)
 - `./run.sh` — builds and runs it in CSpect at 28MHz
+- `tools/convert.py [path to Angband SRC]` — regenerates `data/*.asm` from `MONSTERS.C` and `TREASURE.C` (only needed when the converter changes; the generated files are committed, with the original copyright notice the licence asks for)
 - In VS Code: the default build task builds; DeZog has a "CSpect" config (start CSpect with `-remote` first)
 
 ## Character (until character creation exists)
@@ -33,21 +34,25 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `E
    - 13 kinds (food, Cure Light/Serious Wounds, 5 weapons, 5 armours) and the 18 treasures, placed per level like `cave_gen()`
    - pack (a-l, stacking), equipment slots (weapon, body, arm, head), auto pick-up, hunger and starvation
    - not yet: magical pluses, unknown potion flavours, light sources, weight limits, overeating slowness
-6. **Data converter** — Mac-side script turning the C tables into `.bin` files
+6. **Data converter** (`tools/convert.py`) *(done)*
+   - all 549 monster races and 102 usable item kinds, in data pages; `get_mons_num` / `get_obj_num` level tables
+   - uniques once only, max-hp monsters, invisible monsters unseen; cloak, gloves and boots slots
+   - not yet: monster spells and breath, breeding, wall-passing, attack side effects (poison, stealing...), item types other than food, healing potions, weapons and armour
 7. Magic, stores, the town, saving to SD card
 
 ## Memory map
 
 | Address | Contents |
 |---|---|
-| `$0000-$3FFF` | ROM 3 (font copied at start-up) |
+| `$0000-$1FFF` | ROM 3 |
+| `$2000-$3FFF` | **data window** (MMU slot 1): a race or kind page, paged in by `race_addr` / `kind_addr` (ROM 3 until start-up has copied the font) |
 | `$4000-$5FFF` | **overlay window** (MMU slot 2): an overlay page, paged in by `FARCALL` |
 | `$6000-$73FF` | tilemap, 80x32 x (char, attr) |
 | `$7400-$7BFF` | tile definitions (1-bit text mode) |
 | `$8000-$AFFF` | resident code and data (bank 2) |
 | `$B000-$B3FF` | monster list, 64 x 16 bytes |
 | `$B400-$B5FF` | floor items, 64 x 8 bytes |
-| `$B600-$B67F` | pack (12 x 8) then equipment (4 x 8) |
+| `$B600-$B697` | pack (12 x 8) then equipment (7 x 8) |
 | `$BC00-$BDBF` | IM2 vector table + jump |
 | `$BEC0-$BFFF` | stack |
 | `$C000-$F30B` | dungeon map, 198x66 bytes (pages 32/33): low 4 bits terrain, bit 4 room, bit 5 lit/remembered, bit 6 player light, bit 7 monster here |
@@ -63,6 +68,8 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 | 41 `PAGE_MISC` | `startup.asm`, `death.asm` | power-on, death screen |
 | 42 `PAGE_ITEMS` | `inventory.asm` | item commands, picking up, starting kit |
 
-Resident code ends around `$9E30` after milestone 5, about 4.5K below the monster list; the overlay pages have plenty of room.
+Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 49 `KIND_PAGE` = `data/kinds.asm`. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
+
+Resident code ends around `$9C00` after milestone 6, about 5K below the monster list; the overlay pages have plenty of room.
 
 Rules: only resident code uses `FARCALL`; overlay code may call resident code but never another overlay; data an overlay owns stays in that overlay. New overlays go in the next free pages (42, 43...) with an `MMU 2, page, $4000` block in `roguelike.asm`.

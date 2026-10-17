@@ -3,7 +3,7 @@
 	attack_blows, POTIONS.C, EAT.C, MISC1.C add_food, SPELLS.C hp_player.
 	The pack holds PACK_MAX records (a-l), kept packed together; food and
 	potions of the same kind stack. Equipment has one slot per class:
-	weapon, body armour, shield, helm.
+	weapon, body armour, shield, helm, cloak, gloves, boots.
  */
 
 /* starting_kit - empty pack and equipment, then a warrior's kit
@@ -87,7 +87,7 @@ calc_bonuses:
 	ld a,(iy+K_SIDES)
 	ld (w_sides),a
 	ld l,(iy+K_WEIGHT)
-	ld h,0
+	ld h,(iy+K_WEIGHT+1)
 	ld (w_weight),hl
 	; attack_blows with STR 17, DEX 14: too heavy if weight > 17*15
 	ld de,P_STR*15
@@ -103,6 +103,7 @@ calc_bonuses:
 	ret
 .can_lift:
 	ld a,(iy+K_WEIGHT)					; adj_weight = STR*10 / max(weight,50)
+										; (weight < 256 here)
 	cp 50
 	jr nc,$+4
 	ld a,50
@@ -143,10 +144,9 @@ objdes_msg:
 	ld a,(ix+I_NUMBER)
 	cp 1
 	jr nz,.several
-	ld l,(iy+K_NAME)
-	ld h,(iy+K_NAME+1)
-	ld a,(iy+K_CLASS)					; armour suits read "Chain Mail"
-	cp IC_BODY
+	call kind_name
+	ld a,(iy+K_ARTICLE)					; "Chain Mail" has no article
+	or a
 	jr z,.no_article
 	ld a,(hl)
 	call is_vowel
@@ -188,8 +188,9 @@ objdes_msg:
 	ld hl,txt_close_br
 	jp msg_add
 .name:									; copy the name, '~' -> 's' if B=1
-	ld l,(iy+K_NAME)
-	ld h,(iy+K_NAME+1)
+	push bc
+	call kind_name
+	pop bc
 	ld de,(msg_ptr)
 .copy:
 	ld a,(hl)
@@ -940,10 +941,14 @@ LIST_TOP			equ 1
 LIST_LEFT			equ 2
 
 equip_names:	dw txt_eq_weapon, txt_eq_body, txt_eq_shield, txt_eq_helm
+				dw txt_eq_cloak, txt_eq_gloves, txt_eq_boots
 txt_eq_weapon:	db "Wielding    : ",0
 txt_eq_body:	db "On body     : ",0
 txt_eq_shield:	db "On arm      : ",0
 txt_eq_helm:	db "On head     : ",0
+txt_eq_cloak:	db "About body  : ",0
+txt_eq_gloves:	db "On hands    : ",0
+txt_eq_boots:	db "On feet     : ",0
 txt_nothing:	db "(nothing)",0
 txt_label:		db "a) ",0
 txt_a_:			db "a ",0
