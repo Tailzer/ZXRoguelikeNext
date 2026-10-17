@@ -32,6 +32,15 @@ try_move:
 	ld a,d
 	ld (player_y),a
 	call light_arrive
+	call player_square					; a store's door: go in
+	ld a,(hl)
+	and TERRAIN_MASK
+	cp T_STORE
+	jr nz,.items
+	call store_here
+	FARCALL PAGE_STORE, enter_store
+	ret
+.items:
 	ld a,(player_y)						; walked onto something: pick it up
 	ld d,a
 	ld a,(player_x)
@@ -58,6 +67,32 @@ try_move:
 .monster:
 	call mon_at
 	jp py_attack
+
+/* store_here - A = the store whose door the player is on */
+store_here:
+	ld hl,STORE_DOOR
+	ld a,(player_y)
+	ld d,a
+	ld a,(player_x)
+	ld e,a
+	ld b,0
+.each:
+	ld a,(hl)
+	inc hl
+	cp d
+	jr nz,.next
+	ld a,(hl)
+	cp e
+	jr z,.found
+.next:
+	inc hl
+	inc b
+	ld a,b
+	cp NUM_STORES
+	jr c,.each
+.found:
+	ld a,b
+	ret
 
 /* player_square - HL = map square under the player. Clobbers A, DE */
 player_square:
@@ -90,26 +125,24 @@ go_up:
 	and TERRAIN_MASK
 	cp T_STAIR_UP
 	jr nz,.none
-	ld a,(dun_level)
-	cp 1
-	jr z,.no_town
 	ld hl,dun_level
 	dec (hl)
 	call new_level
 	ld hl,msg_up
 	jp show_message
-.no_town:
-	ld hl,msg_no_town
-	jp show_message
 .none:
 	ld hl,msg_no_up
 	jp show_message
 
-/* new_level - generate a level for dun_level and drop the player in it */
+/* new_level - generate a level for dun_level (0 = the town) and drop the
+	player in it */
 new_level:
 	ld hl,msg_generating
 	call show_message
 	call rng_mix
+	ld a,(dun_level)
+	or a
+	jr z,.town
 	FARCALL PAGE_LEVEL, generate_level
 	call msg_clear
 	call random_open_spot
@@ -120,5 +153,19 @@ new_level:
 	call light_arrive
 	FARCALL PAGE_LEVEL, alloc_monsters
 	FARCALL PAGE_LEVEL, alloc_items
+	call update_view
+	jp monsters_see_all
+.town:
+	FARCALL PAGE_LEVEL, town_gen
+	call msg_clear
+	FARCALL PAGE_STORE, store_maint		; the stores restock
+	call items_clear					; nothing lying about in town
+	call random_open_spot
+	ld a,d
+	ld (player_y),a
+	ld a,e
+	ld (player_x),a
+	call light_arrive
+	FARCALL PAGE_LEVEL, alloc_town_monsters
 	call update_view
 	jp monsters_see_all

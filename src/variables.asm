@@ -21,3 +21,5 @@ turn_taken:		db 0				; set when the player's action used a turn
 msg_ptr:		dw 0
 msg_col:		db 0				; where the next message goes
 msg_buf:		ds 81
+town_seed:		dw 0				; the town is built from this each visit
+town_night:		db 0

@@ -9,7 +9,6 @@ msg_down:		db "You enter a maze of down staircases.",0
 msg_up:			db "You enter a maze of up staircases.",0
 msg_no_down:	db "I see no down staircase here.",0
 msg_no_up:		db "I see no up staircase here.",0
-msg_no_town:	db "The town hasn't been built yet.",0
 msg_something:	db "Something is in the way.",0
 txt_the:		db "The ",0
 txt_in_way:		db " is in the way.",0
@@ -69,6 +68,7 @@ msg_hungry:		db "You are getting hungry.",0
 msg_weak:		db "You are getting weak from hunger.",0
 msg_faint:		db "You faint from the lack of food.",0
 txt_feet:		db " ft",0
+txt_town:		db "  Town",0
 txt_keys:		db "i e w t q E d g"
 txt_keys_len	equ $-txt_keys
 				db 0

@@ -235,11 +235,50 @@ alloc_monsters:
 	jr nz,.each
 	ret
 
+/* alloc_town_monsters - townsfolk (alloc_monster(MIN_MALLOC_TD/TN, 3,
+	TRUE)): asleep, and not within 3 squares of the player */
+alloc_town_monsters:
+	call mon_clear_all
+	ld a,MIN_MALLOC_TD
+	ld hl,town_night
+	bit 0,(hl)
+	jr z,$+4
+	ld a,MIN_MALLOC_TN
+	ld (alloc_left),a
+.each:
+	call random_open_spot
+	bit F_MON_BIT,(hl)
+	jr nz,.each
+	push de
+	call mon_distance
+	pop de
+	cp 4
+	jr c,.each
+	push de
+	call get_mons_num
+	ld (place_race),hl
+	pop de
+	ld a,1
+	ld (place_sleep),a
+	call place_monster
+	ld hl,alloc_left
+	dec (hl)
+	jr nz,.each
+	ret
+
 /* get_mons_num - HL = a race for this depth (get_mons_num in MISC1.C):
 	usually the higher of two picks from everything up to the dungeon
 	level, then any race of that exact level; 1 in MON_NASTY looks a few
 	levels deeper. Out-of-depth uniques are picked again */
 get_mons_num:
+	ld a,(dun_level)
+	or a
+	jr nz,.dungeon
+	ld hl,(mon_level_table)				; the town: any of its folk
+	call randint16
+	dec hl
+	ret
+.dungeon:
 	ld a,(dun_level)
 	cp MAX_MONS_LEVEL+1
 	jr c,$+4

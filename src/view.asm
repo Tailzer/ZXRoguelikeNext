@@ -102,6 +102,9 @@ draw_view:
 	jr nz,.row
 
 	call draw_items						; items, under any monsters
+	ld a,(dun_level)
+	or a
+	call z,draw_store_doors
 
 	; visible monsters
 	ld ix,MON_LIST
@@ -162,6 +165,58 @@ draw_view:
 	ld (hl),ATTR_YELLOW
 	ret
 
+/* draw_store_doors - the town's doors show their store numbers 1-8 */
+draw_store_doors:
+	ld hl,STORE_DOOR
+	ld b,0
+.each:
+	push bc
+	push hl
+	ld d,(hl)
+	inc hl
+	ld e,(hl)
+	push de
+	call map_addr
+	pop de
+	ld a,(hl)
+	and F_SEEN
+	jr z,.next
+	ld a,(view_y)
+	ld c,a
+	ld a,d
+	sub c
+	cp VIEW_H
+	jr nc,.next
+	add a,VIEW_TOP
+	ld d,a
+	ld a,(view_x)
+	ld c,a
+	ld a,e
+	sub c
+	cp VIEW_W
+	jr nc,.next
+	ld e,a
+	call screen_addr
+	pop de
+	pop bc
+	push bc
+	push de
+	ld a,b
+	add a,'1'
+	ld (hl),a
+	inc hl
+	ld (hl),ATTR_WHITE
+.next:
+	pop hl
+	pop bc
+	inc hl
+	inc hl
+	inc b
+	ld a,b
+	cp NUM_STORES
+	jr c,.each
+	ret
+
 /* draw_status - bottom line: level, experience, hit points, depth */
 draw_status:
 	ld d,STATUS_ROW
@@ -207,6 +262,10 @@ draw_status:
 	call print_str
 	ld hl,p_gold
 	call print_u32
+	ld a,(dun_level)
+	or a
+	ld hl,txt_town
+	jr z,.depth_done
 	ld hl,txt_depth
 	call print_str
 	push de
@@ -218,6 +277,7 @@ draw_status:
 	pop de
 	call print_u16
 	ld hl,txt_feet
+.depth_done:
 	call print_str
 	ld a,(p_hunger)						; Hungry / Weak
 	or a

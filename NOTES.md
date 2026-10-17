@@ -17,7 +17,7 @@ Created at the start of each game as in `CREATE.C`: choose a race (10), sex and 
 ## Controls
 
 `h j k l y u b n` (Angband roguelike keys) or cursor keys `5 6 7 8`.
-Walk into a closed door to open it, or into a monster to attack it; walking onto an item picks it up. `s` stays still for a turn. `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
+Walk into a closed door to open it, or into a monster to attack it; walking onto an item picks it up; walking onto a store's number goes in (`p` purchase, `s` sell, at home `g` get and `d` drop, space leaves). `s` stays still for a turn. `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
 
 `C` (Caps Shift+C) shows the character sheet.
 
@@ -41,7 +41,14 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `E
    - uniques once only, max-hp monsters, invisible monsters unseen; cloak, gloves and boots slots
    - not yet: monster spells and breath, breeding, wall-passing, attack side effects (poison, stealing...), item types other than food, healing potions, weapons and armour
 7. **Character creation** (`CREATE.C`, `PLAYER.C`, `MISC2.C` stat tables) *(done)*
-8. Magic, stores, the town, saving to SD card
+8. **The town** (`GENERATE.C` town_gen, `STORE1.C`, `STORE2.C`, `SETS.C`, `TABLES.C` owners) *(done)*
+   - games start in town; `<` from 50 ft comes back; the town is rebuilt from the same seed each visit, lit by day, dark at night (every other 5000 turns), with 4 or 8 townsfolk
+   - eight stores behind numbered doors: General Store, Armoury, Weaponsmith, Temple, Alchemist, Magic shop, Black market, Home; random owners from the 24 in the C, each with their own markups and purse
+   - prices as the C's no-haggle option: item value x race adjustment x owner's final markup (x2 at the black market) x charisma; selling gets the owner's final offer, up to their purse; 25%/50%/75%/90% special offers
+   - stores restock (`store_maint`) on each visit to town
+   - not yet: haggling, store items with magical pluses, the Alchemist and Magic shop stock (scrolls, wands, rings...), restocking while you're in the dungeon
+9. Magic: spells, scrolls, wands, staffs, rings; monster spells and breath
+10. Saving to SD card
 
 ## Memory map
 
@@ -57,6 +64,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `E
 | `$B400-$B5FF` | floor items, 64 x 8 bytes |
 | `$B600-$B697` | pack (12 x 8) then equipment (7 x 8) |
 | `$B6A0-$B7CF` | the character's hit points per level (50 words) and experience needed per level (50 dwords) |
+| `$B7E0-$BAFF` | store stock (8 stores x 24 x 4 bytes), owners, entry counts, door positions |
 | `$BC00-$BDBF` | IM2 vector table + jump |
 | `$BEC0-$BFFF` | stack |
 | `$C000-$F30B` | dungeon map, 198x66 bytes (pages 32/33): low 4 bits terrain, bit 4 room, bit 5 lit/remembered, bit 6 player light, bit 7 monster here |
@@ -72,9 +80,10 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 | 41 `PAGE_MISC` | `startup.asm` | power-on |
 | 42 `PAGE_ITEMS` | `inventory.asm`, `data/blows.asm` | item commands, picking up, starting kit |
 | 43 `PAGE_CREATE` | `create.asm`, `death.asm`, `data/player.asm` | making a character, the `C` sheet, the tombstone |
+| 50 `PAGE_STORE` | `store.asm`, `data/stores.asm` | the stores: stock, prices, buying and selling |
 
 Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 49 `KIND_PAGE` = `data/kinds.asm`. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
 
-Resident code ends around `$9CA0` after milestone 7, about 5K below the monster list. The creation overlay (page 43) is nearly full (7.8K of 8K); the others have plenty of room.
+Resident code ends around `$9EB0` after milestone 8 (the pack routines in `pack.asm` moved there so both the item commands and the stores can use them), about 4.4K below the monster list. The creation overlay (page 43) is nearly full (7.8K of 8K); the others have plenty of room.
 
 Rules: only resident code uses `FARCALL`; overlay code may call resident code but never another overlay; data an overlay owns stays in that overlay. New overlays go in the next free pages (42, 43...) with an `MMU 2, page, $4000` block in `roguelike.asm`.

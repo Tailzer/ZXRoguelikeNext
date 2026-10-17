@@ -7,7 +7,7 @@
 ; included in all such copies.
 
 NUM_RACES		equ 549
-NUM_KINDS		equ 102
+NUM_KINDS		equ 106
 NUM_ALLOC		equ 114
 KIND_RATION		equ 0
 KIND_CLW		equ 84

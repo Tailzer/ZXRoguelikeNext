@@ -96,6 +96,8 @@ next_to_walls:
 
 /* generate_level - build a new level for dun_level */
 generate_level:
+	ld a,3								; stairs like corridor ends
+	ld (stair_wall_start),a
 	; blank cave
 	ld hl,MAP_BASE
 	ld de,MAP_BASE+1
@@ -999,7 +1001,7 @@ place_stairs:
 	ld (stair_type),a
 .each:
 	push bc
-	ld a,3
+	ld a,(stair_wall_start)
 	ld (stair_walls),a
 .retry:
 	ld b,0								; 256 tries per wall count
@@ -1091,6 +1093,7 @@ streamer_dy:	db 0
 streamer_dx:	db 0
 stair_type:		db 0
 stair_walls:	db 0
+stair_wall_start: db 3
 
 boundary_rects:
 	db 0,0,MAP_W,1,T_PERMWALL
@@ -1098,3 +1101,252 @@ boundary_rects:
 	db 0,0,1,MAP_H,T_PERMWALL
 	db MAP_W-1,0,1,MAP_H,T_PERMWALL
 	db $FF
+
+/* town_gen - the town (town_gen in GENERATE.C): one screen of open
+	ground with eight walled stores in a 2x4 grid, each with a numbered
+	door, and a down staircase. It's built from town_seed, so it looks the
+	same on every visit. By day everything is lit; by night only the
+	buildings */
+town_gen:
+	ld hl,(rng_state)
+	ld (saved_rng),hl
+	ld hl,(town_seed)
+	ld (rng_state),hl
+	ld hl,MAP_BASE						; solid permanent rock everywhere
+	ld de,MAP_BASE+1
+	ld bc,MAP_W*MAP_H-1
+	ld (hl),T_PERMWALL
+	ldir
+	ld e,1								; open ground inside the town wall
+	ld d,1
+	ld b,TOWN_W-2
+	ld c,TOWN_H-2
+	ld a,T_FLOOR
+	call carve_rect
+	ld hl,town_rooms					; stores 0-7 in a random order
+	ld b,NUM_STORES
+	xor a
+.rooms:
+	ld (hl),a
+	inc hl
+	inc a
+	djnz .rooms
+	ld a,NUM_STORES
+	ld (rooms_left),a
+	xor a
+	ld (slot_y),a
+.slot_row:
+	xor a
+	ld (slot_x),a
+.slot_col:
+	ld a,(rooms_left)					; take a random one off the list
+	call randint
+	dec a
+	ld (room_pick),a
+	ld hl,town_rooms
+	add hl,a
+	ld c,(hl)
+	push bc
+	ld a,(rooms_left)					; close the gap behind it
+	dec a
+	ld hl,room_pick
+	sub (hl)
+	jr z,.no_shift
+	ld c,a
+	ld b,0
+	ld a,(room_pick)
+	ld hl,town_rooms
+	add hl,a
+	ld d,h
+	ld e,l
+	inc hl
+	ldir
+.no_shift:
+	ld hl,rooms_left
+	dec (hl)
+	pop bc
+	ld a,c
+	call build_store
+	ld hl,slot_x
+	inc (hl)
+	ld a,(hl)
+	cp 4
+	jr c,.slot_col
+	ld hl,slot_y
+	inc (hl)
+	ld a,(hl)
+	cp 2
+	jr c,.slot_row
+	xor a								; stairs anywhere open
+	ld (stair_wall_start),a
+	ld b,1
+	ld a,T_STAIR_DOWN
+	call place_stairs
+	ld hl,(saved_rng)
+	ld (rng_state),hl
+	; day or night: night is every other 5000 turns
+	ld hl,(game_turn)
+	ld de,5000
+	ld b,0
+.days:
+	or a
+	sbc hl,de
+	jr c,.counted
+	inc b
+	jr .days
+.counted:
+	ld a,b
+	and 1
+	ld (town_night),a
+	ld hl,MAP_BASE						; light it
+	ld c,TOWN_H
+.light_row:
+	push hl
+	ld b,TOWN_W
+.light_col:
+	ld a,(town_night)
+	or a
+	jr z,.lit
+	ld a,(hl)
+	and TERRAIN_MASK
+	cp T_FLOOR
+	jr z,.dark
+.lit:
+	set F_PERM_BIT,(hl)
+.dark:
+	inc hl
+	djnz .light_col
+	pop hl
+	ld de,MAP_W
+	add hl,de
+	dec c
+	jr nz,.light_row
+	ret
+
+/* build_store - A = store, slot_y/slot_x = its place in the grid: a
+	block of permanent wall with the door on a random side (build_store) */
+build_store:
+	ld (bs_store),a
+	ld a,(slot_y)						; yval = y*10 + 5, xval = x*14 + 12
+	ld e,a
+	ld d,10
+	mul d,e
+	ld a,e
+	add a,5
+	ld (bs_yval),a
+	ld a,(slot_x)
+	ld e,a
+	ld d,14
+	mul d,e
+	ld a,e
+	add a,12
+	ld (bs_xval),a
+	ld a,3
+	call randint
+	ld b,a
+	ld a,(bs_yval)
+	sub b
+	ld (bs_top),a
+	ld a,4
+	call randint
+	ld b,a
+	ld a,(bs_yval)
+	add a,b
+	ld (bs_bottom),a
+	ld a,4
+	call randint
+	ld b,a
+	ld a,(bs_xval)
+	sub b
+	ld (bs_left),a
+	ld a,4
+	call randint
+	ld b,a
+	ld a,(bs_xval)
+	add a,b
+	ld (bs_right),a
+	ld a,(bs_top)
+	ld d,a
+	ld a,(bs_left)
+	ld e,a
+	ld a,(bs_right)
+	sub e
+	inc a
+	ld b,a
+	ld a,(bs_bottom)
+	sub d
+	inc a
+	ld c,a
+	ld a,T_PERMWALL
+	call carve_rect
+	ld a,4								; the door
+	call randint
+	cp 3
+	jr nc,.top_bottom
+	push af								; 1, 2: left or right wall
+	ld a,(bs_top)
+	ld b,a
+	ld a,(bs_bottom)
+	sub b
+	call randint
+	ld b,a
+	ld a,(bs_top)
+	add a,b
+	dec a
+	ld d,a
+	pop af
+	ld e,a
+	ld a,(bs_left)
+	dec e
+	jr z,.door
+	ld a,(bs_right)
+	jr .door
+.top_bottom:							; 3, 4: bottom or top wall
+	push af
+	ld a,(bs_left)
+	ld b,a
+	ld a,(bs_right)
+	sub b
+	call randint
+	ld b,a
+	ld a,(bs_left)
+	add a,b
+	dec a
+	ld e,a
+	pop af
+	cp 3
+	ld a,(bs_bottom)
+	jr z,.got_row
+	ld a,(bs_top)
+.got_row:
+	ld d,a
+	ld a,e
+.door:
+	ld e,a								; D = y, E = x
+	push de
+	call map_addr
+	ld (hl),T_STORE
+	pop de
+	ld a,(bs_store)						; remember where it is
+	add a,a
+	ld hl,STORE_DOOR
+	add hl,a
+	ld (hl),d
+	inc hl
+	ld (hl),e
+	ret
+
+saved_rng:		dw 0
+town_rooms:		ds NUM_STORES
+rooms_left:		db 0
+room_pick:		db 0
+slot_y:			db 0
+slot_x:			db 0
+bs_store:		db 0
+bs_yval:		db 0
+bs_xval:		db 0
+bs_top:			db 0
+bs_bottom:		db 0
+bs_left:		db 0
+bs_right:		db 0
+

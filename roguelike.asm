@@ -17,6 +17,8 @@
 		data pages: all 549 races, every usable item kind, level tables
 	Milestone 7: Characters - CREATE.C's race, sex, class, stat rolling and
 		name; stats feed combat, hit points, stealth and infravision
+	Milestone 8: The town - town_gen with day and night, townsfolk, and the
+		eight stores: stock, owners and prices from STORE1.C/STORE2.C
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -57,7 +59,10 @@ enter_dungeon:
 	FARCALL PAGE_CREATE, create_character
 	call clear_screen
 	call player_init
-	ld a,1
+	call rand16							; a new town for a new character
+	ld (town_seed),hl
+	FARCALL PAGE_STORE, store_init		; and new shopkeepers
+	xor a								; start in town, as the C does
 	ld (dun_level),a
 	call msg_clear
 	call new_level
@@ -174,6 +179,7 @@ memory_init:
 	include "data/tables.asm"			; generated: constants, treasures
 	include "src/combat.asm"
 	include "src/items.asm"
+	include "src/pack.asm"
 	include "src/view.asm"
 	include "src/player.asm"
 	include "src/messages.asm"
@@ -209,6 +215,12 @@ items_end:
 	include "data/player.asm"			; generated: races, classes, kits, titles
 create_end:
 	ASSERT create_end <= $6000, "Creation overlay is over 8K"
+
+	MMU 2, PAGE_STORE, $4000
+	include "src/store.asm"
+	include "data/stores.asm"			; generated: owners, prices, stock lists
+store_end:
+	ASSERT store_end <= $6000, "Store overlay is over 8K"
 
 ; ---- data pages: paged into slot 1 ($2000-$3FFF) by race_addr / kind_addr ----
 ; (the ROM there is only needed at start-up, to copy the font)

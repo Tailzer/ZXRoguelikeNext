@@ -13,6 +13,7 @@ PAGE_LEVEL			equ 40				; overlay: level generation, monster placement
 PAGE_MISC			equ 41				; overlay: start-up, death screen
 PAGE_ITEMS			equ 42				; overlay: inventory and item commands
 PAGE_CREATE			equ 43				; overlay: character creation, sheet, death
+PAGE_STORE			equ 50				; overlay: the town's stores
 DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
 RACE_PAGE			equ 44				; 5 pages of races (data/races.asm)
 KIND_PAGE			equ 49				; 1 page of item kinds (data/kinds.asm)
@@ -102,6 +103,7 @@ T_TMP2				equ 11				; wall a tunnel pierced (generation only)
 T_MAGMA				equ 12
 T_QUARTZ			equ 13
 T_FLOOR_LIT			equ 14				; room floor that lights up on entry
+T_STORE				equ 15				; a store entrance (town only)
 TERRAIN_MASK		equ $0F				; terrain id is the low 4 bits
 
 ; per-square flags in the top 4 bits of each map byte (like cave_type's
@@ -241,7 +243,9 @@ K_TOHIT				equ 10				; signed
 K_TODAM				equ 11				; signed
 K_P1				equ 12				; word: food value
 K_ARTICLE			equ 14				; 1 if the name takes "a"/"an"
-K_NAME				equ 16				; the name itself, '~' where plurals add 's'
+K_TVAL				equ 15				; the C's tval (which stores deal in it)
+K_COST				equ 16				; word, base value in gold
+K_NAME				equ 20				; the name itself, '~' where plurals add 's'
 ; item classes; wearable ones map to equipment slot class - IC_WEAPON
 IC_FOOD				equ 1
 IC_POTION			equ 2
@@ -257,6 +261,22 @@ TREAS_ANY_ALLOC		equ 3				; mean objects anywhere
 TREAS_GOLD_ALLOC	equ 3				; mean piles of treasure
 OBJ_GREAT			equ 11
 MAX_GOLD			equ 18
+
+; ---- the town (GENERATE.C town_gen, STORE1.C, STORE2.C) ----
+TOWN_H				equ 22				; SCREEN_HEIGHT
+TOWN_W				equ 66				; SCREEN_WIDTH
+NUM_STORES			equ 8				; 6 shops, the black market, home
+STORE_BLACK			equ 6
+STORE_HOME			equ 7
+STORE_INVEN_MAX		equ 24
+STORE_ITEM			equ 4				; stock entry: kind, number, discount, spare
+STORE_INV			equ $B7E0			; NUM_STORES x STORE_INVEN_MAX entries
+STORE_OWNER			equ STORE_INV+NUM_STORES*STORE_INVEN_MAX*STORE_ITEM
+STORE_COUNT			equ STORE_OWNER+NUM_STORES
+STORE_DOOR			equ STORE_COUNT+NUM_STORES	; (y, x) for each store
+	ASSERT STORE_DOOR+NUM_STORES*2 <= $BB00
+MIN_MALLOC_TD		equ 4				; townsfolk by day
+MIN_MALLOC_TN		equ 8				; and by night
 
 ; ---- food (CONSTANT.H, MAIN.C) ----
 FOOD_START			equ 7500

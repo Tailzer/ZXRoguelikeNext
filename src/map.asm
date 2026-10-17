@@ -78,4 +78,5 @@ terrain_table:
 	db '%',ATTR_DARK,1<<TF_WALL|REM,0					; T_MAGMA
 	db '%',ATTR_WHITE,1<<TF_WALL|REM,0					; T_QUARTZ
 	db '.',ATTR_WHITE,1<<TF_PASSABLE,0					; T_FLOOR_LIT
+	db '+',ATTR_WHITE,1<<TF_PASSABLE|REM,0				; T_STORE (drawn as its number)
 
