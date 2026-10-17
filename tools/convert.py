@@ -8,6 +8,8 @@ CONSTANT.H) and writes:
   data/kinds.asm    the item kinds the game can use, 64-byte records
   data/tables.asm   treasure kinds and constants (resident)
   data/alloc.asm    level tables for picking monsters and items (level overlay)
+  data/player.asm   races, classes, starting kits, titles (creation overlay)
+  data/blows.asm    blows_table (items overlay)
 
 Usage:  tools/convert.py [path to Angband SRC]   (default ~/Downloads/angband-pc1.2/SRC,
         or $ANGBAND_SRC)
@@ -196,7 +198,8 @@ def race_record(r):
     flags = 0
     for bit, (field, flag) in enumerate((("cdefense", "UNIQUE"), ("cdefense", "MAX_HP"),
                                          ("cmove", "MV_INVIS"), ("cdefense", "EVIL"),
-                                         ("cdefense", "UNDEAD"), ("cdefense", "DEMON"))):
+                                         ("cdefense", "UNDEAD"), ("cdefense", "DEMON"),
+                                         ("cdefense", "NO_INFRA"))):
         if r[field] & value(flag):
             flags |= 1 << bit
     rec = bytearray(RACE_SIZE)
@@ -351,10 +354,102 @@ def main():
         lines.append(f"gn_{nm.replace(' ', '_')}:\tdb {asm_string(nm)},0")
     open(os.path.join(OUT, "tables.asm"), "w").write("\n".join(lines) + "\n")
 
+    player_tables(note, objs, kinds, kind_of)
+
     per_page = 8192 // RACE_SIZE
     print(f"{len(races)} races ({(len(races) + per_page - 1) // per_page} pages), "
           f"{len(kinds)} item kinds ({(len(kinds) + per_page - 1) // per_page} pages), "
           f"{len(alloc)} dungeon objects usable, {len(gold)} treasures")
+
+
+def c_array(text, start):
+    """Values of a flat C array initialiser (numbers or strings)."""
+    body = strip_comments(text[text.index(start):])
+    body = body[body.index("{") + 1:]
+    depth, out = 1, ""
+    for ch in body:
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                break
+        out += ch
+    out = re.sub(r"#\w+.*", "", out)
+    return [x.strip() for x in split_top(out.replace("{", "").replace("}", "")) if x.strip()]
+
+
+def player_tables(note, objs, kinds, kind_of):
+    src = read("PLAYER.C")
+    lines = [note]
+    # races: name, stat adjustments, age/height/weight, skills, hit die,
+    # infravision, experience factor, classes allowed
+    races = [table_entries(src, "race_type race[")[i] for i in range(value("MAX_RACES"))]
+    lines += [f"NUM_P_RACES\t\tequ {len(races)}", "P_RACE_SIZE\t\tequ 32", "", "prace_table:"]
+    names = []
+    for r in races:
+        f = split_top(r)
+        names.append(f[0].strip('"'))
+        v = [value(x) for x in f[1:]]
+        adj, ahw, skills = v[0:6], v[6:16], v[16:23]
+        hitdie, infra, b_exp, rtclass = v[23:27]
+        rec = [x & 255 for x in adj + ahw + skills] + [hitdie, infra, b_exp & 255, rtclass]
+        rec += [0] * (30 - len(rec))
+        lines.append(f"\tdw prn_{len(names) - 1}")
+        lines.append("\tdb " + ",".join(str(x) for x in rec) + f"\t; {names[-1]}")
+    for i, n in enumerate(names):
+        lines.append(f"prn_{i}:\tdb {asm_string(n)},0")
+    # classes: name, hit die, skills, stat adjustments, spells, exp factor,
+    # first spell level, then class_level_adj (bth, bthb, device, disarm, save)
+    classes = table_entries(src, "class_type class[")
+    lvl_adj = [value(x) for x in c_array(src, "class_level_adj[")]
+    lines += ["", f"NUM_CLASSES\t\tequ {len(classes)}", "CLASS_SIZE\t\tequ 32", "", "class_table:"]
+    cnames = []
+    for ci, c in enumerate(classes):
+        f = split_top(c)
+        cnames.append(f[0].strip('"'))
+        v = [value(x) for x in f[1:]]
+        rec = [x & 255 for x in v] + [x & 255 for x in lvl_adj[ci * 5:ci * 5 + 5]]
+        rec += [0] * (30 - len(rec))
+        lines.append(f"\tdw pcn_{ci}")
+        lines.append("\tdb " + ",".join(str(x) for x in rec) + f"\t; {cnames[-1]}")
+    for i, n in enumerate(cnames):
+        lines.append(f"pcn_{i}:\tdb {asm_string(n)},0")
+    # starting kits: player_init[class][5] object numbers -> kinds ($FF: not usable yet)
+    mdo = value("MAX_DUNGEON_OBJ")
+    inits = c_array(src, "player_init[")
+    lines += ["", "; starting kit for each class: 5 kinds, $FF = nothing the game can use yet", "kit_table:"]
+    for ci in range(len(classes)):
+        ks = []
+        for x in inits[ci * 5:ci * 5 + 5]:
+            o = objs[value(x.replace("MDO", str(mdo)))]
+            ks.append(kind_of.get((o["name"], o["tval"]), 255))
+        lines.append("\tdb " + ",".join(str(k) for k in ks) + f"\t; {cnames[ci]}")
+    # titles
+    titles = c_array(src, "player_title[")
+    per = value("MAX_PLAYER_LEVEL")
+    lines += ["", "; title for each class and level", "title_table:"]
+    for ci in range(len(classes)):
+        lines.append("\tdw " + ",".join(f"ttl_{ci}_{i}" for i in range(per)))
+    for ci in range(len(classes)):
+        for i in range(per):
+            lines.append(f"ttl_{ci}_{i}:\tdb {titles[ci * per + i]},0")
+    # noticing: monsters notice you if 1d1024^3 <= 2^(29 - stealth)
+    lines += ["", "; notice_table[stealth+4]: highest 1d1024 roll that is noticed", "notice_table:"]
+    limits = []
+    for stl in range(-4, 21):
+        n = 1
+        while (n + 1) ** 3 <= 2 ** (29 - stl) and n < 1024:
+            n += 1
+        limits.append(n)
+    lines.append("\tdw " + ",".join(str(x) for x in limits))
+    open(os.path.join(OUT, "player.asm"), "w").write("\n".join(lines) + "\n")
+    # blows
+    blows = [value(x) for x in c_array(read("TABLES.C"), "blows_table[")]
+    lines = [note, "; blows_table[str_index][dex_index]", "blows_table:"]
+    for i in range(0, len(blows), 12):
+        lines.append("\tdb " + ",".join(str(b) for b in blows[i:i + 12]))
+    open(os.path.join(OUT, "blows.asm"), "w").write("\n".join(lines) + "\n")
 
 
 if __name__ == "__main__":

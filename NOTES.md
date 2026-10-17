@@ -10,14 +10,16 @@ Design reference: Angband PC 1.2 C source (`~/Downloads/angband-pc1.2/SRC`).
 - `tools/convert.py [path to Angband SRC]` — regenerates `data/*.asm` from `MONSTERS.C` and `TREASURE.C` (only needed when the converter changes; the generated files are committed, with the original copyright notice the licence asks for)
 - In VS Code: the default build task builds; DeZog has a "CSpect" config (start CSpect with `-remote` first)
 
-## Character (until character creation exists)
+## Character
 
-Fixed level 1 human warrior (STR 17, DEX 14) with the class's starting kit from `PLAYER.C`: Broadsword (2d5), Chain Mail (AC 14, -2 to hit), a Ration of Food and a Potion of Cure Light Wounds (standing in for Berserk Strength). 19 hp. AC, to-hit, weapon dice and blows come from what is worn and wielded.
+Created at the start of each game as in `CREATE.C`: choose a race (10), sex and class (6, as the race allows), roll stats (space rolls again, Enter accepts), then type a name (Caps Shift+0 deletes). Race and class set the hit die, base to-hit, stealth, infravision and experience factor; stats give to-hit, damage, armour class, hit points per level and blows. The class's starting kit comes from `player_init[]`, minus torches, books and potions the game can't use yet. Background history isn't generated (social class is taken as 50 for starting gold).
 
 ## Controls
 
 `h j k l y u b n` (Angband roguelike keys) or cursor keys `5 6 7 8`.
 Walk into a closed door to open it, or into a monster to attack it; walking onto an item picks it up. `s` stays still for a turn. `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
+
+`C` (Caps Shift+C) shows the character sheet.
 
 Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels.
 
@@ -38,7 +40,8 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `E
    - all 549 monster races and 102 usable item kinds, in data pages; `get_mons_num` / `get_obj_num` level tables
    - uniques once only, max-hp monsters, invisible monsters unseen; cloak, gloves and boots slots
    - not yet: monster spells and breath, breeding, wall-passing, attack side effects (poison, stealing...), item types other than food, healing potions, weapons and armour
-7. Magic, stores, the town, saving to SD card
+7. **Character creation** (`CREATE.C`, `PLAYER.C`, `MISC2.C` stat tables) *(done)*
+8. Magic, stores, the town, saving to SD card
 
 ## Memory map
 
@@ -53,6 +56,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `E
 | `$B000-$B3FF` | monster list, 64 x 16 bytes |
 | `$B400-$B5FF` | floor items, 64 x 8 bytes |
 | `$B600-$B697` | pack (12 x 8) then equipment (7 x 8) |
+| `$B6A0-$B7CF` | the character's hit points per level (50 words) and experience needed per level (50 dwords) |
 | `$BC00-$BDBF` | IM2 vector table + jump |
 | `$BEC0-$BFFF` | stack |
 | `$C000-$F30B` | dungeon map, 198x66 bytes (pages 32/33): low 4 bits terrain, bit 4 room, bit 5 lit/remembered, bit 6 player light, bit 7 monster here |
@@ -65,11 +69,12 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 | Page | Contents | Used |
 |---|---|---|
 | 40 `PAGE_LEVEL` | `generate.asm`, `populate.asm` | building a new level |
-| 41 `PAGE_MISC` | `startup.asm`, `death.asm` | power-on, death screen |
-| 42 `PAGE_ITEMS` | `inventory.asm` | item commands, picking up, starting kit |
+| 41 `PAGE_MISC` | `startup.asm` | power-on |
+| 42 `PAGE_ITEMS` | `inventory.asm`, `data/blows.asm` | item commands, picking up, starting kit |
+| 43 `PAGE_CREATE` | `create.asm`, `death.asm`, `data/player.asm` | making a character, the `C` sheet, the tombstone |
 
 Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 49 `KIND_PAGE` = `data/kinds.asm`. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
 
-Resident code ends around `$9C00` after milestone 6, about 5K below the monster list; the overlay pages have plenty of room.
+Resident code ends around `$9CA0` after milestone 7, about 5K below the monster list. The creation overlay (page 43) is nearly full (7.8K of 8K); the others have plenty of room.
 
 Rules: only resident code uses `FARCALL`; overlay code may call resident code but never another overlay; data an overlay owns stays in that overlay. New overlays go in the next free pages (42, 43...) with an `MMU 2, page, $4000` block in `roguelike.asm`.

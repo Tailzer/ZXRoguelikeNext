@@ -147,9 +147,10 @@ monsters_see_all:
 	djnz .loop
 	ret
 
-/* update_mon - IX = monster. Visible if within MAX_SIGHT, on screen, on a
-	lit or remembered-lit square, in line of sight, and not invisible (no
-	see invisible yet). Clobbers everything but IX */
+/* update_mon - IX = monster. Visible if within MAX_SIGHT, on screen, in
+	line of sight, not invisible (no see invisible yet), and either on a
+	lit square or within infravision (unless it's cold-blooded).
+	Clobbers everything but IX */
 update_mon:
 	call mon_race
 	bit RF_INVISIBLE,(iy+R_FLAGS)
@@ -176,9 +177,15 @@ update_mon:
 	push de
 	call map_addr
 	pop de
-	ld a,(hl)
+	ld a,(hl)							; lit or remembered-lit?
 	and F_SEEN
-	jr z,.hidden
+	jr nz,.in_sight
+	ld a,(p_infra)						; or warm and within infravision
+	cp (ix+M_CDIS)
+	jr c,.hidden
+	bit RF_NO_INFRA,(iy+R_FLAGS)
+	jr nz,.hidden
+.in_sight:
 	call los
 	jr nc,.hidden
 	ld (ix+M_ML),1
@@ -245,7 +252,7 @@ mon_turn:
 	ld a,h
 	and 3
 	ld h,a								; 0..1023
-	ld de,NOTICE_LIMIT
+	ld de,(p_notice)
 	or a
 	sbc hl,de
 	jr nc,.done_move

@@ -6,10 +6,9 @@
 	weapon, body armour, shield, helm, cloak, gloves, boots.
  */
 
-/* starting_kit - empty pack and equipment, then a warrior's kit
-	(player_init[] in PLAYER.C: ration, torch, Broadsword, Chain Mail and
-	a Potion of Berserk Strength; there's no light or berserk potion yet,
-	so the potion is Cure Light Wounds) */
+/* starting_kit - empty pack and equipment, then the class's kit from
+	player_init[] in PLAYER.C (p_kit; torches, books and potions the game
+	can't use yet are left out) */
 starting_kit:
 	ld hl,PACK
 	ld b,PACK_MAX+EQ_SLOTS
@@ -18,18 +17,36 @@ starting_kit:
 	ld (hl),ITEM_EMPTY
 	add hl,de
 	djnz .clear
-	ld ix,EQUIP+EQ_WEAPON*ITEM_SIZE
-	ld a,KIND_BROADSWORD
+	ld hl,p_kit							; wear what can be worn, carry the rest
+	ld b,5
+.kit:
+	push bc
+	push hl
+	ld a,(hl)
+	cp ITEM_EMPTY
+	jr z,.next
+	ld (kit_kind),a
+	call kind_addr
+	ld a,(iy+K_CLASS)
+	sub IC_WEAPON
+	jr c,.carry
+	ld e,a								; equipment slot = class - IC_WEAPON
+	ld d,ITEM_SIZE
+	mul d,e
+	ld ix,EQUIP
+	add ix,de
+	jr .put
+.carry:
+	call pack_count
+	call pack_slot
+.put:
+	ld a,(kit_kind)
 	call .make
-	ld ix,EQUIP+EQ_BODY*ITEM_SIZE
-	ld a,KIND_CHAIN_MAIL
-	call .make
-	ld ix,PACK
-	ld a,KIND_RATION
-	call .make
-	ld ix,PACK+ITEM_SIZE
-	ld a,KIND_CLW
-	call .make
+.next:
+	pop hl
+	pop bc
+	inc hl
+	djnz .kit
 	jp calc_bonuses
 .make:
 	ld (ix+I_KIND),a
@@ -66,6 +83,20 @@ calc_bonuses:
 	add ix,de
 	pop bc
 	djnz .slot
+	ld hl,p_stat_tohit					; plus what the stats give
+	ld a,(p_tohit)
+	add a,(hl)
+	ld (p_tohit),a
+	ld a,(p_stat_todam)
+	ld hl,p_todam
+	add a,(hl)
+	ld (hl),a
+	ld a,(p_stat_toac)
+	ld hl,p_ac
+	add a,(hl)
+	jp p,$+4
+	xor a								; (armour class can't go below 0)
+	ld (hl),a
 	ld a,(EQUIP+EQ_WEAPON*ITEM_SIZE+I_KIND)
 	cp ITEM_EMPTY
 	jr nz,.armed
@@ -89,28 +120,46 @@ calc_bonuses:
 	ld l,(iy+K_WEIGHT)
 	ld h,(iy+K_WEIGHT+1)
 	ld (w_weight),hl
-	; attack_blows with STR 17, DEX 14: too heavy if weight > 17*15
-	ld de,P_STR*15
-	ex de,hl
+	; attack_blows: too heavy if weight > STR*15 (to-hit drops by the excess)
+	ld a,(p_stat+A_STR)
+	ld e,a
+	ld d,15
+	mul d,e
+	ex de,hl							; HL = STR*15, DE = weight
 	or a
-	sbc hl,de							; 255 - weight
+	sbc hl,de
 	jr nc,.can_lift
-	ld a,(p_tohit)						; to-hit drops by the excess
+	ld a,(p_tohit)
 	add a,l
 	ld (p_tohit),a
 	ld a,1
 	ld (p_blows),a
 	ret
 .can_lift:
-	ld a,(iy+K_WEIGHT)					; adj_weight = STR*10 / max(weight,50)
-										; (weight < 256 here)
-	cp 50
-	jr nc,$+4
-	ld a,50
-	ld c,a
-	ld hl,P_STR*10
-	call div16_8
-	ld a,l
+	ld de,(w_weight)					; adj_weight = STR*10 / max(weight,50)
+	ld hl,49
+	or a
+	sbc hl,de
+	jr c,$+5							; 50 or more: the weight itself
+	ld de,50							; DE = divisor
+	ld a,(p_stat+A_STR)
+	ld l,a
+	ld h,0
+	ld b,h
+	ld c,l
+	add hl,hl
+	add hl,hl
+	add hl,bc
+	add hl,hl							; HL = STR*10
+	ld b,0
+.divide:
+	or a
+	sbc hl,de
+	jr c,.quotient
+	inc b
+	jr .divide
+.quotient:
+	ld a,b
 	ld hl,str_index_limits
 	ld b,0
 .find:									; str_index: first limit above it
@@ -124,17 +173,20 @@ calc_bonuses:
 	ld a,c
 	jr nz,.find
 .found:
-	ld a,b
-	ld hl,blows_by_str
-	add hl,a
+	ld e,b								; blows_table[str_index][dex_index]
+	ld d,12
+	mul d,e
+	ld a,(p_dex_index)
+	add de,a
+	ld hl,blows_table
+	add hl,de
 	ld a,(hl)
 	ld (p_blows),a
 	ret
 
-/* the adj_weight thresholds for str_index 0-9 (anything more is 10), and
-	blows_table[str_index][dex_index] for DEX 14 (dex_index 1) */
+/* the adj_weight thresholds for str_index 0-9 (anything more is 10) */
 str_index_limits:	db 2,3,4,6,8,10,13,15,18,20
-blows_by_str:		db 1,1,1,1,2,2,2,3,3,3,3
+kit_kind:			db 0
 
 /* objdes_msg - add the description of item IX to the message being built:
 	"a Dagger (1d4)", "2 Rations of Food", "Chain Mail [14]" */

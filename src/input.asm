@@ -170,6 +170,11 @@ read_ascii:
 	and %00000001
 	ld a,e
 	jr nz,.got
+	cp '0'								; Caps Shift + 0 is delete
+	jr nz,.upper
+	ld a,8
+	jr .got
+.upper:
 	cp 'a'
 	jr c,.got
 	sub 'a'-'A'
@@ -248,4 +253,5 @@ key_table:
 	db $FB,%00000001,KM_NONE,CMD_QUAFF,0,0	; q: quaff
 	db $FD,%00000100,KM_NONE,CMD_DROP,0,0	; d: drop
 	db $FD,%00010000,KM_NONE,CMD_PICKUP,0,0	; g: pick up
+	db $FE,%00001000,KM_CAPS,CMD_CHARACTER,0,0	; C: character sheet
 	db 0

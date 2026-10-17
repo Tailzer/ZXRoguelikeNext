@@ -12,6 +12,7 @@ OVERLAY_WINDOW		equ $4000			; MMU slot 2
 PAGE_LEVEL			equ 40				; overlay: level generation, monster placement
 PAGE_MISC			equ 41				; overlay: start-up, death screen
 PAGE_ITEMS			equ 42				; overlay: inventory and item commands
+PAGE_CREATE			equ 43				; overlay: character creation, sheet, death
 DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
 RACE_PAGE			equ 44				; 5 pages of races (data/races.asm)
 KIND_PAGE			equ 49				; 1 page of item kinds (data/kinds.asm)
@@ -188,6 +189,7 @@ RF_INVISIBLE		equ 2
 RF_EVIL				equ 3
 RF_UNDEAD			equ 4
 RF_DEMON			equ 5
+RF_NO_INFRA			equ 6
 ; R_MOVE bits (MONSTER.H cmove flags)
 RM_ONLY_ATT			equ 0				; MV_ONLY_ATT: never moves
 RM_NORMAL			equ 1				; MV_ATT_NORM: chases
@@ -198,7 +200,6 @@ RM_GROUP			equ 5				; GROUP: appears in packs
 RM_OPEN_DOOR		equ 6				; THRO_DR: opens doors
 MAX_SIGHT			equ 20
 MIN_MALLOC_LEVEL	equ 14				; minimum monsters per level
-NOTICE_LIMIT		equ 645				; noticed if 1d1024^3 <= 2^(29-stealth 1)
 
 ; ---- items (TREASURE.C, MORIA2.C carry, MISC2.C alloc_object) ----
 ITEM_LIST			equ $B400			; floor items, ITEM_MAX x ITEM_SIZE
@@ -273,6 +274,49 @@ REGEN_WEAK			equ 98
 REGEN_FAINT			equ 33
 KILLER_STARVATION	equ $FE00			; killer_race (a word) for starving
 
+; ---- the player (CREATE.C, PLAYER.C) ----
+A_STR				equ 0				; stats, in p_stat order
+A_INT				equ 1
+A_WIS				equ 2
+A_DEX				equ 3
+A_CON				equ 4
+A_CHR				equ 5
+P_HP_TABLE			equ $B6A0			; player_hp[50], words
+P_EXP_TABLE			equ P_HP_TABLE+100	; experience needed, 50 dwords
+; player race record (data/player.asm prace_table)
+PR_NAME				equ 0				; word
+PR_ADJ				equ 2				; 6 stat adjustments
+PR_AGE				equ 8
+PR_AGE_MOD			equ 9
+PR_M_HT				equ 10				; male height base, spread, weight base, spread
+PR_F_HT				equ 14				; female the same
+PR_DIS				equ 18
+PR_SRH				equ 19
+PR_STL				equ 20
+PR_FOS				equ 21
+PR_BTH				equ 22
+PR_BTHB				equ 23
+PR_BSAV				equ 24
+PR_HITDIE			equ 25
+PR_INFRA			equ 26
+PR_EXP				equ 27
+PR_CLASSES			equ 28				; bit per class allowed
+; class record (class_table)
+PC_NAME				equ 0
+PC_HD				equ 2
+PC_DIS				equ 3
+PC_SRH				equ 4
+PC_STL				equ 5
+PC_FOS				equ 6
+PC_BTH				equ 7
+PC_BTHB				equ 8
+PC_SAV				equ 9
+PC_ADJ				equ 10				; 6 stat adjustments
+PC_SPELL			equ 16
+PC_EXP				equ 17
+PC_FIRST_SPELL		equ 18
+PC_LADJ				equ 19				; class_level_adj: bth, bthb, device, disarm, save
+
 ; ---- commands ----
 CMD_MOVE			equ 0
 CMD_DOWN			equ 1
@@ -286,6 +330,7 @@ CMD_QUAFF			equ 8
 CMD_EAT				equ 9
 CMD_DROP			equ 10
 CMD_PICKUP			equ 11
+CMD_CHARACTER		equ 12
 ; key modifiers in key_table
 KM_ANY				equ 0
 KM_SYMBOL			equ 1

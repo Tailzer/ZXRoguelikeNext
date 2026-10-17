@@ -15,6 +15,8 @@
 		floor, pack and equipment, wield/wear, quaff, eat, hunger
 	Milestone 6: Data - tools/convert.py turns MONSTERS.C and TREASURE.C into
 		data pages: all 549 races, every usable item kind, level tables
+	Milestone 7: Characters - CREATE.C's race, sex, class, stat rolling and
+		name; stats feed combat, hit points, stealth and infravision
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -50,7 +52,10 @@ start:
 	ld hl,msg_press_key
 	call show_message
 	call wait_any_key					; timing of the key press seeds the RNG
+	call rng_mix
 enter_dungeon:
+	FARCALL PAGE_CREATE, create_character
+	call clear_screen
 	call player_init
 	ld a,1
 	ld (dun_level),a
@@ -91,6 +96,8 @@ dispatch:
 	jr z,.up
 	cp CMD_STAY
 	jr z,.stay
+	cp CMD_CHARACTER
+	jr z,.character
 	cp CMD_INVEN
 	jr nc,.item_command
 	call try_move
@@ -124,9 +131,12 @@ dispatch:
 	ld a,1
 	ld (turn_taken),a
 	jr .after
+.character:
+	FARCALL PAGE_CREATE, show_character
+	jp main_loop
 .down:
 	call go_down
-	jr main_loop
+	jp main_loop
 .up:
 	call go_up
 	jp main_loop
@@ -135,7 +145,7 @@ item_commands:							; in CMD_INVEN order
 	dw cmd_inventory, cmd_equipment, cmd_wield, cmd_takeoff
 	dw cmd_quaff, cmd_eat, cmd_drop, cmd_pickup
 player_died:
-	FARCALL PAGE_MISC, player_died_screen
+	FARCALL PAGE_CREATE, player_died_screen
 	jp enter_dungeon
 
 /* memory_init - select ROM 3 (48K BASIC, has the font) and page in the map */
@@ -184,14 +194,21 @@ level_end:
 
 	MMU 2, PAGE_MISC, $4000
 	include "src/startup.asm"
-	include "src/death.asm"
 misc_end:
 	ASSERT misc_end <= $6000, "Misc overlay is over 8K"
 
 	MMU 2, PAGE_ITEMS, $4000
 	include "src/inventory.asm"
+	include "data/blows.asm"			; generated: blows_table
 items_end:
 	ASSERT items_end <= $6000, "Items overlay is over 8K"
+
+	MMU 2, PAGE_CREATE, $4000
+	include "src/create.asm"
+	include "src/death.asm"
+	include "data/player.asm"			; generated: races, classes, kits, titles
+create_end:
+	ASSERT create_end <= $6000, "Creation overlay is over 8K"
 
 ; ---- data pages: paged into slot 1 ($2000-$3FFF) by race_addr / kind_addr ----
 ; (the ROM there is only needed at start-up, to copy the font)

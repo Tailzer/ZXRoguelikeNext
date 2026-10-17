@@ -3,21 +3,19 @@
 	mon_take_hit, CREATURE.C make_attack, MISC2.C critical_blow/
 	prt_experience/gain_level, DUNGEON.C regenhp, PLAYER.C tables.
 
-	Until character creation exists the player is a fixed level 1 human
-	warrior (STR 17, DEX 14, stat bonuses taken as 0) with the class's
-	starting kit; armour class, to-hit, weapon dice and blows come from
-	whatever is worn and wielded (calc_bonuses in inventory.asm).
+	The character comes from create.asm: race and class give the base
+	to-hit, hit die and so on; stats give bonuses; armour class, to-hit,
+	weapon dice and blows then come from what is worn and wielded
+	(calc_bonuses in inventory.asm).
  */
 
-P_BTH				equ 70				; race 0 + Warrior 70
-P_HITDIE			equ 19				; Human 10 + Warrior 9
-CLA_BTH_ADJ			equ 4				; class_level_adj[Warrior][CLA_BTH]
 CLA_MISC_ADJ		equ 3				; ...[CLA_MISC_HIT]
 BTH_PLUS_ADJ		equ 3
 MAX_PLAYER_LEVEL	equ 50
 REGEN_HPBASE		equ 1442			; PLAYER_REGEN_HPBASE
 
-/* player_init - a fresh level 1 character */
+/* player_init - start the character create_character made: level 1,
+	full hit points, fed, carrying the class's kit */
 player_init:
 	ld a,1
 	ld (p_lev),a
@@ -26,8 +24,8 @@ player_init:
 	ld (p_exp+2),hl
 	ld (p_exp_frac),hl
 	ld (p_chp_frac),hl
-	ld hl,P_HITDIE						; player_hp[0] = the full hit die
-	ld (p_mhp),hl
+	call calc_hitpoints
+	ld hl,(p_mhp)
 	ld (p_chp),hl
 	xor a
 	ld (p_dead),a
@@ -35,10 +33,52 @@ player_init:
 	ld (p_paralysed),a
 	ld hl,FOOD_START
 	ld (p_food),hl
-	ld hl,0
-	ld (p_gold),hl
-	ld (p_gold+2),hl
+	ld hl,uniques_dead					; a new world: every unique alive
+	ld b,(NUM_RACES+7)/8
+.alive:
+	ld (hl),0
+	inc hl
+	djnz .alive
 	FARCALL PAGE_ITEMS, starting_kit	; also works out the bonuses
+	ret
+
+/* calc_hitpoints - p_mhp = player_hp[lev-1] + con_adj * lev, at least
+	lev + 1 (calc_hitpoints in MISC2.C) */
+calc_hitpoints:
+	ld a,(p_lev)
+	dec a
+	add a,a
+	ld hl,P_HP_TABLE
+	add hl,a
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	ld a,(p_con_adj)
+	ld e,a
+	rla
+	sbc a,a
+	ld d,a								; DE = con_adj
+	ld a,(p_lev)
+	ld b,a
+.times:
+	add hl,de
+	djnz .times
+	ld a,(p_lev)
+	inc a
+	ld e,a
+	ld d,0
+	bit 7,h
+	jr nz,.least
+	push hl
+	or a
+	sbc hl,de
+	pop hl
+	jr nc,.set
+.least:
+	ex de,hl
+.set:
+	ld (p_mhp),hl
 	ret
 
 /* test_hit - HL = bth + pth*3 + level*adj (signed), A = target AC.
@@ -206,20 +246,24 @@ py_attack:
 	call mon_race
 	; base to-hit: bth if we can see it, otherwise
 	; bth/2 - tohit*(BTH_PLUS_ADJ-1) - lev*adj/2
-	ld hl,P_BTH
+	ld a,(p_bth)
+	ld l,a
+	ld h,0
 	ld a,(ix+M_ML)
 	or a
 	jr nz,.seen
-	ld hl,P_BTH/2
+	srl l								; bth/2
 	call tohit_word
 	ex de,hl
 	add hl,hl							; *2
 	ex de,hl
 	or a
 	sbc hl,de
+	ld a,(p_cla_bth)
+	srl a
+	ld e,a
 	ld a,(p_lev)
 	ld d,a
-	ld e,CLA_BTH_ADJ/2
 	mul d,e
 	or a
 	sbc hl,de
@@ -228,9 +272,10 @@ py_attack:
 	add hl,de
 	add hl,de
 	add hl,de
+	ld a,(p_cla_bth)
+	ld e,a
 	ld a,(p_lev)
 	ld d,a
-	ld e,CLA_BTH_ADJ
 	mul d,e
 	add hl,de
 	ld (attack_skill),hl
@@ -302,10 +347,11 @@ critical_blow:
 	ld hl,5000
 	call randint16
 	ex de,hl
-	push de								; chance = weight + 5*tohit + lev*4
+	push de								; chance = weight + 5*tohit + lev*adj
+	ld a,(p_cla_bth)
+	ld e,a
 	ld a,(p_lev)
 	ld d,a
-	ld e,CLA_BTH_ADJ
 	mul d,e
 	ld hl,(w_weight)
 	add hl,de
@@ -471,8 +517,8 @@ unique_bit:
 	add a,a
 	jr .shift
 
-/* check_level_up - gain levels while exp >= player_exp[lev-1]
-	(expfact is 100 for a human warrior) */
+/* check_level_up - gain levels while exp >= player_exp[lev-1] scaled by
+	the race and class experience factor (prt_experience in MISC2.C) */
 check_level_up:
 	ld a,(p_lev)
 	cp MAX_PLAYER_LEVEL
@@ -480,31 +526,30 @@ check_level_up:
 	dec a
 	add a,a
 	add a,a
-	ld hl,player_exp
+	ld hl,P_EXP_TABLE+3					; compare high bytes first
 	add hl,a
-	ld de,p_exp+3						; compare high bytes first
-	inc hl
-	inc hl
-	inc hl
+	ld de,p_exp+3
 	ld b,4
 .cmp:
 	ld a,(de)
 	cp (hl)
-	jr c,.no							; exp < needed
+	ret c								; exp < needed
 	jr nz,.gain							; exp > needed
 	dec hl
 	dec de
 	djnz .cmp
 .gain:
+	ld hl,(p_mhp)
+	push hl
 	ld hl,p_lev
 	inc (hl)
-	ld a,P_HITDIE						; player_hp[lev] = previous + 1d(hitdie)
-	call randint
+	call calc_hitpoints					; current hp rise with the maximum
+	pop de
 	ld hl,(p_mhp)
-	add hl,a
-	ld (p_mhp),hl
-	ld hl,(p_chp)
-	add hl,a
+	or a
+	sbc hl,de
+	ld de,(p_chp)
+	add hl,de
 	ld (p_chp),hl
 	call msg_begin
 	ld hl,txt_welcome_level
@@ -515,8 +560,6 @@ check_level_up:
 	call msg_add
 	call msg_end
 	jr check_level_up
-.no:
-	ret
 
 /* mon_attack - monster IX (race IY) attacks the player with each of its
 	blows (make_attack in CREATURE.C) */
@@ -728,6 +771,28 @@ p_food:			dw 0				; signed
 p_hunger:		db 0				; HUNGER_ state
 p_paralysed:	db 0				; turns left fainted
 p_gold:			dd 0
+; who the character is (create.asm)
+p_name:			ds 24
+p_race:			db 0
+p_class:		db 0
+p_male:			db 1
+p_stat:			ds 6				; STR INT WIS DEX CON CHR, 18/xx as 18+xx
+p_age:			db 0
+p_ht:			db 0
+p_wt:			dw 0
+p_hitdie:		db 0
+p_bth:			db 0				; base to-hit, race + class
+p_cla_bth:		db 0				; class_level_adj[class][CLA_BTH]
+p_stl:			db 0				; stealth (signed)
+p_infra:		db 0				; infravision, in 10 ft
+p_expfact:		db 100
+p_notice:		dw 0				; highest 1d1024 roll monsters notice
+p_stat_tohit:	db 0				; from DEX and STR (signed)
+p_stat_todam:	db 0				; from STR
+p_stat_toac:	db 0				; from DEX
+p_con_adj:		db 0				; hit points per level from CON
+p_dex_index:	db 0				; DEX column of blows_table
+p_kit:			ds 5				; starting kinds ($FF = none)
 ; from equipment (calc_bonuses)
 p_ac:			db 0
 p_tohit:		db 0				; signed

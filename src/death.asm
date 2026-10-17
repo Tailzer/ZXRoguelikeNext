@@ -1,4 +1,4 @@
-/* death.asm - the end of a character  [overlay: PAGE_MISC] */
+/* death.asm - the end of a character  [overlay: PAGE_CREATE] */
 
 /* player_died_screen - "You die.", then a simple tombstone */
 player_died_screen:
@@ -7,9 +7,44 @@ player_died_screen:
 	call wait_fresh_key
 	call clear_screen
 	ld hl,txt_rip
-	ld d,10
+	ld d,8
 	ld e,37
 	ld c,ATTR_WHITE
+	call print_at
+	ld hl,p_name						; the name, then "the Rookie"
+	call strlen
+	srl a
+	ld b,a
+	ld a,40
+	sub b
+	ld e,a
+	ld d,10
+	ld hl,p_name
+	ld c,ATTR_YELLOW
+	call print_at
+	call msg_begin						; "Level 3 Human Warrior"
+	ld hl,txt_level_
+	call msg_add
+	ld a,(p_lev)
+	call msg_add_u8
+	ld hl,txt_space_d
+	call msg_add
+	call race_rec
+	ld l,(ix+PR_NAME)
+	ld h,(ix+PR_NAME+1)
+	call msg_add
+	ld hl,txt_space_d
+	call msg_add
+	call class_rec
+	ld l,(ix+PC_NAME)
+	ld h,(ix+PC_NAME+1)
+	call msg_add
+	ld hl,(msg_ptr)
+	ld (hl),0
+	ld hl,msg_buf
+	ld d,11
+	ld e,30
+	ld c,ATTR_GREY
 	call print_at
 	call msg_begin						; "Killed by a Jackal"
 	ld hl,txt_killed_by
@@ -82,3 +117,5 @@ txt_an:			db "an ",0
 txt_on_level:	db "on level ",0
 txt_try_again:	db "Press any key to start again.",0
 txt_starvation:	db "starvation",0
+txt_level_:		db "Level ",0
+txt_space_d:	db " ",0

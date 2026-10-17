@@ -5,8 +5,6 @@
 	Not yet: magical pluses (magic_treasure), unknown potion flavours.
  */
 
-P_STR				equ 17				; fixed stats until character creation
-
 /* kind_addr - A = kind -> IY = kind record, paged into DATA_WINDOW.
 	Clobbers DE */
 kind_addr:
