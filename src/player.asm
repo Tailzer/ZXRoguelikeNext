@@ -102,7 +102,7 @@ new_level:
 	ld hl,msg_generating
 	call show_message
 	call rng_mix
-	call generate_level
+	FARCALL PAGE_LEVEL, generate_level
 	call msg_clear
 	call random_open_spot
 	ld a,d
@@ -110,6 +110,6 @@ new_level:
 	ld a,e
 	ld (player_x),a
 	call light_arrive
-	call alloc_monsters
+	FARCALL PAGE_LEVEL, alloc_monsters
 	call update_view
 	jp monsters_see_all

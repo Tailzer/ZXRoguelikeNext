@@ -33,16 +33,26 @@ Walk into a closed door to open it, or into a monster to attack it. `s` stays st
 
 ## Memory map
 
-**Code space:** bank 2 (`$8000-$AFFF`) is nearly full after milestone 4 (code ends around `$A1A0`). Milestone 5 needs to start paging code banks in via the MMU.
-
 | Address | Contents |
 |---|---|
 | `$0000-$3FFF` | ROM 3 (font copied at start-up) |
+| `$4000-$5FFF` | **overlay window** (MMU slot 2): an overlay page, paged in by `FARCALL` |
 | `$6000-$73FF` | tilemap, 80x32 x (char, attr) |
 | `$7400-$7BFF` | tile definitions (1-bit text mode) |
-| `$8000-$AFFF` | code, data |
+| `$8000-$AFFF` | resident code and data (bank 2) |
 | `$B000-$B3FF` | monster list, 64 x 16 bytes |
 | `$BC00-$BDBF` | IM2 vector table + jump |
 | `$BEC0-$BFFF` | stack |
 | `$C000-$F30B` | dungeon map, 198x66 bytes (pages 32/33): low 4 bits terrain, bit 4 room, bit 5 lit/remembered, bit 6 player light, bit 7 monster here |
 | `$F400-$FEA3` | scratch: tunnel/wall/door stacks and room list while generating; room-lighting queue in play |
+
+## Code banks
+
+Code that runs every turn is **resident** in bank 2. Code that runs rarely lives in 8K **overlay** pages, assembled at `$4000` and paged into the overlay window by `FARCALL page, routine`. The ULA screen is switched off, so its page is free to be swapped out, and the tilemap in the next page keeps displaying whatever is in the window.
+
+| Page | Contents | Used |
+|---|---|---|
+| 40 `PAGE_LEVEL` | `generate.asm`, `populate.asm` | building a new level |
+| 41 `PAGE_MISC` | `startup.asm`, `death.asm` | power-on, death screen |
+
+Rules: only resident code uses `FARCALL`; overlay code may call resident code but never another overlay; data an overlay owns stays in that overlay. New overlays go in the next free pages (42, 43...) with an `MMU 2, page, $4000` block in `roguelike.asm`.

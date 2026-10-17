@@ -49,14 +49,6 @@ txt_slimed:		db "slimes you.",0
 txt_crushes:	db "crushes you.",0
 txt_tramples:	db "tramples you.",0
 txt_drools:		db "drools on you.",0
-; death
-txt_you_die:	db "You die.",0
-txt_rip:		db "R I P",0
-txt_killed_by:	db "Killed by ",0
-txt_a:			db "a ",0
-txt_an:			db "an ",0
-txt_on_level:	db "on level ",0
-txt_try_again:	db "Press any key to start again.",0
 ; status line
 txt_lev:		db "Lv ",0
 txt_exp:		db "  Exp ",0

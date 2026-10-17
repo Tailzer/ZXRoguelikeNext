@@ -8,8 +8,18 @@ TILEMAP_BASE		equ $6000			; must be in bank 5
 TILEDEF_BASE		equ $7400
 MAP_BASE			equ $C000
 MAP_PAGE			equ 32				; 8K pages 32/33 (16K bank 16)
+OVERLAY_WINDOW		equ $4000			; MMU slot 2
+PAGE_LEVEL			equ 40				; overlay: level generation, monster placement
+PAGE_MISC			equ 41				; overlay: start-up, death screen
 IM2_TABLE			equ $BC00			; 257 bytes of $BD
 IM2_JUMP			equ $BDBD			; jp im2_handler
+
+; ---- banking ----
+; FARCALL page, routine - page an overlay into the window and call it
+	MACRO FARCALL ov_page, ov_routine
+		nextreg NR_MMU2, ov_page
+		call ov_routine
+	ENDM
 
 ; ---- Next registers ----
 NR_CPU_SPEED		equ $07
