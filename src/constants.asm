@@ -11,6 +11,7 @@ MAP_PAGE			equ 32				; 8K pages 32/33 (16K bank 16)
 OVERLAY_WINDOW		equ $4000			; MMU slot 2
 PAGE_LEVEL			equ 40				; overlay: level generation, monster placement
 PAGE_MISC			equ 41				; overlay: start-up, death screen
+PAGE_ITEMS			equ 42				; overlay: inventory and item commands
 IM2_TABLE			equ $BC00			; 257 bytes of $BD
 IM2_JUMP			equ $BDBD			; jp im2_handler
 
@@ -185,11 +186,91 @@ MAX_SIGHT			equ 20
 MIN_MALLOC_LEVEL	equ 14				; minimum monsters per level
 NOTICE_LIMIT		equ 645				; noticed if 1d1024^3 <= 2^(29-stealth 1)
 
+; ---- items (TREASURE.C, MORIA2.C carry, MISC2.C alloc_object) ----
+ITEM_LIST			equ $B400			; floor items, ITEM_MAX x ITEM_SIZE
+ITEM_MAX			equ 64
+PACK				equ $B600			; PACK_MAX carried items
+PACK_MAX			equ 12				; slots a-l
+EQUIP				equ PACK+PACK_MAX*ITEM_SIZE	; EQ_SLOTS worn/wielded items
+EQ_SLOTS			equ 4
+EQ_WEAPON			equ 0
+EQ_BODY				equ 1
+EQ_SHIELD			equ 2
+EQ_HELM				equ 3
+ITEM_SIZE			equ 8
+ITEM_EMPTY			equ $FF				; I_KIND of a free slot
+KIND_GOLD			equ $FE				; I_KIND of a pile of treasure
+; item record
+I_KIND				equ 0
+I_NUMBER			equ 1
+I_Y					equ 2
+I_X					equ 3
+I_MARKED			equ 4				; seen on the floor (the C's fm)
+I_VALUE				equ 5				; word, gold only
+I_SUB				equ 7				; gold type
+; kind record (kind_table in items.asm)
+KIND_SIZE			equ 16
+K_NAME				equ 0
+K_CHAR				equ 2
+K_ATTR				equ 3
+K_CLASS				equ 4
+K_EFFECT			equ 5				; potions: dice of 7 healed
+K_LEVEL				equ 6
+K_WEIGHT			equ 7				; tenths of a pound
+K_DICE				equ 8
+K_SIDES				equ 9
+K_AC				equ 10
+K_TOHIT				equ 11				; signed
+K_TODAM				equ 12				; signed
+K_P1				equ 13				; word: food value
+K_ALLOC				equ 15				; how common
+; item classes; wearable ones map to equipment slot class - IC_WEAPON
+IC_FOOD				equ 1
+IC_POTION			equ 2
+IC_WEAPON			equ 3
+IC_BODY				equ 4
+IC_SHIELD			equ 5
+IC_HELM				equ 6
+TREAS_ROOM_ALLOC	equ 9				; mean objects in rooms
+TREAS_ANY_ALLOC		equ 3				; mean objects anywhere
+TREAS_GOLD_ALLOC	equ 3				; mean piles of treasure
+OBJ_GREAT			equ 11
+MAX_GOLD			equ 18
+
+; ---- food (CONSTANT.H, MAIN.C) ----
+FOOD_START			equ 7500
+FOOD_DIGESTED		equ 2
+FOOD_MAX			equ 15000
+FOOD_FULL			equ 10000
+FOOD_ALERT			equ 2000
+FOOD_WEAK			equ 1000
+FOOD_FAINT			equ 300
+HUNGER_FED			equ 0
+HUNGER_HUNGRY		equ 1
+HUNGER_WEAK			equ 2
+REGEN_NORMAL		equ 197				; PLAYER_REGEN_NORMAL (x 2^-16)
+REGEN_WEAK			equ 98
+REGEN_FAINT			equ 33
+KILLER_STARVATION	equ $FE				; killer_race for starving
+
 ; ---- commands ----
 CMD_MOVE			equ 0
 CMD_DOWN			equ 1
 CMD_UP				equ 2
 CMD_STAY			equ 3
+CMD_INVEN			equ 4
+CMD_EQUIP			equ 5
+CMD_WIELD			equ 6
+CMD_TAKEOFF			equ 7
+CMD_QUAFF			equ 8
+CMD_EAT				equ 9
+CMD_DROP			equ 10
+CMD_PICKUP			equ 11
+; key modifiers in key_table
+KM_ANY				equ 0
+KM_SYMBOL			equ 1
+KM_CAPS				equ 2
+KM_NONE				equ 3
 
 ; ---- input ----
 KEY_NONE			equ $FF

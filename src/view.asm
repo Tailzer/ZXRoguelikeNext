@@ -101,6 +101,8 @@ draw_view:
 	dec a
 	jr nz,.row
 
+	call draw_items						; items, under any monsters
+
 	; visible monsters
 	ld ix,MON_LIST
 	ld b,MON_MAX
@@ -200,6 +202,10 @@ draw_status:
 	call print_str
 	ld hl,(p_mhp)
 	call print_u16
+	ld hl,txt_gold
+	call print_str
+	ld hl,p_gold
+	call print_u32
 	ld hl,txt_depth
 	call print_str
 	push de
@@ -212,6 +218,18 @@ draw_status:
 	call print_u16
 	ld hl,txt_feet
 	call print_str
+	ld a,(p_hunger)						; Hungry / Weak
+	or a
+	jr z,.fed
+	ld hl,txt_hungry
+	ld c,ATTR_YELLOW
+	cp HUNGER_HUNGRY
+	jr z,.hunger
+	ld hl,txt_weak
+	ld c,ATTR_RED
+.hunger:
+	call print_str
+.fed:
 	ld hl,txt_keys
 	ld d,STATUS_ROW
 	ld e,SCREEN_W-txt_keys_len

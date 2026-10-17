@@ -31,7 +31,15 @@ try_move:
 	ld (player_x),a
 	ld a,d
 	ld (player_y),a
-	jp light_arrive
+	call light_arrive
+	ld a,(player_y)						; walked onto something: pick it up
+	ld d,a
+	ld a,(player_x)
+	ld e,a
+	call item_at
+	ret nc
+	FARCALL PAGE_ITEMS, carry_here
+	ret
 .blocked:
 	ld a,b
 	cp T_DOOR_CLOSED
@@ -111,5 +119,6 @@ new_level:
 	ld (player_x),a
 	call light_arrive
 	FARCALL PAGE_LEVEL, alloc_monsters
+	FARCALL PAGE_LEVEL, alloc_items
 	call update_view
 	jp monsters_see_all

@@ -4,24 +4,17 @@
 	prt_experience/gain_level, DUNGEON.C regenhp, PLAYER.C tables.
 
 	Until character creation exists the player is a fixed level 1 human
-	warrior with the class's starting kit (player_init[] in PLAYER.C):
-	a Broadsword (2d5, 15 lb) and Chain Mail (AC 14, -2 to hit).
-	STR 17 / DEX 14 gives 1 blow; stat bonuses are taken as 0.
+	warrior (STR 17, DEX 14, stat bonuses taken as 0) with the class's
+	starting kit; armour class, to-hit, weapon dice and blows come from
+	whatever is worn and wielded (calc_bonuses in inventory.asm).
  */
 
 P_BTH				equ 70				; race 0 + Warrior 70
 P_HITDIE			equ 19				; Human 10 + Warrior 9
-P_AC				equ 14				; Chain Mail
-P_TOHIT				equ -2				; Chain Mail's to-hit penalty
-P_TODAM				equ 0
-W_DICE				equ 2				; Broadsword 2d5
-W_SIDES				equ 5
-W_WEIGHT			equ 150
 CLA_BTH_ADJ			equ 4				; class_level_adj[Warrior][CLA_BTH]
 CLA_MISC_ADJ		equ 3				; ...[CLA_MISC_HIT]
 BTH_PLUS_ADJ		equ 3
 MAX_PLAYER_LEVEL	equ 50
-REGEN_NORMAL		equ 197				; PLAYER_REGEN_NORMAL (x 2^-16)
 REGEN_HPBASE		equ 1442			; PLAYER_REGEN_HPBASE
 
 /* player_init - a fresh level 1 character */
@@ -38,6 +31,14 @@ player_init:
 	ld (p_chp),hl
 	xor a
 	ld (p_dead),a
+	ld (p_hunger),a
+	ld (p_paralysed),a
+	ld hl,FOOD_START
+	ld (p_food),hl
+	ld hl,0
+	ld (p_gold),hl
+	ld (p_gold+2),hl
+	FARCALL PAGE_ITEMS, starting_kit	; also works out the bonuses
 	ret
 
 /* test_hit - HL = bth + pth*3 + level*adj (signed), A = target AC.
@@ -124,21 +125,27 @@ take_hit:
 	ld (p_dead),a
 	ret
 
-/* regenhp - one turn of natural healing: (mhp * 197 + 1442) / 65536 */
+/* regenhp - A = regen amount (197 normally, less when hungry). Heals
+	(mhp * amount + 1442) / 65536 hit points */
 regenhp:
+	or a
+	ret z								; starving: no healing
+	ld (regen_amount),a
 	ld hl,(p_chp)
 	ld de,(p_mhp)
 	or a
 	sbc hl,de
 	ret nc								; already full
-	ld a,(p_mhp)						; A:HL = mhp * 197 + 1442
+	ld a,(regen_amount)					; A:HL = mhp * amount + 1442
+	ld e,a
+	ld a,(p_mhp)
 	ld d,a
-	ld e,REGEN_NORMAL
 	mul d,e
 	push de
+	ld a,(regen_amount)
+	ld e,a
 	ld a,(p_mhp+1)
 	ld d,a
-	ld e,REGEN_NORMAL
 	mul d,e								; high byte product, shifted 8
 	pop hl
 	ld a,h
@@ -202,7 +209,13 @@ py_attack:
 	ld a,(ix+M_ML)
 	or a
 	jr nz,.seen
-	ld hl,P_BTH/2 - P_TOHIT*(BTH_PLUS_ADJ-1)
+	ld hl,P_BTH/2
+	call tohit_word
+	ex de,hl
+	add hl,hl							; *2
+	ex de,hl
+	or a
+	sbc hl,de
 	ld a,(p_lev)
 	ld d,a
 	ld e,CLA_BTH_ADJ/2
@@ -210,21 +223,34 @@ py_attack:
 	or a
 	sbc hl,de
 .seen:
-	ld de,P_TOHIT*BTH_PLUS_ADJ			; i = base + pth*3 + lev*4
+	call tohit_word						; i = base + tohit*3 + lev*4
+	add hl,de
+	add hl,de
 	add hl,de
 	ld a,(p_lev)
 	ld d,a
 	ld e,CLA_BTH_ADJ
 	mul d,e
 	add hl,de
+	ld (attack_skill),hl
+	ld a,(p_blows)
+	ld (blows_left),a
+.blow:
+	ld hl,(attack_skill)
 	ld a,(iy+R_AC)
 	call test_hit
 	jr nc,.miss
-	ld b,W_DICE							; damage: 2d5, maybe a critical
-	ld c,W_SIDES
+	ld a,(w_dice)						; damage: weapon dice, maybe a critical
+	ld b,a
+	ld a,(w_sides)
+	ld c,a
 	call damroll
 	call critical_blow
-	ld de,P_TODAM
+	ld a,(p_todam)
+	ld e,a
+	rla
+	sbc a,a
+	ld d,a
 	add hl,de
 	bit 7,h
 	jr z,$+5
@@ -240,7 +266,9 @@ py_attack:
 	call msg_add
 	call msg_end
 	ld hl,(hit_damage)
-	jp mon_take_hit
+	call mon_take_hit
+	ret c								; it died: no more blows
+	jr .next_blow
 .miss:
 	call msg_begin
 	ld hl,txt_you_miss
@@ -250,7 +278,21 @@ py_attack:
 	call mon_name_to_msg
 	ld hl,txt_full_stop
 	call msg_add
-	jp msg_end
+	call msg_end
+.next_blow:
+	ld hl,blows_left
+	dec (hl)
+	jr nz,.blow
+	ret
+
+/* tohit_word - DE = p_tohit sign-extended. Preserves HL */
+tohit_word:
+	ld a,(p_tohit)
+	ld e,a
+	rla
+	sbc a,a
+	ld d,a
+	ret
 
 /* critical_blow - HL = damage -> HL = damage after a possible critical.
 	Chance: 1d5000 <= weight + 5*tohit + lev*4 */
@@ -259,13 +301,18 @@ critical_blow:
 	ld hl,5000
 	call randint16
 	ex de,hl
+	push de								; chance = weight + 5*tohit + lev*4
 	ld a,(p_lev)
-	push de
 	ld d,a
 	ld e,CLA_BTH_ADJ
 	mul d,e
-	ld hl,W_WEIGHT + 5*P_TOHIT
+	ld hl,(w_weight)
 	add hl,de
+	call tohit_word
+	ld b,5
+.plus:
+	add hl,de
+	djnz .plus
 	pop de
 	or a
 	sbc hl,de							; chance - roll
@@ -273,7 +320,7 @@ critical_blow:
 	ret c
 	ld hl,650							; how good: weight + 1d650
 	call randint16
-	ld de,W_WEIGHT
+	ld de,(w_weight)
 	add hl,de
 	ld de,400
 	or a
@@ -319,8 +366,10 @@ mon_take_hit:
 	ld (ix+M_HP),l
 	ld (ix+M_HP+1),h
 	bit 7,h
-	ret z
-	; experience: mexp * level / plev, remainder kept as a fraction
+	jr nz,.dead
+	or a								; still alive: carry clear
+	ret
+.dead:									; experience: mexp * level / plev, remainder kept as a fraction
 	ld a,(ix+M_RACE)
 	call race_addr
 	ld d,(iy+R_EXP)
@@ -358,7 +407,9 @@ mon_take_hit:
 	call msg_add
 	call msg_end
 	call mon_remove
-	jp check_level_up
+	call check_level_up
+	scf									; it died
+	ret
 
 /* mon_remove - IX = monster to take off the map and out of the list */
 mon_remove:
@@ -466,7 +517,7 @@ mon_attack:
 	ld e,CLA_MISC_ADJ
 	mul d,e
 	add hl,de
-	ld a,P_AC
+	ld a,(p_ac)
 	call test_hit
 	jr nc,.missed
 	call msg_begin						; "The Jackal bites you."
@@ -496,8 +547,17 @@ mon_attack:
 	jr nz,.hurt
 	; normal attacks: armour absorbs (min(ac,150)*3/4 * dam) / 200
 	push hl
-	ld a,P_AC*3/4
+	ld a,(p_ac)
+	cp 150
+	jr c,$+4
+	ld a,150
 	ld e,a
+	ld d,3
+	mul d,e
+	srl d
+	rr e
+	srl d
+	rr e
 	ld d,l
 	mul d,e
 	ex de,hl
@@ -590,6 +650,18 @@ p_chp:			dw 0				; signed: below 0 is dead
 p_chp_frac:		dw 0
 p_dead:			db 0
 killer_race:	db 0
+p_food:			dw 0				; signed
+p_hunger:		db 0				; HUNGER_ state
+p_paralysed:	db 0				; turns left fainted
+p_gold:			dd 0
+; from equipment (calc_bonuses)
+p_ac:			db 0
+p_tohit:		db 0				; signed
+p_todam:		db 0				; signed
+p_blows:		db 1
+w_dice:			db 1
+w_sides:		db 1
+w_weight:		dw 0
 ; scratch
 th_ac:			db 0
 ri_n:			dw 0
@@ -597,6 +669,9 @@ ri_mask:		dw 0
 name_cap:		db 0
 hit_damage:		dw 0
 crit_dam:		dw 0
+regen_amount:	db 0
+attack_skill:	dw 0
+blows_left:		db 0
 attack_num:		db 0
 atk_type:		db 0
 atk_desc:		db 0

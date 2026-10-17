@@ -11,6 +11,8 @@
 		los(), sleep/wake, speed, chasing and erratic movement
 	Milestone 4b: Combat - make_attack, py_attack, criticals, experience
 		and levels, hit point regeneration, death and restart
+	Milestone 5: Items - 13 kinds and 18 treasures from TREASURE.C on the
+		floor, pack and equipment, wield/wear, quaff, eat, hunger
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -59,7 +61,16 @@ main_loop:
 	call draw_status
 	ld a,(p_dead)
 	or a
-	jr nz,player_died
+	jp nz,player_died
+	ld a,(p_paralysed)					; fainted: the turn passes anyway
+	or a
+	jr z,.awake
+	dec a
+	ld (p_paralysed),a
+	ld a,1
+	ld (turn_taken),a
+	jr dispatch.after
+.awake:
 	call get_command					; D = command, B = dx, C = dy
 	push bc
 	push de
@@ -76,6 +87,8 @@ dispatch:
 	jr z,.up
 	cp CMD_STAY
 	jr z,.stay
+	cp CMD_INVEN
+	jr nc,.item_command
 	call try_move
 .after:
 	ld a,(turn_taken)					; the world moves on after any
@@ -86,8 +99,23 @@ dispatch:
 	ld (game_turn),hl
 	call update_view
 	call monsters_act
+	call hunger_tick					; A = how fast we heal
 	call regenhp
-	jr main_loop
+	jp main_loop
+.item_command:							; i e w t q E d g, in the items overlay
+	sub CMD_INVEN
+	add a,a
+	ld hl,item_commands
+	add hl,a
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	ld (.target+1),hl
+	nextreg NR_MMU2,PAGE_ITEMS
+.target:
+	call 0
+	jr .after
 .stay:
 	ld a,1
 	ld (turn_taken),a
@@ -97,7 +125,11 @@ dispatch:
 	jr main_loop
 .up:
 	call go_up
-	jr main_loop
+	jp main_loop
+
+item_commands:							; in CMD_INVEN order
+	dw cmd_inventory, cmd_equipment, cmd_wield, cmd_takeoff
+	dw cmd_quaff, cmd_eat, cmd_drop, cmd_pickup
 player_died:
 	FARCALL PAGE_MISC, player_died_screen
 	jp enter_dungeon
@@ -127,6 +159,7 @@ memory_init:
 	include "src/monsters.asm"
 	include "src/races.asm"
 	include "src/combat.asm"
+	include "src/items.asm"
 	include "src/view.asm"
 	include "src/player.asm"
 	include "src/messages.asm"
@@ -149,6 +182,11 @@ level_end:
 	include "src/death.asm"
 misc_end:
 	ASSERT misc_end <= $6000, "Misc overlay is over 8K"
+
+	MMU 2, PAGE_ITEMS, $4000
+	include "src/inventory.asm"
+items_end:
+	ASSERT items_end <= $6000, "Items overlay is over 8K"
 
 	SAVENEX OPEN "build/roguelike.nex", start, stack_top
 	SAVENEX CORE 3,0,0

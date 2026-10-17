@@ -5,7 +5,8 @@
 		b j n
 	plus the Spectrum cursor keys 5/6/7/8 (with or without Caps Shift).
 	> (Symbol Shift + T) goes down stairs, < (Symbol Shift + R) goes up.
-	s stays in place for a turn.
+	s stays in place for a turn. Items: i inventory, e equipment, w wear/wield,
+	t take off, q quaff, E (Caps Shift + E) eat, d drop, g pick up.
  */
 
 /* interrupt_init - IM2 with a 257-byte vector table, so whatever byte is on
@@ -83,12 +84,24 @@ scan_keys:
 	and (hl)
 	inc hl
 	jr nz,.skip							; bits are active low
-	ld a,(hl)							; needs Symbol Shift?
+	ld a,(hl)							; modifier rule
 	or a
+	jr z,.found							; KM_ANY
+	cp KM_SYMBOL
+	jr z,.need_symbol
+	cp KM_CAPS
+	jr z,.need_caps
+	call .symbol_down					; KM_NONE: neither shift held
+	jr z,.skip
+	call .caps_down
+	jr z,.skip
+	jr .found
+.need_symbol:
+	call .symbol_down
 	jr z,.found
-	ld a,$7F
-	in a,($FE)
-	and %00000010
+	jr .skip
+.need_caps:
+	call .caps_down
 	jr z,.found
 .skip:
 	ld a,4
@@ -105,6 +118,84 @@ scan_keys:
 	ld a,e
 	scf
 	ret
+.symbol_down:							; Z if Symbol Shift is held
+	ld a,$7F
+	in a,($FE)
+	and %00000010
+	ret
+.caps_down:								; Z if Caps Shift is held
+	ld a,$FE
+	in a,($FE)
+	and %00000001
+	ret
+
+/* read_ascii - wait for a fresh key press and its release -> A = its
+	character: a-z (A-Z with Caps Shift), 0-9, space, 13 for Enter.
+	Symbol Shift and Caps Shift alone don't count */
+read_ascii:
+	call wait_frame						; everything released first
+	xor a
+	in a,($FE)
+	cpl
+	and %00011111
+	jr nz,read_ascii
+.wait:
+	call wait_frame
+	ld hl,ascii_keys
+	ld bc,$FEFE							; B = half-row port, rotating
+.row:
+	in a,(c)
+	cpl
+	and %00011111
+	ld d,5
+.bit:
+	srl a
+	jr nc,.next_bit
+	ld e,a
+	ld a,(hl)
+	or a
+	jr nz,.key							; (a shift key alone is 0: skip it)
+	ld a,e
+.next_bit:
+	inc hl
+	dec d
+	jr nz,.bit
+	rlc b
+	jr c,.row
+	jr .wait
+.key:
+	ld e,a
+	ld a,$FE							; Caps Shift held: upper case
+	in a,($FE)
+	and %00000001
+	ld a,e
+	jr nz,.got
+	cp 'a'
+	jr c,.got
+	sub 'a'-'A'
+.got:
+	ld (ascii_key),a
+.release:
+	call wait_frame
+	xor a
+	in a,($FE)
+	cpl
+	and %00011111
+	jr nz,.release
+	ld a,(ascii_key)
+	ret
+
+; characters by half-row ($FE, $FD ... $7F), bit 0 first; 0 = shift key
+ascii_keys:
+	db 0,'z','x','c','v'
+	db 'a','s','d','f','g'
+	db 'q','w','e','r','t'
+	db '1','2','3','4','5'
+	db '0','9','8','7','6'
+	db 'p','o','i','u','y'
+	db 13,'l','k','j','h'
+	db ' ',0,'m','n','b'
+ascii_key:		db 0
 
 /* get_command - waits for a command key, with repeat while held.
 	out: D = command, B = dx, C = dy */
@@ -132,7 +223,7 @@ get_command:
 	ld (held_key),a
 	jr get_command
 
-; half-row port, bit mask, Symbol Shift needed, command, dx, dy
+; half-row port, bit mask, shift rule (KM_), command, dx, dy
 key_table:
 	db $BF,%00010000,0,CMD_MOVE,-1, 0	; h
 	db $BF,%00001000,0,CMD_MOVE, 0, 1	; j
@@ -149,4 +240,12 @@ key_table:
 	db $FB,%00010000,1,CMD_DOWN, 0, 0	; > (Symbol Shift + T)
 	db $FB,%00001000,1,CMD_UP,   0, 0	; < (Symbol Shift + R)
 	db $FD,%00000010,0,CMD_STAY, 0, 0	; s: stay in place for a turn
+	db $DF,%00000100,KM_NONE,CMD_INVEN,0,0	; i: inventory
+	db $FB,%00000100,KM_CAPS,CMD_EAT,0,0	; E: eat
+	db $FB,%00000100,KM_NONE,CMD_EQUIP,0,0	; e: equipment
+	db $FB,%00000010,KM_NONE,CMD_WIELD,0,0	; w: wear/wield
+	db $FB,%00010000,KM_NONE,CMD_TAKEOFF,0,0	; t: take off
+	db $FB,%00000001,KM_NONE,CMD_QUAFF,0,0	; q: quaff
+	db $FD,%00000100,KM_NONE,CMD_DROP,0,0	; d: drop
+	db $FD,%00010000,KM_NONE,CMD_PICKUP,0,0	; g: pick up
 	db 0

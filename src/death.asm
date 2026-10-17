@@ -15,6 +15,12 @@ player_died_screen:
 	ld hl,txt_killed_by
 	call msg_add
 	ld a,(killer_race)
+	cp KILLER_STARVATION
+	jr nz,.monster
+	ld hl,txt_starvation
+	call msg_add
+	jr .killer_done
+.monster:
 	call race_addr
 	ld l,(iy+R_NAME)
 	ld h,(iy+R_NAME+1)
@@ -37,6 +43,7 @@ player_died_screen:
 	ld l,(iy+R_NAME)
 	ld h,(iy+R_NAME+1)
 	call msg_add
+.killer_done:
 	ld hl,(msg_ptr)
 	ld (hl),0
 	ld hl,msg_buf
@@ -72,3 +79,4 @@ txt_a:			db "a ",0
 txt_an:			db "an ",0
 txt_on_level:	db "on level ",0
 txt_try_again:	db "Press any key to start again.",0
+txt_starvation:	db "starvation",0

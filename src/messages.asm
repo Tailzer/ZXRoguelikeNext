@@ -54,8 +54,14 @@ txt_lev:		db "Lv ",0
 txt_exp:		db "  Exp ",0
 txt_hp:			db "  HP ",0
 txt_slash:		db "/",0
+txt_gold:		db "  AU ",0
 txt_depth:		db "  ",0
+txt_hungry:		db "  Hungry",0
+txt_weak:		db "  Weak",0
+msg_hungry:		db "You are getting hungry.",0
+msg_weak:		db "You are getting weak from hunger.",0
+msg_faint:		db "You faint from the lack of food.",0
 txt_feet:		db " ft",0
-txt_keys:		db "hjkl yubn  s stay  < >"
+txt_keys:		db "i e w t q E d g"
 txt_keys_len	equ $-txt_keys
 				db 0

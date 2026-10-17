@@ -215,3 +215,202 @@ place_race:		db 0
 place_sleep:	db 0
 group_race:		db 0
 alloc_left:		db 0
+
+/* alloc_items - objects and treasure for a new level (end of cave_gen):
+	about 9 objects in rooms, about 3 anywhere, about 3 piles of treasure.
+	randnor(mean, 3) is approximated as mean - 4 + 1d7 */
+alloc_items:
+	call items_clear
+	ld a,TREAS_ROOM_ALLOC
+	call about
+	or a
+	jr z,.anywhere
+	ld b,a
+.room:
+	push bc
+	call item_spot
+	ld a,(hl)
+	and TERRAIN_MASK
+	cp T_CORRIDOR						; rooms only: try again in corridors
+	pop bc
+	jr z,.room
+	push bc
+	call place_object
+	pop bc
+	djnz .room
+.anywhere:
+	ld a,TREAS_ANY_ALLOC
+	call about
+	or a
+	jr z,.gold
+	ld b,a
+.any:
+	push bc
+	call item_spot
+	call place_object
+	pop bc
+	djnz .any
+.gold:
+	ld a,TREAS_GOLD_ALLOC
+	call about
+	or a
+	ret z
+	ld b,a
+.treasure:
+	push bc
+	call item_spot
+	call place_gold
+	pop bc
+	djnz .treasure
+	ret
+
+/* about - A = mean -> A = mean - 4 + 1d7, at least 0 */
+about:
+	add a,-4
+	ld b,a
+	ld a,7
+	push bc
+	call randint
+	pop bc
+	add a,b
+	ret p
+	xor a
+	ret
+
+/* item_spot - a random floor square with no item and no player.
+	-> D = y, E = x, HL = square */
+item_spot:
+	call random_open_spot
+	push hl
+	call item_at
+	pop hl
+	jr c,item_spot
+	ld a,(player_y)
+	cp d
+	ret nz
+	ld a,(player_x)
+	cp e
+	ret nz
+	jr item_spot
+
+/* place_object - D = y, E = x: a random object for this depth
+	(get_obj_num in MISC2.C: anything up to the dungeon level, with a 1 in
+	OBJ_GREAT chance of looking deeper; common kinds weigh more) */
+place_object:
+	push de
+	call item_free_slot
+	pop de
+	ret nc
+	ld (ix+I_Y),d
+	ld (ix+I_X),e
+	ld (ix+I_NUMBER),1
+	ld (ix+I_MARKED),0
+	ld a,(dun_level)
+	ld (obj_level),a
+	ld a,OBJ_GREAT
+	call randint
+	dec a
+	jr nz,.level_set
+	ld a,10
+	call randint
+	ld hl,obj_level
+	add a,(hl)
+	ld (hl),a
+.level_set:
+	ld iy,kind_table					; total weight of kinds allowed
+	ld b,NUM_KINDS
+	ld c,0
+.sum:
+	ld a,(obj_level)
+	cp (iy+K_LEVEL)
+	jr c,.skip_sum
+	ld a,c
+	add a,(iy+K_ALLOC)
+	ld c,a
+.skip_sum:
+	ld de,KIND_SIZE
+	add iy,de
+	djnz .sum
+	ld a,c
+	call randint						; pick by weight
+	ld c,a
+	ld iy,kind_table
+	ld b,0								; kind number
+.pick:
+	ld a,(obj_level)
+	cp (iy+K_LEVEL)
+	jr c,.skip_pick
+	ld a,c
+	sub (iy+K_ALLOC)
+	ld c,a
+	jr z,.picked
+	jr c,.picked
+.skip_pick:
+	ld de,KIND_SIZE
+	add iy,de
+	inc b
+	jr .pick
+.picked:
+	ld (ix+I_KIND),b
+	ret
+
+/* place_gold - D = y, E = x: treasure worth more deeper down
+	(place_gold in MISC2.C) */
+place_gold:
+	push de
+	call item_free_slot
+	pop de
+	ret nc
+	ld (ix+I_Y),d
+	ld (ix+I_X),e
+	ld (ix+I_KIND),KIND_GOLD
+	ld (ix+I_NUMBER),1
+	ld (ix+I_MARKED),0
+	ld a,(dun_level)					; i = (1d(level+2) + 2) / 2 - 1
+	add a,2
+	call randint
+	add a,2
+	srl a
+	dec a
+	ld (gold_type),a
+	ld a,OBJ_GREAT						; 1 in 11: i += 1d(level+1)
+	call randint
+	dec a
+	jr nz,.clamp
+	ld a,(dun_level)
+	inc a
+	call randint
+	ld hl,gold_type
+	add a,(hl)
+	ld (hl),a
+.clamp:
+	ld a,(gold_type)
+	cp MAX_GOLD
+	jr c,$+4
+	ld a,MAX_GOLD-1
+	ld (ix+I_SUB),a
+	call gold_addr						; value = cost + 8*1d(cost) + 1d8
+	inc hl
+	inc hl
+	inc hl
+	inc hl
+	ld a,(hl)
+	ld (gold_cost),a
+	call randint
+	ld e,a
+	ld d,8
+	mul d,e
+	ld a,(gold_cost)
+	add de,a
+	push de
+	ld a,8
+	call randint
+	pop hl
+	add hl,a
+	ld (ix+I_VALUE),l
+	ld (ix+I_VALUE+1),h
+	ret
+
+obj_level:		db 0
+gold_type:		db 0
+gold_cost:		db 0
