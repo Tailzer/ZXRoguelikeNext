@@ -5,6 +5,7 @@
 		b j n
 	plus the Spectrum cursor keys 5/6/7/8 (with or without Caps Shift).
 	> (Symbol Shift + T) goes down stairs, < (Symbol Shift + R) goes up.
+	s stays in place for a turn.
  */
 
 /* interrupt_init - IM2 with a 257-byte vector table, so whatever byte is on
@@ -56,6 +57,17 @@ wait_any_key:
 	and %00011111
 	jr nz,.release
 	ret
+
+/* wait_fresh_key - wait for every key to be let go, then a new press
+	(so a held movement key can't skip a -more-) */
+wait_fresh_key:
+	call wait_frame
+	xor a
+	in a,($FE)
+	cpl
+	and %00011111
+	jr nz,wait_fresh_key
+	jp wait_any_key
 
 /* scan_keys - out: carry set if a key is down, A = key index,
 	D = command, B = dx, C = dy. Clobbers E, HL */
@@ -136,4 +148,5 @@ key_table:
 	db $EF,%00000100,0,CMD_MOVE, 1, 0	; 8 cursor right
 	db $FB,%00010000,1,CMD_DOWN, 0, 0	; > (Symbol Shift + T)
 	db $FB,%00001000,1,CMD_UP,   0, 0	; < (Symbol Shift + R)
+	db $FD,%00000010,0,CMD_STAY, 0, 0	; s: stay in place for a turn
 	db 0

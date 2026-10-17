@@ -47,25 +47,9 @@ try_move:
 .wall:
 	ld hl,msg_wall
 	jp show_message
-.monster:								; fighting comes in milestone 4b
+.monster:
 	call mon_at
-	ld a,(ix+M_ML)
-	or a
-	jr z,.unseen
-	call msg_begin
-	ld hl,txt_the
-	call msg_add
-	ld a,(ix+M_RACE)
-	call race_addr
-	ld l,(iy+R_NAME)
-	ld h,(iy+R_NAME+1)
-	call msg_add
-	ld hl,txt_in_way
-	call msg_add
-	jp msg_end
-.unseen:
-	ld hl,msg_something
-	jp show_message
+	jp py_attack
 
 /* player_square - HL = map square under the player. Clobbers A, DE */
 player_square:
@@ -119,6 +103,7 @@ new_level:
 	call show_message
 	call rng_mix
 	call generate_level
+	call msg_clear
 	call random_open_spot
 	ld a,d
 	ld (player_y),a

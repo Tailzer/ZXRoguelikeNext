@@ -35,6 +35,7 @@ NR_TILEDEF_BASE		equ $6F
 SCREEN_W			equ 80
 SCREEN_H			equ 32
 MSG_ROW				equ 0
+MSG_WIDTH			equ 72				; leave room for -more-
 VIEW_TOP			equ 1
 VIEW_W				equ 80
 VIEW_H				equ 30
@@ -172,12 +173,13 @@ RM_GROUP			equ 5				; GROUP: appears in packs
 RM_OPEN_DOOR		equ 6				; THRO_DR: opens doors
 MAX_SIGHT			equ 20
 MIN_MALLOC_LEVEL	equ 14				; minimum monsters per level
-NOTICE_LIMIT		equ 512				; 1d1024 <= this to be noticed (stealth 2)
+NOTICE_LIMIT		equ 645				; noticed if 1d1024^3 <= 2^(29-stealth 1)
 
 ; ---- commands ----
 CMD_MOVE			equ 0
 CMD_DOWN			equ 1
 CMD_UP				equ 2
+CMD_STAY			equ 3
 
 ; ---- input ----
 KEY_NONE			equ $FF

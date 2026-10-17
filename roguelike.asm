@@ -9,6 +9,8 @@
 		remembered walls/doors/stairs
 	Milestone 4a: Monsters - 10 races from MONSTERS.C, placement and packs,
 		los(), sleep/wake, speed, chasing and erratic movement
+	Milestone 4b: Combat - make_attack, py_attack, criticals, experience
+		and levels, hit point regeneration, death and restart
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -42,18 +44,25 @@ start:
 	call show_message
 	call wait_any_key					; timing of the key press seeds the RNG
 enter_dungeon:
+	call player_init
+	ld a,1
+	ld (dun_level),a
+	call msg_clear
 	call new_level
+	call msg_clear
 	ld hl,msg_welcome
 	call show_message
 
 main_loop:
 	call draw_view
 	call draw_status
+	ld a,(p_dead)
+	or a
+	jr nz,player_died
 	call get_command					; D = command, B = dx, C = dy
 	push bc
 	push de
-	ld d,MSG_ROW
-	call clear_row						; old message goes once you act
+	call msg_clear						; old messages go once you act
 	pop de
 	pop bc
 	xor a
@@ -64,22 +73,95 @@ dispatch:
 	jr z,.down
 	cp CMD_UP
 	jr z,.up
+	cp CMD_STAY
+	jr z,.stay
 	call try_move
-	ld a,(turn_taken)					; monsters move after any action
-	or a								; that took a turn
+.after:
+	ld a,(turn_taken)					; the world moves on after any
+	or a								; action that took a turn
 	jr z,main_loop
 	ld hl,(game_turn)
 	inc hl
 	ld (game_turn),hl
 	call update_view
 	call monsters_act
+	call regenhp
 	jr main_loop
+.stay:
+	ld a,1
+	ld (turn_taken),a
+	jr .after
 .down:
 	call go_down
 	jr main_loop
 .up:
 	call go_up
 	jr main_loop
+
+/* player_died - message, a simple tombstone, then a fresh start */
+player_died:
+	ld hl,txt_you_die
+	call msg_print
+	call wait_fresh_key
+	call clear_screen
+	ld hl,txt_rip
+	ld d,10
+	ld e,37
+	ld c,ATTR_WHITE
+	call print_at
+	call msg_begin						; "Killed by a Jackal"
+	ld hl,txt_killed_by
+	call msg_add
+	ld a,(killer_race)
+	call race_addr
+	ld l,(iy+R_NAME)
+	ld h,(iy+R_NAME+1)
+	ld a,(hl)
+	ld hl,txt_a
+	cp 'A'
+	jr z,.an
+	cp 'E'
+	jr z,.an
+	cp 'I'
+	jr z,.an
+	cp 'O'
+	jr z,.an
+	cp 'U'
+	jr nz,.article
+.an:
+	ld hl,txt_an
+.article:
+	call msg_add
+	ld l,(iy+R_NAME)
+	ld h,(iy+R_NAME+1)
+	call msg_add
+	ld hl,(msg_ptr)
+	ld (hl),0
+	ld hl,msg_buf
+	ld d,12
+	ld e,30
+	ld c,ATTR_GREY
+	call print_at
+	call msg_begin						; "on level 3"
+	ld hl,txt_on_level
+	call msg_add
+	ld a,(dun_level)
+	call msg_add_u8
+	ld hl,(msg_ptr)
+	ld (hl),0
+	ld hl,msg_buf
+	ld d,13
+	ld e,30
+	ld c,ATTR_GREY
+	call print_at
+	ld hl,txt_try_again
+	ld d,16
+	ld e,25
+	ld c,ATTR_DARK
+	call print_at
+	call wait_fresh_key
+	call clear_screen
+	jp enter_dungeon
 
 /* memory_init - select ROM 3 (48K BASIC, has the font) and page in the map */
 memory_init:
@@ -106,6 +188,7 @@ memory_init:
 	include "src/los.asm"
 	include "src/monsters.asm"
 	include "src/races.asm"
+	include "src/combat.asm"
 	include "src/view.asm"
 	include "src/player.asm"
 	include "src/messages.asm"

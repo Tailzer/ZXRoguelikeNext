@@ -1,0 +1,604 @@
+/* combat.asm - the player, fighting, experience and death
+	References: MORIA1.C test_hit/take_hit, MORIA2.C py_attack/
+	mon_take_hit, CREATURE.C make_attack, MISC2.C critical_blow/
+	prt_experience/gain_level, DUNGEON.C regenhp, PLAYER.C tables.
+
+	Until character creation exists the player is a fixed level 1 human
+	warrior with the class's starting kit (player_init[] in PLAYER.C):
+	a Broadsword (2d5, 15 lb) and Chain Mail (AC 14, -2 to hit).
+	STR 17 / DEX 14 gives 1 blow; stat bonuses are taken as 0.
+ */
+
+P_BTH				equ 70				; race 0 + Warrior 70
+P_HITDIE			equ 19				; Human 10 + Warrior 9
+P_AC				equ 14				; Chain Mail
+P_TOHIT				equ -2				; Chain Mail's to-hit penalty
+P_TODAM				equ 0
+W_DICE				equ 2				; Broadsword 2d5
+W_SIDES				equ 5
+W_WEIGHT			equ 150
+CLA_BTH_ADJ			equ 4				; class_level_adj[Warrior][CLA_BTH]
+CLA_MISC_ADJ		equ 3				; ...[CLA_MISC_HIT]
+BTH_PLUS_ADJ		equ 3
+MAX_PLAYER_LEVEL	equ 50
+REGEN_NORMAL		equ 197				; PLAYER_REGEN_NORMAL (x 2^-16)
+REGEN_HPBASE		equ 1442			; PLAYER_REGEN_HPBASE
+
+/* player_init - a fresh level 1 character */
+player_init:
+	ld a,1
+	ld (p_lev),a
+	ld hl,0
+	ld (p_exp),hl
+	ld (p_exp+2),hl
+	ld (p_exp_frac),hl
+	ld (p_chp_frac),hl
+	ld hl,P_HITDIE						; player_hp[0] = the full hit die
+	ld (p_mhp),hl
+	ld (p_chp),hl
+	xor a
+	ld (p_dead),a
+	ret
+
+/* test_hit - HL = bth + pth*3 + level*adj (signed), A = target AC.
+	-> carry if it hits. 1 in 20 always misses, 1 in 20 always hits */
+test_hit:
+	ld (th_ac),a
+	push hl
+	ld a,20
+	call randint
+	pop hl
+	cp 1
+	jr z,.miss
+	cp 20
+	jr z,.hit
+	bit 7,h
+	jr nz,.miss
+	ld a,h
+	or l
+	jr z,.miss
+	call randint16
+	ld a,(th_ac)						; hit if 1d(i) > 3*ac/4
+	ld e,a
+	ld d,3
+	mul d,e
+	srl d
+	rr e
+	srl d
+	rr e
+	or a
+	sbc hl,de
+	jr z,.miss
+	jr c,.miss
+.hit:
+	scf
+	ret
+.miss:
+	or a
+	ret
+
+/* randint16 - HL = n (1-65535) -> HL = random 1..n. Clobbers A, DE */
+randint16:
+	ld (ri_n),hl
+	dec hl
+	ex de,hl
+	ld hl,0								; mask covering n-1
+.mask:
+	ld a,d
+	or e
+	jr z,.try
+	srl d
+	rr e
+	add hl,hl
+	inc hl
+	jr .mask
+.try:
+	ld (ri_mask),hl
+.again:
+	call rand16
+	ld a,(ri_mask)
+	and l
+	ld l,a
+	ld a,(ri_mask+1)
+	and h
+	ld h,a
+	ld de,(ri_n)
+	or a
+	sbc hl,de
+	jr nc,.again						; reject values >= n
+	add hl,de
+	inc hl
+	ret
+
+/* take_hit - HL = damage, killer_race = what did it. Sets p_dead when
+	hit points drop below zero (0 hp is still alive, as in the C) */
+take_hit:
+	ex de,hl
+	ld hl,(p_chp)
+	or a
+	sbc hl,de
+	ld (p_chp),hl
+	bit 7,h
+	ret z
+	ld a,1
+	ld (p_dead),a
+	ret
+
+/* regenhp - one turn of natural healing: (mhp * 197 + 1442) / 65536 */
+regenhp:
+	ld hl,(p_chp)
+	ld de,(p_mhp)
+	or a
+	sbc hl,de
+	ret nc								; already full
+	ld a,(p_mhp)						; A:HL = mhp * 197 + 1442
+	ld d,a
+	ld e,REGEN_NORMAL
+	mul d,e
+	push de
+	ld a,(p_mhp+1)
+	ld d,a
+	ld e,REGEN_NORMAL
+	mul d,e								; high byte product, shifted 8
+	pop hl
+	ld a,h
+	add a,e
+	ld h,a
+	ld a,0
+	adc a,d
+	ld de,REGEN_HPBASE
+	add hl,de
+	adc a,0
+	ld de,(p_chp_frac)
+	add hl,de
+	adc a,0
+	ld (p_chp_frac),hl
+	ld hl,(p_chp)
+	add hl,a
+	ld (p_chp),hl
+	ld de,(p_mhp)						; cap at max
+	or a
+	sbc hl,de
+	ret c
+	ld (p_chp),de
+	ld hl,0
+	ld (p_chp_frac),hl
+	ret
+
+/* mon_name_to_msg - add "The <name>" / "It" (cap=1) or "the <name>" /
+	"it" (cap=0) for monster IX to the message being built. IY = race */
+mon_name_to_msg:
+	ld a,(ix+M_ML)
+	or a
+	jr z,.unseen
+	ld a,(name_cap)
+	or a
+	ld hl,txt_the
+	jr nz,$+5
+	ld hl,txt_the_lc
+	call msg_add
+	ld l,(iy+R_NAME)
+	ld h,(iy+R_NAME+1)
+	jp msg_add
+.unseen:
+	ld a,(name_cap)
+	or a
+	ld hl,txt_it
+	jr nz,$+5
+	ld hl,txt_it_lc
+	jp msg_add
+
+/* py_attack - the player attacks monster IX (py_attack in MORIA2.C) */
+py_attack:
+	ld a,1
+	ld (turn_taken),a
+	ld (ix+M_SLEEP),0					; it wakes up
+	ld (ix+M_SLEEP+1),0
+	ld a,(ix+M_RACE)
+	call race_addr
+	; base to-hit: bth if we can see it, otherwise
+	; bth/2 - tohit*(BTH_PLUS_ADJ-1) - lev*adj/2
+	ld hl,P_BTH
+	ld a,(ix+M_ML)
+	or a
+	jr nz,.seen
+	ld hl,P_BTH/2 - P_TOHIT*(BTH_PLUS_ADJ-1)
+	ld a,(p_lev)
+	ld d,a
+	ld e,CLA_BTH_ADJ/2
+	mul d,e
+	or a
+	sbc hl,de
+.seen:
+	ld de,P_TOHIT*BTH_PLUS_ADJ			; i = base + pth*3 + lev*4
+	add hl,de
+	ld a,(p_lev)
+	ld d,a
+	ld e,CLA_BTH_ADJ
+	mul d,e
+	add hl,de
+	ld a,(iy+R_AC)
+	call test_hit
+	jr nc,.miss
+	ld b,W_DICE							; damage: 2d5, maybe a critical
+	ld c,W_SIDES
+	call damroll
+	call critical_blow
+	ld de,P_TODAM
+	add hl,de
+	bit 7,h
+	jr z,$+5
+	ld hl,0
+	ld (hit_damage),hl
+	call msg_begin
+	ld hl,txt_you_hit
+	call msg_add
+	xor a
+	ld (name_cap),a
+	call mon_name_to_msg
+	ld hl,txt_full_stop
+	call msg_add
+	call msg_end
+	ld hl,(hit_damage)
+	jp mon_take_hit
+.miss:
+	call msg_begin
+	ld hl,txt_you_miss
+	call msg_add
+	xor a
+	ld (name_cap),a
+	call mon_name_to_msg
+	ld hl,txt_full_stop
+	call msg_add
+	jp msg_end
+
+/* critical_blow - HL = damage -> HL = damage after a possible critical.
+	Chance: 1d5000 <= weight + 5*tohit + lev*4 */
+critical_blow:
+	ld (crit_dam),hl
+	ld hl,5000
+	call randint16
+	ex de,hl
+	ld a,(p_lev)
+	push de
+	ld d,a
+	ld e,CLA_BTH_ADJ
+	mul d,e
+	ld hl,W_WEIGHT + 5*P_TOHIT
+	add hl,de
+	pop de
+	or a
+	sbc hl,de							; chance - roll
+	ld hl,(crit_dam)
+	ret c
+	ld hl,650							; how good: weight + 1d650
+	call randint16
+	ld de,W_WEIGHT
+	add hl,de
+	ld de,400
+	or a
+	sbc hl,de							; HL = weight - 400
+	ld de,txt_good_hit
+	ld bc,5*256+2						; < 400: 2*dam + 5
+	jr c,.apply
+	ld de,300
+	sbc hl,de							; carry is clear here
+	ld de,txt_excellent_hit
+	ld bc,10*256+2						; < 700: 2*dam + 10
+	jr c,.apply
+	ld de,200
+	sbc hl,de
+	ld de,txt_superb_hit
+	ld bc,15*256+3						; < 900: 3*dam + 15
+	jr c,.apply
+	ld de,txt_great_hit
+	ld bc,20*256+3						; else 3*dam + 20
+.apply:
+	push bc
+	ex de,hl
+	call msg_print
+	pop bc
+	ld hl,0								; HL = dam * C + B
+	ld de,(crit_dam)
+.times:
+	add hl,de
+	dec c
+	jr nz,.times
+	ld a,b
+	add hl,a
+	ret
+
+/* mon_take_hit - IX = monster, HL = damage. Kills it if hp drops below 0,
+	awarding experience (mon_take_hit in MORIA2.C) */
+mon_take_hit:
+	ex de,hl
+	ld l,(ix+M_HP)
+	ld h,(ix+M_HP+1)
+	or a
+	sbc hl,de
+	ld (ix+M_HP),l
+	ld (ix+M_HP+1),h
+	bit 7,h
+	ret z
+	; experience: mexp * level / plev, remainder kept as a fraction
+	ld a,(ix+M_RACE)
+	call race_addr
+	ld d,(iy+R_EXP)
+	ld e,(iy+R_LEVEL)
+	mul d,e
+	ex de,hl
+	ld a,(p_lev)
+	ld c,a
+	call div16_8						; HL = whole exp, A = remainder
+	push hl
+	ld e,a								; frac += remainder * 65536 / plev
+	ld hl,0
+	call div24_8						; E:HL = (rem << 16) / plev
+	ld de,(p_exp_frac)
+	add hl,de
+	ld (p_exp_frac),hl
+	pop hl
+	jr nc,$+3
+	inc hl
+	ld de,(p_exp)						; p_exp += HL (32 bit)
+	add hl,de
+	ld (p_exp),hl
+	ld hl,(p_exp+2)
+	ld de,0
+	adc hl,de
+	ld (p_exp+2),hl
+	; message, then remove it
+	call msg_begin
+	ld hl,txt_you_slain
+	call msg_add
+	xor a
+	ld (name_cap),a
+	call mon_name_to_msg
+	ld hl,txt_full_stop
+	call msg_add
+	call msg_end
+	call mon_remove
+	jp check_level_up
+
+/* mon_remove - IX = monster to take off the map and out of the list */
+mon_remove:
+	ld d,(ix+M_Y)
+	ld e,(ix+M_X)
+	call map_addr
+	res F_MON_BIT,(hl)
+	ld (ix+M_RACE),MON_EMPTY
+	ret
+
+/* check_level_up - gain levels while exp >= player_exp[lev-1]
+	(expfact is 100 for a human warrior) */
+check_level_up:
+	ld a,(p_lev)
+	cp MAX_PLAYER_LEVEL
+	ret nc
+	dec a
+	add a,a
+	add a,a
+	ld hl,player_exp
+	add hl,a
+	ld de,p_exp+3						; compare high bytes first
+	inc hl
+	inc hl
+	inc hl
+	ld b,4
+.cmp:
+	ld a,(de)
+	cp (hl)
+	jr c,.no							; exp < needed
+	jr nz,.gain							; exp > needed
+	dec hl
+	dec de
+	djnz .cmp
+.gain:
+	ld hl,p_lev
+	inc (hl)
+	ld a,P_HITDIE						; player_hp[lev] = previous + 1d(hitdie)
+	call randint
+	ld hl,(p_mhp)
+	add hl,a
+	ld (p_mhp),hl
+	ld hl,(p_chp)
+	add hl,a
+	ld (p_chp),hl
+	call msg_begin
+	ld hl,txt_welcome_level
+	call msg_add
+	ld a,(p_lev)
+	call msg_add_u8
+	ld hl,txt_full_stop
+	call msg_add
+	call msg_end
+	jr check_level_up
+.no:
+	ret
+
+/* mon_attack - monster IX (race IY) attacks the player with each of its
+	blows (make_attack in CREATURE.C) */
+mon_attack:
+	ld a,(ix+M_RACE)
+	ld (killer_race),a
+	xor a
+	ld (attack_num),a
+.blow:
+	ld a,(p_dead)
+	or a
+	ret nz
+	ld a,(attack_num)
+	cp 4
+	ret nc
+	add a,a
+	add a,a
+	add a,R_ATTACKS
+	ld e,a
+	ld d,0
+	push iy
+	pop hl
+	add hl,de
+	ld a,(hl)							; type, 0 = no more blows
+	or a
+	ret z
+	ld (atk_type),a
+	inc hl
+	ld a,(hl)
+	ld (atk_desc),a
+	inc hl
+	ld a,(hl)
+	ld (atk_dice),a
+	inc hl
+	ld a,(hl)
+	ld (atk_sides),a
+	ld hl,attack_num
+	inc (hl)
+	; to hit: power + level * 3 against the player's AC
+	ld a,(atk_type)
+	ld hl,attack_power-1
+	add hl,a
+	ld a,(hl)
+	ld l,a
+	rla
+	sbc a,a
+	ld h,a								; sign extend
+	ld d,(iy+R_LEVEL)
+	ld e,CLA_MISC_ADJ
+	mul d,e
+	add hl,de
+	ld a,P_AC
+	call test_hit
+	jr nc,.missed
+	call msg_begin						; "The Jackal bites you."
+	ld a,1
+	ld (name_cap),a
+	call mon_name_to_msg
+	ld hl,txt_space
+	call msg_add
+	ld a,(atk_desc)
+	dec a
+	add a,a
+	ld hl,attack_descs
+	add hl,a
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	call msg_add
+	call msg_end
+	ld a,(atk_dice)
+	ld b,a
+	ld a,(atk_sides)
+	ld c,a
+	call damroll
+	ld a,(atk_type)
+	cp 1
+	jr nz,.hurt
+	; normal attacks: armour absorbs (min(ac,150)*3/4 * dam) / 200
+	push hl
+	ld a,P_AC*3/4
+	ld e,a
+	ld d,l
+	mul d,e
+	ex de,hl
+	ld c,200
+	call div16_8
+	ex de,hl
+	pop hl
+	or a
+	sbc hl,de
+.hurt:
+	call take_hit						; confusion etc. come later
+	jp .blow
+.missed:
+	ld a,(atk_desc)						; only hits/bites/claws/kicks say so
+	cp 4
+	jr c,.say_miss
+	cp 6
+	jp nz,.blow
+.say_miss:
+	call msg_begin
+	ld a,1
+	ld (name_cap),a
+	call mon_name_to_msg
+	ld hl,txt_misses_you
+	call msg_add
+	call msg_end
+	jp .blow
+
+/* div16_8 - HL / C -> HL = quotient, A = remainder. Clobbers B */
+div16_8:
+	xor a
+	ld b,16
+.loop:
+	add hl,hl
+	rla
+	jr c,.sub
+	cp c
+	jr c,.next
+.sub:
+	sub c
+	inc l
+.next:
+	djnz .loop
+	ret
+
+/* div24_8 - E:HL / C -> E:HL = quotient, A = remainder. Clobbers B */
+div24_8:
+	xor a
+	ld b,24
+.loop:
+	add hl,hl
+	rl e
+	rla
+	jr c,.sub
+	cp c
+	jr c,.next
+.sub:
+	sub c
+	inc l
+.next:
+	djnz .loop
+	ret
+
+; to-hit power of each attack type 1-25 (make_attack's test_hit calls);
+; 12/13 (stealing) and 20 (aggravate) are special cases for later
+attack_power:
+	db 60,-3,10,10,10,0,10,10,0,2,2,5,2,5,0,0,2,2,5,20,20,5,5,15,2
+
+attack_descs:
+	dw txt_hits, txt_bites, txt_claws, txt_stings, txt_touches, txt_kicks
+	dw txt_gazes, txt_breathes, txt_spits, txt_wails, txt_embraces
+	dw txt_crawls, txt_spores, txt_begs, txt_slimed, txt_crushes
+	dw txt_tramples, txt_drools
+
+player_exp:								; PLAYER.C player_exp[]
+	dd 10, 25, 45, 70, 100, 140, 200, 280
+	dd 380, 500, 650, 850, 1100, 1400, 1800, 2300
+	dd 2900, 3600, 4400, 5400, 6800, 8400, 10200, 12500
+	dd 17500, 25000, 35000, 50000, 75000, 100000, 150000, 200000
+	dd 275000, 350000, 450000, 550000, 700000, 850000, 1000000, 1250000
+	dd 1500000, 1800000, 2100000, 2400000, 2700000, 3000000, 3500000, 4000000
+	dd 4500000, 5000000
+
+; player
+p_lev:			db 1
+p_exp:			dd 0
+p_exp_frac:		dw 0
+p_mhp:			dw 0
+p_chp:			dw 0				; signed: below 0 is dead
+p_chp_frac:		dw 0
+p_dead:			db 0
+killer_race:	db 0
+; scratch
+th_ac:			db 0
+ri_n:			dw 0
+ri_mask:		dw 0
+name_cap:		db 0
+hit_damage:		dw 0
+crit_dam:		dw 0
+attack_num:		db 0
+atk_type:		db 0
+atk_desc:		db 0
+atk_dice:		db 0
+atk_sides:		db 0

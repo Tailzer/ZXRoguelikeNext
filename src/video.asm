@@ -184,16 +184,189 @@ msg_end:
 	ld (hl),0
 	ld hl,msg_buf
 	; fall through
-/* show_message - HL = string, printed on the message row */
+/* msg_print - HL = string. Messages share the top line, as in Moria;
+	when the next one won't fit, -more- waits for a key first */
+msg_print:
 show_message:
 	push hl
+	call strlen
+	ld b,a
+	ld a,(msg_col)
+	or a
+	jr z,.place
+	add a,b
+	inc a
+	jr c,.more
+	cp MSG_WIDTH+1
+	jr c,.space
+.more:
+	ld a,(msg_col)
+	ld e,a
+	ld d,MSG_ROW
+	ld hl,txt_more
+	ld c,ATTR_GREY
+	call print_at
+	call wait_fresh_key
+	call msg_clear
+	jr .place
+.space:
+	ld hl,msg_col
+	inc (hl)
+.place:
+	pop hl
+	call strlen
+	ld b,a
+	ld a,(msg_col)
+	ld e,a
+	ld d,MSG_ROW
+	ld c,ATTR_WHITE
+	push bc
+	call print_at
+	pop bc
+	ld a,(msg_col)
+	add a,b
+	ld (msg_col),a
+	ret
+
+/* msg_clear - empty the message line */
+msg_clear:
 	ld d,MSG_ROW
 	call clear_row
+	xor a
+	ld (msg_col),a
+	ret
+
+/* strlen - HL = string -> A = length. Preserves HL, clobbers B */
+strlen:
+	push hl
+	ld b,0
+.loop:
+	ld a,(hl)
+	or a
+	jr z,.done
+	inc hl
+	inc b
+	jr .loop
+.done:
+	ld a,b
 	pop hl
-	ld d,MSG_ROW
-	ld e,0
-	ld c,ATTR_WHITE
-	jp print_at
+	ret
+
+/* msg_add_u8 - add A as a decimal number to the message being built */
+msg_add_u8:
+	ld de,(msg_ptr)
+	ld b,0								; set once a digit is written
+	ld c,100
+	call .digit
+	ld c,10
+	call .digit
+	add a,'0'
+	ld (de),a
+	inc de
+	ld (msg_ptr),de
+	ret
+.digit:
+	ld h,'0'
+.sub:
+	cp c
+	jr c,.got
+	sub c
+	inc h
+	jr .sub
+.got:
+	ld l,a
+	ld a,h
+	cp '0'
+	jr nz,.write
+	bit 0,b
+	jr z,.skip
+.write:
+	ld (de),a
+	inc de
+	ld b,1
+.skip:
+	ld a,l
+	ret
+
+/* print_u32 - HL -> 32-bit value, DE = cell, C = attribute. No leading
+	zeros, up to 8 digits. Returns DE = next cell. Clobbers IX */
+print_u32:
+	ld a,c
+	ld (print_attr),a
+	push de
+	ld de,p32_work
+	ld bc,4
+	ldir
+	pop de
+	xor a
+	ld (print_started),a
+	ld ix,pow10_32
+.digit:
+	ld a,(ix+0)
+	or (ix+1)
+	or (ix+2)
+	or (ix+3)
+	jr z,.last
+	ld b,'0'
+.sub:									; try work -= power
+	ld hl,p32_work
+	ld a,(hl)
+	sub (ix+0)
+	ld (p32_try),a
+	inc hl
+	ld a,(hl)
+	sbc a,(ix+1)
+	ld (p32_try+1),a
+	inc hl
+	ld a,(hl)
+	sbc a,(ix+2)
+	ld (p32_try+2),a
+	inc hl
+	ld a,(hl)
+	sbc a,(ix+3)
+	ld (p32_try+3),a
+	jr c,.got
+	ld hl,(p32_try)
+	ld (p32_work),hl
+	ld hl,(p32_try+2)
+	ld (p32_work+2),hl
+	inc b
+	jr .sub
+.got:
+	ld a,b
+	cp '0'
+	jr nz,.emit
+	ld a,(print_started)
+	or a
+	jr z,.skip
+	ld a,b
+.emit:
+	call .put
+	ld a,1
+	ld (print_started),a
+.skip:
+	ld bc,4
+	add ix,bc
+	jr .digit
+.last:
+	ld a,(p32_work)
+	add a,'0'
+	call .put
+	ld a,(print_attr)
+	ld c,a
+	ret
+.put:
+	ld (de),a
+	inc de
+	ld a,(print_attr)
+	ld (de),a
+	inc de
+	ret
+
+pow10_32:
+	dd 10000000,1000000,100000,10000,1000,100,10,0
+p32_work:		dd 0
+p32_try:		dd 0
 
 ; ink colours, RRRGGGBB, in COL_ order
 palette_inks:

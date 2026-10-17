@@ -9,10 +9,14 @@ Design reference: Angband PC 1.2 C source (`~/Downloads/angband-pc1.2/SRC`).
 - `./run.sh` — builds and runs it in CSpect at 28MHz
 - In VS Code: the default build task builds; DeZog has a "CSpect" config (start CSpect with `-remote` first)
 
+## Character (until character creation exists)
+
+Fixed level 1 human warrior with the class's starting kit from `PLAYER.C`: Broadsword (2d5), Chain Mail (AC 14, -2 to hit), 19 hp, 1 blow.
+
 ## Controls
 
 `h j k l y u b n` (Angband roguelike keys) or cursor keys `5 6 7 8`.
-Walk into a closed door to open it. `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
+Walk into a closed door to open it, or into a monster to attack it. `s` stays still for a turn. `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
 
 ## Milestones
 
@@ -21,12 +25,15 @@ Walk into a closed door to open it. `>` (Symbol Shift+T) / `<` (Symbol Shift+R) 
 3. **Lighting** — lit rooms light up on entry, 3x3 player light, remembered walls/doors/stairs (`MORIA1.C` light_room, move_light) *(done)*
 4. **Monsters** (`CREATURE.C`, `MONSTERS.C`, `MISC1.C`)
    - 4a: 10 races, placement and packs, `los()`, sleep/wake, speed, chasing and erratic movement *(done)*
-   - 4b: melee both ways, player hit points, death
+   - 4b: melee both ways (make_attack, py_attack, criticals), experience and levels, hit point regeneration, death and restart *(done)*
+   - not yet: monster attack side effects (confusion, cuts, stuns), real stats/equipment
 5. **Items** — pick up, inventory, wield, potions (`TREASURE.C`, `POTIONS.C`)
 6. **Data converter** — Mac-side script turning the C tables into `.bin` files
 7. Magic, stores, the town, saving to SD card
 
 ## Memory map
+
+**Code space:** bank 2 (`$8000-$AFFF`) is nearly full after milestone 4 (code ends around `$A1A0`). Milestone 5 needs to start paging code banks in via the MMU.
 
 | Address | Contents |
 |---|---|

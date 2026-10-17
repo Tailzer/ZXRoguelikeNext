@@ -373,6 +373,9 @@ monsters_act:
 	ld ix,MON_LIST
 	ld b,MON_MAX
 .loop:
+	ld a,(p_dead)						; no beating a dead body
+	or a
+	ret nz
 	push bc
 	ld a,(ix+M_RACE)
 	cp MON_EMPTY
@@ -706,7 +709,11 @@ make_move:
 	jr nz,.not_player
 	ld a,(player_x)
 	cp e
-	jp z,mon_attack
+	jr nz,.not_player
+	ld a,(ix+M_ML)						; it may have just come into view
+	or a
+	call z,update_mon
+	jp mon_attack
 .not_player:
 	bit F_MON_BIT,(hl)
 	jr z,.move
@@ -737,24 +744,6 @@ make_move:
 	cp 5
 	jp c,.try
 	ret
-
-/* mon_attack - IX = monster next to the player. Combat is milestone 4b;
-	for now it just announces itself */
-mon_attack:
-	ld a,(ix+M_ML)
-	or a
-	ret z
-	call msg_begin
-	ld hl,txt_the
-	call msg_add
-	ld a,(ix+M_RACE)
-	call race_addr
-	ld l,(iy+R_NAME)
-	ld h,(iy+R_NAME+1)
-	call msg_add
-	ld hl,txt_threatens
-	call msg_add
-	jp msg_end
 
 keypad_deltas:							; dy, dx for directions 1-9
 	db 1,-1, 1,0, 1,1, 0,-1, 0,0, 0,1, -1,-1, -1,0, -1,1

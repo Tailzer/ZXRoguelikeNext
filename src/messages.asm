@@ -15,10 +15,55 @@ txt_the:		db "The ",0
 txt_in_way:		db " is in the way.",0
 txt_threatens:	db " is next to you!",0
 
-txt_depth:		db "Depth ",0
+txt_the_lc:		db "the ",0
+txt_it:			db "It",0
+txt_it_lc:		db "it",0
+txt_space:		db " ",0
+txt_full_stop:	db ".",0
+txt_more:		db "-more-",0
+txt_you_hit:	db "You hit ",0
+txt_you_miss:	db "You miss ",0
+txt_you_slain:	db "You have slain ",0
+txt_misses_you:	db " misses you.",0
+txt_welcome_level: db "Welcome to level ",0
+txt_good_hit:	db "It was a good hit!",0
+txt_excellent_hit: db "It was an excellent hit!",0
+txt_superb_hit:	db "It was a superb hit!",0
+txt_great_hit:	db "It was a *GREAT* hit!",0
+; monster attack descriptions 1-18 (make_attack)
+txt_hits:		db "hits you.",0
+txt_bites:		db "bites you.",0
+txt_claws:		db "claws you.",0
+txt_stings:		db "stings you.",0
+txt_touches:	db "touches you.",0
+txt_kicks:		db "kicks you.",0
+txt_gazes:		db "gazes at you.",0
+txt_breathes:	db "breathes on you.",0
+txt_spits:		db "spits on you.",0
+txt_wails:		db "makes a horrible wail.",0
+txt_embraces:	db "embraces you.",0
+txt_crawls:		db "crawls on you.",0
+txt_spores:		db "releases a cloud of spores.",0
+txt_begs:		db "begs you for money.",0
+txt_slimed:		db "slimes you.",0
+txt_crushes:	db "crushes you.",0
+txt_tramples:	db "tramples you.",0
+txt_drools:		db "drools on you.",0
+; death
+txt_you_die:	db "You die.",0
+txt_rip:		db "R I P",0
+txt_killed_by:	db "Killed by ",0
+txt_a:			db "a ",0
+txt_an:			db "an ",0
+txt_on_level:	db "on level ",0
+txt_try_again:	db "Press any key to start again.",0
+; status line
+txt_lev:		db "Lv ",0
+txt_exp:		db "  Exp ",0
+txt_hp:			db "  HP ",0
+txt_slash:		db "/",0
+txt_depth:		db "  ",0
 txt_feet:		db " ft",0
-txt_pos_x:		db "   X:",0
-txt_pos_y:		db "  Y:",0
-txt_keys:		db "Move: hjkl yubn / cursors   Stairs: < >"
+txt_keys:		db "hjkl yubn  s stay  < >"
 txt_keys_len	equ $-txt_keys
 				db 0

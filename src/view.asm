@@ -159,15 +159,49 @@ draw_view:
 	ld (hl),ATTR_YELLOW
 	ret
 
-/* draw_status - bottom line: depth, position, key help */
+/* draw_status - bottom line: level, experience, hit points, depth */
 draw_status:
 	ld d,STATUS_ROW
 	call clear_row
-	ld hl,txt_depth
+	ld hl,txt_lev
 	ld d,STATUS_ROW
 	ld e,0
 	ld c,ATTR_GREY
 	call print_at
+	ld a,(p_lev)
+	call print_u8
+	ld hl,txt_exp
+	call print_str
+	ld hl,p_exp
+	call print_u32
+	ld hl,txt_hp
+	call print_str
+	ld c,ATTR_WHITE						; hit points in yellow when low
+	ld hl,(p_chp)
+	add hl,hl
+	add hl,hl
+	ld a,(p_mhp)
+	push de
+	ld e,a
+	ld a,(p_mhp+1)
+	ld d,a
+	or a
+	sbc hl,de							; 4*chp < mhp?
+	pop de
+	jr nc,$+4
+	ld c,ATTR_YELLOW
+	ld hl,(p_chp)
+	bit 7,h
+	jr z,$+5
+	ld hl,0
+	call print_u16
+	ld c,ATTR_GREY
+	ld hl,txt_slash
+	call print_str
+	ld hl,(p_mhp)
+	call print_u16
+	ld hl,txt_depth
+	call print_str
 	push de
 	ld a,(dun_level)					; 50 feet per level
 	ld d,a
@@ -178,14 +212,6 @@ draw_status:
 	call print_u16
 	ld hl,txt_feet
 	call print_str
-	ld hl,txt_pos_x
-	call print_str
-	ld a,(player_x)
-	call print_u8
-	ld hl,txt_pos_y
-	call print_str
-	ld a,(player_y)
-	call print_u8
 	ld hl,txt_keys
 	ld d,STATUS_ROW
 	ld e,SCREEN_W-txt_keys_len
