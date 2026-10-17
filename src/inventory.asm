@@ -1,6 +1,7 @@
 /* inventory.asm - the pack, equipment and item commands  [overlay: PAGE_ITEMS]
 	References: MORIA2.C carry, MISC2.C inven_carry/objdes/calc_bonuses/
-	attack_blows, POTIONS.C, EAT.C, MISC1.C add_food, SPELLS.C hp_player.
+	attack_blows, EAT.C. Quaffing is chosen here and carried out by the
+	magic overlay (potions.asm).
 	The pack holds PACK_MAX records (a-l), kept packed together; food and
 	potions of the same kind stack. Equipment has one slot per class:
 	weapon, body armour, shield, helm, cloak, gloves, boots.
@@ -52,11 +53,13 @@ starting_kit:
 	ld (ix+I_KIND),a
 	ld (ix+I_NUMBER),1
 	ld (ix+I_MARKED),1
+	ld (ix+I_IDENT),1<<ID_STORE_BIT		; (player_outfit: store_bought)
 	ret
 
 /* calc_bonuses - armour class, to-hit/dam and the weapon's numbers from
 	what is worn and wielded, and blows from attack_blows() */
 calc_bonuses:
+	call stat_bonuses
 	xor a
 	ld (p_ac),a
 	ld (p_tohit),a
@@ -91,7 +94,58 @@ calc_bonuses:
 	ld hl,p_todam
 	add a,(hl)
 	ld (hl),a
+	; temporary effects (MORIA1.C: stun, then the spell increases)
+	ld b,0								; B = to-hit, C = to-ac changes
+	ld c,b
+	ld hl,(p_stun)
+	bit 7,h
+	jr nz,.unstunned
+	ld a,h
+	or l
+	jr z,.unstunned
+	ld de,51
+	sbc hl,de							; (carry clear from the or)
+	ld a,-5
+	jr c,$+4
+	ld a,-20
+	ld b,a
+	ld hl,p_todam
+	add a,(hl)
+	ld (hl),a
+.unstunned:
+	ld a,(p_status+1)
+	bit PY2_BLESSED,a
+	jr z,.unblessed
+	ld a,b
+	add a,10
+	ld b,a
+	ld a,c
+	add a,5
+	ld c,a
+.unblessed:
+	ld a,(p_status)
+	bit PY_HERO,a
+	jr z,.unheroic
+	ld a,b
+	add a,12
+	ld b,a
+.unheroic:
+	ld a,(p_status)
+	bit PY_SHERO,a
+	jr z,.calm
+	ld a,b
+	add a,24
+	ld b,a
+	ld a,c
+	sub 10
+	ld c,a
+.calm:
+	ld hl,p_tohit
+	ld a,(hl)
+	add a,b
+	ld (hl),a
 	ld a,(p_stat_toac)
+	add a,c
 	ld hl,p_ac
 	add a,(hl)
 	jp p,$+4
@@ -487,58 +541,12 @@ cmd_quaff:
 	ld hl,msg_no_potions
 	jp msg_print
 .drink:
-	ld (cmd_slot),a
-	ld a,(ix+I_KIND)
-	call kind_addr
-	ld b,(iy+K_EFFECT)					; heal (effect)d7
-	ld c,7
-	call damroll
-	call hp_player
-	ld a,(cmd_slot)
-	call use_one
+	ld (pending_arg),a					; POTIONS.C's effects are in the
+	ld a,PM_QUAFF						; magic overlay
+	ld (pending_magic),a
 	ld a,1
 	ld (turn_taken),a
 	ret
-
-/* hp_player - HL = hit points healed, with the C's messages by amount */
-hp_player:
-	ld a,l
-	ld (heal_amount),a
-	push hl
-	ld hl,(p_chp)
-	ld de,(p_mhp)
-	or a
-	sbc hl,de
-	pop hl
-	ret nc								; already at full health
-	ld de,(p_chp)
-	add hl,de
-	ld (p_chp),hl
-	push hl
-	ld de,(p_mhp)
-	or a
-	sbc hl,de
-	pop hl
-	jr c,.msg
-	ld (p_chp),de
-	ld hl,0
-	ld (p_chp_frac),hl
-.msg:
-	ld a,(heal_amount)
-	ld c,5
-	call div8							; num / 5
-	ld hl,msg_little_better
-	or a
-	jr z,.say
-	ld hl,msg_better
-	cp 3
-	jr c,.say
-	ld hl,msg_much_better
-	cp 7
-	jr c,.say
-	ld hl,msg_very_good
-.say:
-	jp msg_print
 
 /* cmd_eat - 'E': eat some food (EAT.C, add_food in MISC1.C) */
 cmd_eat:
@@ -555,46 +563,11 @@ cmd_eat:
 	ld (cmd_slot),a
 	ld a,(ix+I_KIND)
 	call kind_addr
-	ld hl,(p_food)
-	bit 7,h
-	jr z,$+5
-	ld hl,0
-	ld e,(iy+K_P1)
-	ld d,(iy+K_P1+1)
-	add hl,de
-	ld (p_food),hl
-	ld de,FOOD_MAX+1
-	or a
-	sbc hl,de
-	jr c,.not_bloated
-	ld hl,FOOD_MAX						; (no slowness from overeating yet)
-	ld (p_food),hl
-	ld hl,msg_bloated
-	call msg_print
-	jr .hunger
-.not_bloated:
-	ld hl,(p_food)
-	ld de,FOOD_FULL+1
-	or a
-	sbc hl,de
-	jr c,.hunger
-	ld hl,msg_full
-	call msg_print
-.hunger:
-	ld hl,(p_food)						; hunger state from the new total
-	ld a,HUNGER_FED
-	ld de,FOOD_ALERT
-	or a
-	sbc hl,de
-	jr nc,.set
-	add hl,de
-	ld a,HUNGER_HUNGRY
-	ld de,FOOD_WEAK
-	sbc hl,de
-	jr nc,.set
-	ld a,HUNGER_WEAK
-.set:
-	ld (p_hunger),a
+	ld l,(iy+K_P1)
+	ld h,(iy+K_P1+1)
+	call add_food
+	ld a,(cmd_slot)
+	call desc_remain
 	ld a,(cmd_slot)
 	call use_one
 	ld a,1
@@ -833,12 +806,6 @@ msg_no_room:	db "You have no room in your pack.",0
 msg_already_item: db "There is already something here.",0
 msg_nothing_here: db "There is nothing here to pick up.",0
 msg_floor_full:	db "There is no room on the floor.",0
-msg_little_better: db "You feel a little better.",0
-msg_better:		db "You feel better.",0
-msg_much_better: db "You feel much better.",0
-msg_very_good:	db "You feel very good.",0
-msg_full:		db "You are full.",0
-msg_bloated:	db "You are bloated from overeating.",0
 
 list_filter:	db 0
 list_shown:		db 0
@@ -847,5 +814,4 @@ cmd_slot:		db 0
 cmd_equip:		db 0
 drop_src:		dw 0
 drop_dst:		dw 0
-heal_amount:	db 0
 num_tmp:		dw 0

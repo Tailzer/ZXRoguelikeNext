@@ -69,6 +69,7 @@ msg_weak:		db "You are getting weak from hunger.",0
 msg_faint:		db "You faint from the lack of food.",0
 txt_feet:		db " ft",0
 txt_town:		db "  Town",0
-txt_keys:		db "i e w t q E d g"
-txt_keys_len	equ $-txt_keys
 				db 0
+msg_yanked_up:	db "You feel yourself yanked upwards!",0
+msg_yanked_down: db "You feel yourself yanked downwards!",0
+msg_too_afraid:	db "You are too afraid!",0

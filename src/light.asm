@@ -35,6 +35,9 @@ lamp_off:
 
 /* lamp_on - light the 3x3 around the player, remembering walls/doors/stairs */
 lamp_on:
+	ld a,(p_status)						; blind: no light
+	bit PY_BLIND,a
+	ret nz
 	call lamp_origin
 	ld de,MAP_W-3
 	ld c,3
@@ -59,6 +62,9 @@ lamp_on:
 /* light_arrive - the player has just arrived on their square:
 	light the room if it's a lit room (or a doorway into one), then the lamp */
 light_arrive:
+	ld a,(p_status)
+	bit PY_BLIND,a
+	ret nz
 	call player_square
 	ld a,(hl)
 	and TERRAIN_MASK

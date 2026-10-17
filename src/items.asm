@@ -2,18 +2,27 @@
 	Kinds and treasures come from TREASURE.C via tools/convert.py
 	(data/kinds.asm in KIND_PAGE, data/tables.asm here). Names use the C's
 	conventions: '~' marks where a plural 's' goes.
-	Not yet: magical pluses (magic_treasure), unknown potion flavours.
+	Potions show their flavour's colour (TC_COLOR's tccolors).
+	Not yet: magical pluses (magic_treasure).
  */
 
-/* kind_addr - A = kind -> IY = kind record, paged into DATA_WINDOW.
-	Clobbers DE */
+/* kind_addr - A = kind -> IY = kind record, paged into DATA_WINDOW
+	(128 kinds per page). Preserves A. Clobbers DE */
 kind_addr:
-	nextreg NR_MMU1,KIND_PAGE
+	push af
+	ld e,a
+	rlca								; page = KIND_PAGE + kind / 128
+	and 1
+	add a,KIND_PAGE
+	nextreg NR_MMU1,a
+	ld a,e
+	and $7F
 	ld e,a
 	ld d,KIND_SIZE
 	mul d,e
 	ld iy,DATA_WINDOW
 	add iy,de
+	pop af
 	ret
 
 /* kind_name - IY = kind record -> HL = its name. Clobbers DE */
@@ -146,6 +155,14 @@ item_glyph:
 	call kind_addr
 	ld b,(iy+K_CHAR)
 	ld c,(iy+K_ATTR)
+	call flavour_class
+	jr nc,.plain
+	call flavour_index
+	nextreg NR_MMU1,FLAVOUR_PAGE
+	ld hl,colour_attrs
+	add hl,a
+	ld c,(hl)
+.plain:
 	pop hl
 	ret
 .gold:
@@ -159,9 +176,75 @@ item_glyph:
 	pop hl
 	ret
 
-/* hunger_tick - one turn of digestion (DUNGEON.C). Returns A = regen
-	amount for regenhp: less when weak or fainting, none when starving */
+/* add_food - HL = nourishment (add_food in MISC1.C): overeating slows */
+add_food:
+	ex de,hl
+	ld hl,(p_food)
+	bit 7,h
+	jr z,$+5
+	ld hl,0
+	add hl,de
+	ld (p_food),hl
+	ld de,FOOD_MAX+1
+	or a
+	sbc hl,de
+	jr c,.not_bloated
+	ld hl,msg_bloated					; slow += (food - max) / 50,
+	call msg_print						; food = max + slow
+	ld hl,(p_food)
+	ld de,FOOD_MAX
+	or a
+	sbc hl,de
+	ld c,50
+	call div16_8
+	ld de,(p_slow)
+	add hl,de
+	ld (p_slow),hl
+	ld de,FOOD_MAX
+	add hl,de
+	ld (p_food),hl
+	jr .hunger
+.not_bloated:
+	ld hl,(p_food)
+	ld de,FOOD_FULL+1
+	or a
+	sbc hl,de
+	jr c,.hunger
+	ld hl,msg_full
+	call msg_print
+.hunger:
+	ld hl,(p_food)						; hunger state from the new total
+	ld a,HUNGER_FED
+	ld de,FOOD_ALERT
+	or a
+	sbc hl,de
+	jr nc,.set
+	add hl,de
+	ld a,HUNGER_HUNGRY
+	ld de,FOOD_WEAK
+	sbc hl,de
+	jr nc,.set
+	ld a,HUNGER_WEAK
+.set:
+	ld (p_hunger),a
+	ret
+
+/* hunger_tick - one turn of digestion (DUNGEON.C): fast characters burn
+	speed^2 more. Returns A = regen amount for regenhp: less when weak or
+	fainting, none when starving */
 hunger_tick:
+	ld a,(p_speed)
+	bit 7,a
+	jr z,.digest
+	neg
+	ld e,a
+	ld d,a
+	mul d,e
+	ld hl,(p_food)
+	or a
+	sbc hl,de
+	ld (p_food),hl
+.digest:
 	ld hl,(p_food)
 	ld de,-FOOD_DIGESTED
 	add hl,de
@@ -240,3 +323,6 @@ hunger_tick:
 .no_faint:
 	ld a,REGEN_FAINT
 	ret
+
+msg_full:		db "You are full.",0
+msg_bloated:	db "You are bloated from overeating.",0

@@ -147,14 +147,25 @@ monsters_see_all:
 	djnz .loop
 	ret
 
-/* update_mon - IX = monster. Visible if within MAX_SIGHT, on screen, in
-	line of sight, not invisible (no see invisible yet), and either on a
-	lit square or within infravision (unless it's cold-blooded).
+/* update_mon - IX = monster. Visible unless blind, if within MAX_SIGHT,
+	on screen, in line of sight, not invisible (unless the player sees
+	invisible: high-elves, or detect invisible), and either on a lit square
+	or within infravision (unless it's cold-blooded).
 	Clobbers everything but IX */
 update_mon:
+	ld a,(p_status)
+	bit PY_BLIND,a
+	jr nz,.hidden
 	call mon_race
 	bit RF_INVISIBLE,(iy+R_FLAGS)
-	jr nz,.hidden
+	jr z,.seeable
+	ld a,(p_race)
+	cp RACE_HIGH_ELF
+	jr z,.seeable
+	ld a,(p_status+1)
+	bit PY2_DET_INV,a
+	jr z,.hidden
+.seeable:
 	ld a,(ix+M_CDIS)
 	cp MAX_SIGHT+1
 	jr nc,.hidden
@@ -180,7 +191,11 @@ update_mon:
 	ld a,(hl)							; lit or remembered-lit?
 	and F_SEEN
 	jr nz,.in_sight
-	ld a,(p_infra)						; or warm and within infravision
+	ld a,(p_status+1)					; or warm and within infravision
+	bit PY2_TIM_INFRA,a
+	ld a,(p_infra)
+	jr z,$+3
+	inc a
 	cp (ix+M_CDIS)
 	jr c,.hidden
 	bit RF_NO_INFRA,(iy+R_FLAGS)

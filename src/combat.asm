@@ -17,68 +17,53 @@ REGEN_HPBASE		equ 1442			; PLAYER_REGEN_HPBASE
 /* player_init - start the character create_character made: level 1,
 	full hit points, fed, carrying the class's kit */
 player_init:
-	ld a,1
+	xor a
+	ld (p_speed),a
+	ld (p_status),a						; (before calc_hitpoints looks)
+	ld (p_status+1),a
+	ld (p_update),a
+	ld (p_new_level),a
+	ld (pending_magic),a
+	ld (p_max_dlv),a
+	ld (p_dead),a
+	ld (p_hunger),a
+	ld (p_paralysed),a
+	inc a
 	ld (p_lev),a
 	ld hl,0
 	ld (p_exp),hl
 	ld (p_exp+2),hl
 	ld (p_exp_frac),hl
 	ld (p_chp_frac),hl
+	ld (p_max_exp),hl
+	ld (p_max_exp+2),hl
+	call stat_bonuses
 	call calc_hitpoints
 	ld hl,(p_mhp)
 	ld (p_chp),hl
-	xor a
-	ld (p_dead),a
-	ld (p_hunger),a
-	ld (p_paralysed),a
 	ld hl,FOOD_START
 	ld (p_food),hl
 	ld hl,uniques_dead					; a new world: every unique alive
 	ld b,(NUM_RACES+7)/8
-.alive:
-	ld (hl),0
-	inc hl
-	djnz .alive
+	call .zero
+	ld hl,p_timed						; no effects running
+	ld b,P_TIMED_SIZE
+	call .zero
+	ld hl,object_ident					; nothing learnt yet
+	ld b,0
+	call .zero
+	call .zero
+	ld hl,p_stat						; stats start at their maximum
+	ld de,p_stat_max
+	ld bc,6
+	ldir
+	FARCALL PAGE_MAGIC, magic_init		; this game's potion colours
 	FARCALL PAGE_ITEMS, starting_kit	; also works out the bonuses
 	ret
-
-/* calc_hitpoints - p_mhp = player_hp[lev-1] + con_adj * lev, at least
-	lev + 1 (calc_hitpoints in MISC2.C) */
-calc_hitpoints:
-	ld a,(p_lev)
-	dec a
-	add a,a
-	ld hl,P_HP_TABLE
-	add hl,a
-	ld a,(hl)
+.zero:
+	ld (hl),0
 	inc hl
-	ld h,(hl)
-	ld l,a
-	ld a,(p_con_adj)
-	ld e,a
-	rla
-	sbc a,a
-	ld d,a								; DE = con_adj
-	ld a,(p_lev)
-	ld b,a
-.times:
-	add hl,de
-	djnz .times
-	ld a,(p_lev)
-	inc a
-	ld e,a
-	ld d,0
-	bit 7,h
-	jr nz,.least
-	push hl
-	or a
-	sbc hl,de
-	pop hl
-	jr nc,.set
-.least:
-	ex de,hl
-.set:
-	ld (p_mhp),hl
+	djnz .zero
 	ret
 
 /* test_hit - HL = bth + pth*3 + level*adj (signed), A = target AC.
@@ -518,8 +503,12 @@ unique_bit:
 	jr .shift
 
 /* check_level_up - gain levels while exp >= player_exp[lev-1] scaled by
-	the race and class experience factor (prt_experience in MISC2.C) */
+	the race and class experience factor, and keep max_exp up to date
+	(prt_experience in MISC2.C) */
 check_level_up:
+	call .levels
+	jp update_max_exp
+.levels:
 	ld a,(p_lev)
 	cp MAX_PLAYER_LEVEL
 	ret nc
@@ -539,18 +528,9 @@ check_level_up:
 	dec de
 	djnz .cmp
 .gain:
-	ld hl,(p_mhp)
-	push hl
 	ld hl,p_lev
 	inc (hl)
-	call calc_hitpoints					; current hp rise with the maximum
-	pop de
-	ld hl,(p_mhp)
-	or a
-	sbc hl,de
-	ld de,(p_chp)
-	add hl,de
-	ld (p_chp),hl
+	call calc_hitpoints					; current hp rise in proportion
 	call msg_begin
 	ld hl,txt_welcome_level
 	call msg_add
@@ -559,7 +539,7 @@ check_level_up:
 	ld hl,txt_full_stop
 	call msg_add
 	call msg_end
-	jr check_level_up
+	jr .levels
 
 /* mon_attack - monster IX (race IY) attacks the player with each of its
 	blows (make_attack in CREATURE.C) */

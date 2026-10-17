@@ -48,9 +48,26 @@ update_view:
 	ld (view_y),a
 	ret
 
-/* draw_view - redraw every map cell in the view, then the player */
+/* draw_view - redraw every map cell in the view, then the player. Only
+	called from the main loop, so it first does any recalculation an
+	overlay asked for (update_stuff pages overlays) */
 draw_view:
+	call update_stuff
 	call update_view
+	ld a,(p_status)						; blind: nothing but yourself
+	bit PY_BLIND,a
+	jr z,.sighted
+	ld d,VIEW_TOP
+.blank:
+	push de
+	call clear_row
+	pop de
+	inc d
+	ld a,d
+	cp VIEW_TOP+VIEW_H
+	jr c,.blank
+	jp .player
+.sighted:
 	ld de,TILEMAP_BASE+VIEW_TOP*SCREEN_W*2
 	ld a,(view_y)
 	ld c,a								; C = map y
@@ -148,6 +165,7 @@ draw_view:
 	djnz .monster
 
 	; player
+.player:
 	ld a,(view_y)
 	ld b,a
 	ld a,(player_y)
@@ -291,8 +309,150 @@ draw_status:
 .hunger:
 	call print_str
 .fed:
-	ld hl,txt_keys
-	ld d,STATUS_ROW
-	ld e,SCREEN_W-txt_keys_len
-	ld c,ATTR_DARK
-	jp print_at
+	ld hl,status_tests					; what's affecting the player
+.test:
+	ld c,(hl)
+	inc hl
+	ld b,(hl)
+	inc hl
+	ld a,b
+	or c
+	ret z
+	push hl
+	push de
+	ld h,b
+	ld l,c
+	call jp_hl_v						; -> carry, HL = word to show
+	pop de
+	jr nc,.next
+	push hl								; room left on the line?
+	call strlen
+	pop hl
+	inc a
+	add a,a
+	push hl
+	ld hl,TILEMAP_BASE+(STATUS_ROW+1)*SCREEN_W*2
+	or a
+	sbc hl,de
+	ld b,0
+	ld c,a
+	or a
+	sbc hl,bc
+	pop hl
+	jr c,.next
+	inc de								; a space, then the word
+	inc de
+	ld c,ATTR_YELLOW
+	call print_str
+.next:
+	pop hl
+	jr .test
+jp_hl_v:
+	jp (hl)
+
+status_tests:	dw st_blind, st_confused, st_afraid, st_poisoned, st_cut
+				dw st_stun, st_paralysed, st_speed, 0
+
+; status tests -> carry and HL = what to show (prt_* in MISC2.C)
+st_blind:
+	ld hl,(p_blind)
+	ld de,txt_st_blind
+	jr st_word
+st_confused:
+	ld hl,(p_confused)
+	ld de,txt_st_confused
+	jr st_word
+st_afraid:
+	ld hl,(p_afraid)
+	ld de,txt_st_afraid
+	jr st_word
+st_poisoned:
+	ld hl,(p_poisoned)
+	ld de,txt_st_poisoned
+st_word:								; HL above 0 -> show DE
+	bit 7,h
+	jr nz,.no
+	ld a,h
+	or l
+	jr z,.no
+	ex de,hl
+	scf
+	ret
+.no:
+	or a
+	ret
+st_paralysed:
+	ld a,(p_paralysed)
+	ld l,a
+	ld h,0
+	ld de,txt_st_paralysed
+	jr st_word
+st_cut:
+	ld hl,(p_cut)
+	ld de,cut_words
+	jr st_level
+st_stun:
+	ld hl,(p_stun)
+	ld de,stun_words
+st_level:								; HL = value, DE = (above, text) list
+	bit 7,h
+	jr nz,st_word.no
+	ld a,h
+	or l
+	jr z,st_word.no
+	ex de,hl
+.find:
+	ld c,(hl)
+	inc hl
+	ld b,(hl)
+	inc hl
+	push de
+	ex de,hl
+	or a
+	sbc hl,bc							; value - threshold
+	ex de,hl
+	pop de
+	jr z,.below
+	jr nc,.found
+.below:
+	inc hl
+	inc hl
+	jr .find
+.found:
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	scf
+	ret
+st_speed:
+	ld a,(p_speed)
+	or a
+	jr z,st_word.no
+	ld hl,txt_st_fast
+	jp m,.shown
+	ld hl,txt_st_slow
+.shown:
+	scf
+	ret
+
+cut_words:		dw 900,txt_st_mortal, 300,txt_st_gash, 200,txt_st_severe
+				dw 45,txt_st_nasty, 15,txt_st_bad, 5,txt_st_light, 0,txt_st_graze
+stun_words:		dw 100,txt_st_knocked, 50,txt_st_heavy, 0,txt_st_stun
+txt_st_blind:		db "Blind",0
+txt_st_confused:	db "Confused",0
+txt_st_afraid:		db "Afraid",0
+txt_st_poisoned:	db "Poisoned",0
+txt_st_paralysed:	db "Paralysed",0
+txt_st_fast:		db "Fast",0
+txt_st_slow:		db "Slow",0
+txt_st_mortal:		db "Mortal wound",0
+txt_st_gash:		db "Deep gash",0
+txt_st_severe:		db "Severe cut",0
+txt_st_nasty:		db "Nasty cut",0
+txt_st_bad:			db "Bad cut",0
+txt_st_light:		db "Light cut",0
+txt_st_graze:		db "Graze",0
+txt_st_knocked:		db "Knocked out",0
+txt_st_heavy:		db "Heavy stun",0
+txt_st_stun:		db "Stun",0

@@ -13,10 +13,12 @@ PAGE_LEVEL			equ 40				; overlay: level generation, monster placement
 PAGE_MISC			equ 41				; overlay: start-up, death screen
 PAGE_ITEMS			equ 42				; overlay: inventory and item commands
 PAGE_CREATE			equ 43				; overlay: character creation, sheet, death
-PAGE_STORE			equ 50				; overlay: the town's stores
+PAGE_STORE			equ 51				; overlay: the town's stores
+PAGE_MAGIC			equ 52				; overlay: potions, timed effects, stats
 DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
 RACE_PAGE			equ 44				; 5 pages of races (data/races.asm)
-KIND_PAGE			equ 49				; 1 page of item kinds (data/kinds.asm)
+KIND_PAGE			equ 49				; 2 pages of item kinds (data/kinds.asm)
+FLAVOUR_PAGE		equ KIND_PAGE+1		; potion colours follow the kinds
 IM2_TABLE			equ $BC00			; 257 bytes of $BD
 IM2_JUMP			equ $BDBD			; jp im2_handler
 
@@ -228,12 +230,13 @@ I_X					equ 3
 I_MARKED			equ 4				; seen on the floor (the C's fm)
 I_VALUE				equ 5				; word, gold only
 I_SUB				equ 7				; gold type
+I_IDENT				equ 7				; everything else: ID_ flags
+ID_STORE_BIT		equ 0				; store bought (the C's ID_STOREBOUGHT)
 ; kind record (data/kinds.asm, made by tools/convert.py from TREASURE.C)
 KIND_SIZE			equ 64				; 128 per 8K page
 K_CHAR				equ 0
 K_ATTR				equ 1
 K_CLASS				equ 2
-K_EFFECT			equ 3				; potions: dice of 7 healed
 K_LEVEL				equ 4
 K_WEIGHT			equ 5				; word, tenths of a pound
 K_DICE				equ 7
@@ -245,7 +248,10 @@ K_P1				equ 12				; word: food value
 K_ARTICLE			equ 14				; 1 if the name takes "a"/"an"
 K_TVAL				equ 15				; the C's tval (which stores deal in it)
 K_COST				equ 16				; word, base value in gold
-K_NAME				equ 20				; the name itself, '~' where plurals add 's'
+K_FLAGS				equ 18				; dword: the C's flags (potion effects)
+K_FLAVOUR			equ 22				; subval & 63: index into the flavour tables
+K_GROUP2			equ 23				; 1 for TV_POTION2 (effects 33-64)
+K_NAME				equ 24				; the name itself, '~' where plurals add 's'
 ; item classes; wearable ones map to equipment slot class - IC_WEAPON
 IC_FOOD				equ 1
 IC_POTION			equ 2
@@ -336,6 +342,46 @@ PC_SPELL			equ 16
 PC_EXP				equ 17
 PC_FIRST_SPELL		equ 18
 PC_LADJ				equ 19				; class_level_adj: bth, bthb, device, disarm, save
+
+; ---- status (DUNGEON.C timed effects, MORIA1.C calc_bonuses) ----
+; p_status bits (the C's PY_ flags), low byte
+PY_BLIND			equ 0
+PY_CONFUSED			equ 1
+PY_FEAR				equ 2
+PY_POISONED			equ 3
+PY_FAST				equ 4
+PY_SLOW				equ 5
+PY_HERO				equ 6
+PY_SHERO			equ 7
+; p_status+1 bits
+PY2_BLESSED			equ 0
+PY2_DET_INV			equ 1
+PY2_TIM_INFRA		equ 2
+; p_update bits: recalculations overlays leave to the main loop
+PU_BONUS			equ 0				; stat bonuses, calc_bonuses
+PU_HP				equ 1				; calc_hitpoints
+; races with intrinsics (calc_bonuses)
+RACE_HOBBIT			equ 3				; sustain DEX
+RACE_GNOME			equ 4				; free action
+RACE_DWARF			equ 5				; resist blindness
+RACE_HALF_TROLL		equ 7				; sustain STR
+RACE_DUNADAN		equ 8				; sustain CON
+RACE_HIGH_ELF		equ 9				; see invisible
+; killer_race values for things that aren't monsters (high byte $FE)
+KILLER_DETONATION	equ $FE01
+KILLER_DEATH		equ $FE02
+KILLER_RUINATION	equ $FE03
+KILLER_POISON		equ $FE04
+KILLER_WOUND		equ $FE05
+; object_ident flags (DESC.C) and the kinds that have flavours
+OD_TRIED_BIT		equ 0
+OD_KNOWN_BIT		equ 1
+TV_POTION1			equ 75
+TV_POTION2			equ 76
+OFS_POTION			equ 5				; object_offset() for potions
+MAX_FLAVOURS		equ 57				; MAX_COLORS
+; pending actions for the magic overlay (pending_magic)
+PM_QUAFF			equ 1
 
 ; ---- commands ----
 CMD_MOVE			equ 0

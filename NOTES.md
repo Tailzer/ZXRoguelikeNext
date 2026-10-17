@@ -12,7 +12,7 @@ Design reference: Angband PC 1.2 C source (`~/Downloads/angband-pc1.2/SRC`).
 
 ## Character
 
-Created at the start of each game as in `CREATE.C`: choose a race (10), sex and class (6, as the race allows), roll stats (space rolls again, Enter accepts), then type a name (Caps Shift+0 deletes). Race and class set the hit die, base to-hit, stealth, infravision and experience factor; stats give to-hit, damage, armour class, hit points per level and blows. The class's starting kit comes from `player_init[]`, minus torches, books and potions the game can't use yet. Background history isn't generated (social class is taken as 50 for starting gold).
+Created at the start of each game as in `CREATE.C`: choose a race (10), sex and class (6, as the race allows), roll stats (space rolls again, Enter accepts), then type a name (Caps Shift+0 deletes). Race and class set the hit die, base to-hit, stealth, infravision and experience factor; stats give to-hit, damage, armour class, hit points per level and blows. The class's starting kit comes from `player_init[]` (warriors carry a Potion of Berserk Strength, priests one of Healing), minus torches and books the game can't use yet. Background history isn't generated (social class is taken as 50 for starting gold).
 
 ## Controls
 
@@ -47,7 +47,19 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `E
    - prices as the C's no-haggle option: item value x race adjustment x owner's final markup (x2 at the black market) x charisma; selling gets the owner's final offer, up to their purse; 25%/50%/75%/90% special offers
    - stores restock (`store_maint`) on each visit to town
    - not yet: haggling, store items with magical pluses, the Alchemist and Magic shop stock (scrolls, wands, rings...), restocking while you're in the dungeon
-9. Magic: spells, scrolls, wands, staffs, rings; monster spells and breath
+9. **Magic**, in parts:
+   - 9a-1: potions *(done)* — `POTIONS.C`, `DESC.C` flavours, `MISC2.C` stats, `DUNGEON.C` timed effects
+     - every potion in Angband 1.2 (52 kinds, effects 1-56); potion colours shuffled per game (all but slime mold juice, apple juice and water), drawn in their colour
+     - unknown potions go by colour ("a Cloudy Potion"); drinking one that does something identifies it and gives (level + lev/2) / lev experience; one that does nothing is marked `{tried}`; store stock and the starting kit are always known; selling an unknown potion identifies it, at a value of 20
+     - known and unknown stacks of the same kind only merge once known ("You combine similar objects from the shop and dungeon."); "You have no more ..." after drinking or eating
+     - current and maximum stats: gain (`inc_stat`), loss (`dec_stat`, with racial sustains), restore, ruination; maximum experience, Lose Memories and Restore Life Levels
+     - timed effects with the C's messages: blindness (only the `@` drawn, no monsters seen), confusion (3 in 4 moves random), fear (can't attack), poison, cuts, stuns, speed and slowness (`change_speed` shifts every monster's relative speed), heroism, berserk, blessing, protection from evil, resist heat/cold, detect invisible, infravision, word of recall; paralysis from sleep and salt water
+     - shown on the status line: Blind, Confused, Afraid, Poisoned, cut and stun levels, Paralysed, Fast/Slow
+     - Enlightenment maps the level; Self Knowledge lists your state; *Enlightenment* does both and identifies the pack
+     - overeating now slows you, and being fast burns food faster, as in the C
+     - not yet: mana (Restore Mana does nothing), hallucination, prices above 65535 (they show as 65535), haggling
+   - 9a-2: scrolls and the `r` command
+   - 9b: wands, staffs, rods; 9c: rings, amulets, magical pluses (enchant/curse scrolls); 9d: spells and monster spells
 10. Saving to SD card
 
 ## Memory map
@@ -80,10 +92,13 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 | 41 `PAGE_MISC` | `startup.asm` | power-on |
 | 42 `PAGE_ITEMS` | `inventory.asm`, `data/blows.asm` | item commands, picking up, starting kit |
 | 43 `PAGE_CREATE` | `create.asm`, `death.asm`, `data/player.asm` | making a character, the `C` sheet, the tombstone |
-| 50 `PAGE_STORE` | `store.asm`, `data/stores.asm` | the stores: stock, prices, buying and selling |
+| 51 `PAGE_STORE` | `store.asm`, `data/stores.asm` | the stores: stock, prices, buying and selling |
+| 52 `PAGE_MAGIC` | `potions.asm`, `effects.asm` | quaffing, stat changes, timed effects (every turn), the colour shuffle |
 
-Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 49 `KIND_PAGE` = `data/kinds.asm`. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
+Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 49-50 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page) followed on page 50 (`FLAVOUR_PAGE`) by `data/flavours.asm`, the potion colours. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
 
-Resident code ends around `$9EB0` after milestone 8 (the pack routines in `pack.asm` moved there so both the item commands and the stores can use them), about 4.4K below the monster list. The creation overlay (page 43) is nearly full (7.8K of 8K); the others have plenty of room.
+Resident code ends around `$A8BB` after milestone 9a-1 (`status.asm` holds the stat tables, timed-effect counters, what the player knows and the colour order), about 1.8K below the monster list. The creation overlay is at 7.6K of 8K; the magic overlay at 6.3K.
+
+Overlays that change stats or bonuses set `p_update`; `draw_view` (main loop only) runs `update_stuff`, which pages the items overlay to recalculate. Item commands that need the magic overlay leave `pending_magic` for `pending_actions` in the main loop.
 
 Rules: only resident code uses `FARCALL`; overlay code may call resident code but never another overlay; data an overlay owns stays in that overlay. New overlays go in the next free pages (42, 43...) with an `MMU 2, page, $4000` block in `roguelike.asm`.

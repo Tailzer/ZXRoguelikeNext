@@ -495,6 +495,10 @@ item_cost:
 	pop bc
 	ld l,(iy+K_COST)
 	ld h,(iy+K_COST+1)
+	ld a,(cost_unknown)					; (store_value: unknown potions)
+	or a
+	jr z,$+5
+	ld hl,20
 	ld a,c
 	or a
 	ret z
@@ -617,9 +621,11 @@ race_adjust:
 store_buys:
 	call kind_addr
 	ld a,(cur_store)
-	cp STORE_BLACK
+	cp STORE_BLACK						; the black market and home take
+	jr c,.list							; anything
 	scf
-	ret nc
+	ret
+.list:
 	add a,a
 	ld hl,store_buy_lists
 	add hl,a
@@ -738,7 +744,7 @@ draw_store:
 	ld e,4
 	ld c,ATTR_GREY
 	call print_at
-	jr .gold
+	jp .gold
 .stock:
 	xor a
 .line:
@@ -755,7 +761,9 @@ draw_store:
 	call store_entry
 	push hl
 	pop ix
-	call objdes_msg
+	push ix
+	call store_objdes
+	pop ix
 	ld a,(ix+2)							; any discount?
 	or a
 	jr z,.no_offer
@@ -896,6 +904,8 @@ store_purchase:
 	ld a,1
 	ld (deal_item+I_NUMBER),a
 	ld (deal_item+I_MARKED),a
+	ld a,1<<ID_STORE_BIT				; store bought: known
+	ld (deal_item+I_IDENT),a
 	push ix
 	ld ix,deal_item
 	call pack_carry
@@ -1012,8 +1022,16 @@ store_sell:
 	ld a,(cur_store)
 	cp STORE_HOME
 	jr z,.offered
+	ld a,(ix+I_KIND)					; unknown potions fetch 20 (value)
+	call kind_addr
+	call item_known
+	sbc a,a
+	cpl
+	ld (cost_unknown),a
 	ld a,(ix+I_KIND)
 	call sell_offer
+	xor a
+	ld (cost_unknown),a
 	ld a,h
 	or l
 	jr nz,.offered
@@ -1028,10 +1046,28 @@ store_sell:
 	ld de,0
 	adc hl,de
 	ld (p_gold+2),hl
-	ld a,(ix+I_KIND)					; describe one of them
+	ld a,(deal_slot)
+	call pack_slot
+	ld a,(ix+I_KIND)
 	ld (deal_item+I_KIND),a
-	ld a,1
+	ld a,(cur_store)					; selling identifies it (STORE2.C),
+	cp STORE_HOME						; which may combine stacks
+	jr z,.known
+	ld a,(deal_item+I_KIND)
+	call learn_kind
+	call kind_addr
+	call ident_addr
+	jr nc,.known						; (no flavour: nothing moved)
+	ld a,(deal_item+I_KIND)
+	call find_pack_kind
+	ld (deal_slot),a
+.known:
+	ld a,(deal_slot)
+	call pack_slot
+	ld a,1								; describe one of them
 	ld (deal_item+I_NUMBER),a
+	ld a,1<<ID_STORE_BIT
+	ld (deal_item+I_IDENT),a
 	call msg_begin
 	ld hl,txt_you_sold
 	ld a,(cur_store)
@@ -1063,6 +1099,17 @@ store_sell:
 	ld a,(deal_slot)
 	call use_one
 	jp say
+
+/* store_objdes - IX = stock entry: describe it, as a known item */
+store_objdes:
+	ld a,(ix+0)
+	ld (show_item+I_KIND),a
+	ld a,(ix+1)
+	ld (show_item+I_NUMBER),a
+	ld a,1<<ID_STORE_BIT
+	ld (show_item+I_IDENT),a
+	ld ix,show_item
+	jp objdes_msg
 
 /* clear_rows - D = first row: clear down to the prompt row */
 clear_rows:
@@ -1168,6 +1215,8 @@ list_count:		db 0
 deal_price:		dw 0
 deal_slot:		db 0
 deal_item:		ds ITEM_SIZE
+show_item:		ds ITEM_SIZE
+cost_unknown:	db 0				; $FF: price a flavour not yet known
 max_buy:		dw 0
 maint_store:	db 0
 cs_store:		db 0

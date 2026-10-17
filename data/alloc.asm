@@ -21,22 +21,22 @@ mon_level_table:
 
 ; t_level[]: how many dungeon objects have level <= n (n = 0-255)
 obj_level_table:
-	dw 6,11,14,18,21,29,33,36,40,41,46,47,50,51,53,58
-	dw 58,59,60,60,67,67,68,68,69,69,71,71,71,71,75,75
-	dw 75,75,76,76,77,77,77,77,82,82,83,83,85,88,88,89
-	dw 90,90,95,95,95,95,95,97,97,97,97,97,101,101,101,101
-	dw 101,103,103,103,103,103,106,106,106,106,106,108,108,108,108,108
-	dw 111,111,111,111,111,111,111,111,111,111,112,112,112,112,112,112
-	dw 112,112,112,112,113,113,113,113,113,113,113,113,113,113,114,114
-	dw 114,114,114,114,114,114,114,114,114,114,114,114,114,114,114,114
-	dw 114,114,114,114,114,114,114,114,114,114,114,114,114,114,114,114
-	dw 114,114,114,114,114,114,114,114,114,114,114,114,114,114,114,114
-	dw 114,114,114,114,114,114,114,114,114,114,114,114,114,114,114,114
-	dw 114,114,114,114,114,114,114,114,114,114,114,114,114,114,114,114
-	dw 114,114,114,114,114,114,114,114,114,114,114,114,114,114,114,114
-	dw 114,114,114,114,114,114,114,114,114,114,114,114,114,114,114,114
-	dw 114,114,114,114,114,114,114,114,114,114,114,114,114,114,114,114
-	dw 114,114,114,114,114,114,114,114,114,114,114,114,114,114,114,114
+	dw 13,25,28,37,40,49,53,56,60,61,67,68,72,73,75,80
+	dw 80,81,82,82,94,94,95,95,96,101,105,105,105,105,112,112
+	dw 114,114,115,115,116,116,116,116,127,127,128,128,130,133,133,134
+	dw 135,135,140,140,140,140,140,143,143,143,143,143,149,149,149,149
+	dw 149,152,152,152,152,152,156,156,156,156,156,158,158,158,158,158
+	dw 161,161,161,161,161,161,161,161,161,161,162,162,162,162,162,162
+	dw 162,162,162,162,163,163,163,163,163,163,163,163,163,163,164,164
+	dw 164,164,164,164,164,164,164,164,164,164,164,164,164,164,164,164
+	dw 164,164,164,164,164,164,164,164,164,164,164,164,164,164,164,164
+	dw 164,164,164,164,164,164,164,164,164,164,164,164,164,164,164,164
+	dw 164,164,164,164,164,164,164,164,164,164,164,164,164,164,164,164
+	dw 164,164,164,164,164,164,164,164,164,164,164,164,164,164,164,164
+	dw 164,164,164,164,164,164,164,164,164,164,164,164,164,164,164,164
+	dw 164,164,164,164,164,164,164,164,164,164,164,164,164,164,164,164
+	dw 164,164,164,164,164,164,164,164,164,164,164,164,164,164,164,164
+	dw 164,164,164,164,164,164,164,164,164,164,164,164,164,164,164,164
 
 ; sorted_objects[]: kind, rarity and level of each dungeon object
 obj_alloc_table:
@@ -44,20 +44,39 @@ obj_alloc_table:
 	db 3,0,0		; & Dagger
 	db 4,0,0		; & Broken dagger
 	db 18,0,0		; & Broken sword
-	db 84,0,0		; Cure Light Wounds
-	db 87,0,0		; some filthy rags
+	db 84,0,0		; Slime Mold Juice
+	db 85,0,0		; Apple Juice
+	db 86,0,0		; Water
+	db 99,0,0		; Cure Light Wounds
+	db 105,0,0		; Sleep
+	db 106,0,0		; Blindness
+	db 107,0,0		; Confusion
+	db 115,0,0		; Salt Water
+	db 127,0,0		; some filthy rags
 	db 1,0,1		; & Slime Mold~
 	db 54,0,1		; & Robe
 	db 75,0,1		; & Cloak
 	db 77,0,1		; & Set of Leather Gloves
-	db 84,0,1		; Cure Light Wounds
+	db 99,0,1		; Cure Light Wounds
+	db 109,0,1		; Speed
+	db 110,0,1		; Slowness
+	db 116,0,1		; Heroism
+	db 118,0,1		; Boldness
+	db 120,0,1		; Resist Heat
+	db 121,0,1		; Resist Cold
+	db 123,0,1		; Slow Poison
 	db 2,0,2		; & Main Gauche
 	db 55,0,2		; Soft Leather Armour
-	db 84,0,2		; Cure Light Wounds
+	db 99,0,2		; Cure Light Wounds
 	db 20,0,3		; & Whip
 	db 56,0,3		; Soft Studded Leather
 	db 80,0,3		; & Small Leather Shield
-	db 85,0,3		; Cure Serious Wounds
+	db 88,0,3		; Weakness
+	db 100,0,3		; Cure Serious Wounds
+	db 108,0,3		; Poison
+	db 117,0,3		; Berserk Strength
+	db 122,0,3		; Detect Invisible
+	db 126,0,3		; Infra-vision
 	db 15,0,4		; & Rapier
 	db 44,0,4		; & Pair of Soft Leather Boots
 	db 47,0,4		; & Hard Leather Cap
@@ -67,12 +86,13 @@ obj_alloc_table:
 	db 26,0,5		; & War Hammer
 	db 35,0,5		; & Spear
 	db 57,0,5		; Hard Leather Armour
-	db 86,0,5		; Cure Critical Wounds
+	db 101,0,5		; Cure Critical Wounds
+	db 124,0,5		; Neutralize Poison
 	db 3,0,5		; & Dagger
 	db 7,0,6		; & Tulwar
 	db 24,0,6		; & Mace
 	db 45,0,6		; & Pair of Hard Leather Boots
-	db 94,0,6		; & Short sword
+	db 134,0,6		; & Short sword
 	db 11,0,7		; & Cutlass
 	db 48,0,7		; & Metal Cap
 	db 58,0,7		; Hard Studded Leather
@@ -85,11 +105,13 @@ obj_alloc_table:
 	db 23,0,10		; & Morningstar
 	db 37,0,10		; & Lance
 	db 82,0,10		; & Small Metal Shield
+	db 114,0,10		; Lose Memories
 	db 3,0,10		; & Dagger
 	db 33,0,11		; & Lucerne Hammer
 	db 14,0,12		; & Longsword
 	db 21,0,12		; & Flail
 	db 78,0,12		; & Set of Gauntlets
+	db 102,0,12		; Healing
 	db 39,0,13		; & Battle Axe
 	db 5,0,14		; & Bastard Sword
 	db 59,0,14		; Leather Scale Mail
@@ -105,23 +127,46 @@ obj_alloc_table:
 	db 31,0,20		; & Glaive
 	db 46,0,20		; & Pair of Metal Shod Boots
 	db 49,0,20		; & Iron Helm
+	db 91,0,20		; Stupidity
+	db 94,0,20		; Naivety
+	db 96,0,20		; Charisma
+	db 97,0,20		; Ugliness
+	db 98,0,20		; Restore Charisma
 	db 3,0,20		; & Dagger
 	db 75,0,20		; & Cloak
 	db 32,0,22		; & Halberd
 	db 60,0,24		; Metal Scale Mail
+	db 89,0,25		; Restore Strength
+	db 112,0,25		; Restore Dexterity
+	db 113,0,25		; Restore Constitution
+	db 125,0,25		; Restore Mana
+	db 148,0,25		; Enlightenment
 	db 61,0,26		; Chain Mail
 	db 62,0,26		; Rusty Chain Mail
+	db 92,0,26		; Restore Intelligence
+	db 95,0,26		; Restore Wisdom
 	db 10,0,30		; & Two-Handed Sword
 	db 63,0,30		; Augmented Chain Mail
 	db 73,0,30		; Double Chain Mail
 	db 83,0,30		; & Large Metal Shield
+	db 87,0,30		; Strength
+	db 103,0,30		; Constitution
+	db 111,0,30		; Dexterity
+	db 90,0,32		; Intelligence
+	db 93,0,32		; Wisdom
 	db 64,0,34		; Bar Chain Mail
 	db 65,0,36		; Metal Brigandine Armour
 	db 10,0,40		; & Two-Handed Sword
 	db 12,0,40		; & Executioner's Sword
 	db 38,0,40		; & Great Axe
 	db 50,0,40		; & Steel Helm
-	db 88,8,40		; Blue Dragon Scale Mail
+	db 109,0,40		; Speed
+	db 119,0,40		; Restore Life Levels
+	db 128,8,40		; Blue Dragon Scale Mail
+	db 139,12,40		; Augmentation
+	db 140,12,40		; Ruination
+	db 149,0,40		; Self Knowledge
+	db 150,3,40		; *Healing*
 	db 66,0,42		; Partial Plate Armour
 	db 51,0,44		; & Iron Crown
 	db 67,0,44		; Metal Lamellar Armour
@@ -134,23 +179,28 @@ obj_alloc_table:
 	db 54,0,50		; & Robe
 	db 69,0,50		; Ribbed Plate Armour
 	db 79,0,50		; & Set of Cestus
-	db 89,8,50		; White Dragon Scale Mail
+	db 129,8,50		; White Dragon Scale Mail
 	db 72,4,55		; Mithril Chain Mail
-	db 95,8,55		; Bronze Dragon Scale Mail
+	db 137,2,55		; Death
+	db 141,8,55		; Bronze Dragon Scale Mail
 	db 43,4,60		; & Scythe of Slicing
 	db 71,5,60		; Mithril Plate Mail
 	db 76,3,60		; & Shadow Cloak
-	db 90,8,60		; Black Dragon Scale Mail
-	db 96,8,65		; Gold Dragon Scale Mail
-	db 100,12,65		; Shining Dragon Scale Mail
+	db 130,8,60		; Black Dragon Scale Mail
+	db 136,6,60		; Detonations
+	db 138,3,60		; Life
+	db 104,0,65		; Experience
+	db 142,8,65		; Gold Dragon Scale Mail
+	db 146,12,65		; Shining Dragon Scale Mail
 	db 9,5,70		; & Blade of Chaos
 	db 74,6,70		; Shield of Deflection
-	db 91,10,70		; Green Dragon Scale Mail
+	db 131,10,70		; Green Dragon Scale Mail
+	db 135,4,70		; *Enlightenment*
 	db 70,7,75		; Adamantite Plate Mail
-	db 97,20,75		; Chaos Dragon Scale Mail
+	db 143,20,75		; Chaos Dragon Scale Mail
 	db 28,4,80		; & Mace of Disruption
-	db 92,8,80		; Red Dragon Scale Mail
-	db 98,20,80		; Law Dragon Scale Mail
-	db 99,20,90		; Balance Dragon Scale Mail
-	db 93,20,100		; Multi-Hued Dragon Scale Mail
-	db 101,40,110		; Power Dragon Scale Mail
+	db 132,8,80		; Red Dragon Scale Mail
+	db 144,20,80		; Law Dragon Scale Mail
+	db 145,20,90		; Balance Dragon Scale Mail
+	db 133,20,100		; Multi-Hued Dragon Scale Mail
+	db 147,40,110		; Power Dragon Scale Mail

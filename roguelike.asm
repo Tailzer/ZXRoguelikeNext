@@ -19,6 +19,8 @@
 		name; stats feed combat, hit points, stealth and infravision
 	Milestone 8: The town - town_gen with day and night, townsfolk, and the
 		eight stores: stock, owners and prices from STORE1.C/STORE2.C
+	Milestone 9a-1: Potions - flavours and identification, every potion in
+		POTIONS.C, current/max stats, and DUNGEON.C's timed effects
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -71,7 +73,7 @@ enter_dungeon:
 	call show_message
 
 main_loop:
-	call draw_view
+	call draw_view						; (first redoes bonuses: update_stuff)
 	call draw_status
 	ld a,(p_dead)
 	or a
@@ -96,9 +98,9 @@ main_loop:
 dispatch:
 	ld a,d
 	cp CMD_DOWN
-	jr z,.down
+	jp z,.down
 	cp CMD_UP
-	jr z,.up
+	jp z,.up
 	cp CMD_STAY
 	jr z,.stay
 	cp CMD_CHARACTER
@@ -116,7 +118,32 @@ dispatch:
 	call update_view
 	call monsters_act
 	call hunger_tick					; A = how fast we heal
-	call regenhp
+	ld b,a
+	ld hl,(p_poisoned)					; not while poisoned or bleeding
+	ld de,(p_cut)
+	ld a,h
+	or l
+	or d
+	or e
+	ld a,b
+	call z,regenhp
+	FARCALL PAGE_MAGIC, timed_tick
+	ld a,(p_new_level)					; word of recall
+	or a
+	jp z,main_loop
+	push af
+	xor a
+	ld (p_new_level),a
+	call new_level
+	pop af
+	ld hl,msg_yanked_up
+	cp 1
+	jr z,.yanked
+	ld hl,msg_yanked_down
+	cp 2
+	jp nz,main_loop
+.yanked:
+	call show_message
 	jp main_loop
 .item_command:							; i e w t q E d g, in the items overlay
 	sub CMD_INVEN
@@ -131,7 +158,8 @@ dispatch:
 	nextreg NR_MMU2,PAGE_ITEMS
 .target:
 	call 0
-	jr .after
+	call pending_actions				; e.g. the potion chosen to quaff
+	jp .after
 .stay:
 	ld a,1
 	ld (turn_taken),a
@@ -180,6 +208,7 @@ memory_init:
 	include "src/combat.asm"
 	include "src/items.asm"
 	include "src/pack.asm"
+	include "src/status.asm"
 	include "src/view.asm"
 	include "src/player.asm"
 	include "src/messages.asm"
@@ -222,6 +251,12 @@ create_end:
 store_end:
 	ASSERT store_end <= $6000, "Store overlay is over 8K"
 
+	MMU 2, PAGE_MAGIC, $4000
+	include "src/potions.asm"
+	include "src/effects.asm"
+magic_end:
+	ASSERT magic_end <= $6000, "Magic overlay is over 8K"
+
 ; ---- data pages: paged into slot 1 ($2000-$3FFF) by race_addr / kind_addr ----
 ; (the ROM there is only needed at start-up, to copy the font)
 
@@ -230,10 +265,11 @@ store_end:
 races_end:
 	ASSERT $$races_end < RACE_PAGE+5 || (races_end == DATA_WINDOW && $$races_end == RACE_PAGE+5), "Races run past their pages"
 
-	MMU 1, KIND_PAGE, DATA_WINDOW
+	MMU 1 n, KIND_PAGE, DATA_WINDOW		; 128 kinds per page, then the flavours
 	include "data/kinds.asm"
+	include "data/flavours.asm"			; generated: potion colours
 kinds_end:
-	ASSERT kinds_end <= DATA_WINDOW+$2000, "Kinds are over one page"
+	ASSERT $$colour_names == FLAVOUR_PAGE && $$kinds_end == FLAVOUR_PAGE, "Flavours must sit on FLAVOUR_PAGE"
 
 	SAVENEX OPEN "build/roguelike.nex", start, stack_top
 	SAVENEX CORE 3,0,0

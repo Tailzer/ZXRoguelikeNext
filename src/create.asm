@@ -431,34 +431,7 @@ derive:
 	ld h,(hl)
 	ld l,a
 	ld (p_notice),hl
-	; stat bonuses
-	ld a,(p_stat+A_DEX)
-	ld hl,dex_tohit
-	call threshold
-	ld b,a
-	ld a,(p_stat+A_STR)
-	ld hl,str_tohit
-	push bc
-	call threshold
-	pop bc
-	add a,b
-	ld (p_stat_tohit),a
-	ld a,(p_stat+A_STR)
-	ld hl,str_todam
-	call threshold
-	ld (p_stat_todam),a
-	ld a,(p_stat+A_DEX)
-	ld hl,dex_toac
-	call threshold
-	ld (p_stat_toac),a
-	ld a,(p_stat+A_CON)
-	ld hl,con_hp
-	call threshold
-	ld (p_con_adj),a
-	ld a,(p_stat+A_DEX)
-	ld hl,dex_blows
-	call threshold
-	ld (p_dex_index),a
+	call stat_bonuses
 	; age, height, weight (get_ahw; randnor taken as base +- mod)
 	ld a,(iy+PR_AGE_MOD)
 	call randint
@@ -526,34 +499,6 @@ about_base:
 	or a
 	sbc hl,de
 	ret
-
-/* threshold - A = stat, HL = table of (limit, value) pairs ending with
-	limit 255 -> A = the value of the first pair whose limit is above it */
-threshold:
-	cp (hl)
-	jr c,.found
-	inc hl
-	inc hl
-	jr threshold
-.found:
-	inc hl
-	ld a,(hl)
-	ret
-
-; MISC2.C's stat adjustments as (stat below this, value) pairs
-; (18/xx is stored as 18 + xx, so 18/100 = 118)
-dex_tohit:	db 4,-3, 6,-2, 8,-1, 16,0, 17,1, 18,2, 69,3, 118,4, 119,5, 128,6
-			db 138,7, 148,8, 158,9, 168,10, 178,11, 188,12, 198,13, 218,14, 228,15, 255,17
-str_tohit:	db 4,-3, 5,-2, 7,-1, 18,0, 94,1, 109,2, 117,3, 119,4, 128,5, 138,6
-			db 148,7, 158,8, 168,9, 178,10, 188,11, 198,12, 218,13, 228,14, 255,16
-str_todam:	db 4,-2, 5,-1, 16,0, 17,1, 18,2, 94,3, 109,4, 119,5, 128,6, 138,7
-			db 148,8, 158,9, 168,10, 178,11, 188,12, 198,13, 218,14, 228,16, 255,20
-dex_toac:	db 4,-4, 5,-3, 6,-2, 7,-1, 15,0, 18,1, 59,2, 94,3, 117,4, 119,5
-			db 128,6, 138,7, 148,8, 158,9, 168,10, 178,11, 188,12, 198,13, 218,14, 228,15, 255,17
-con_hp:		db 4,-4, 5,-3, 6,-2, 7,-1, 17,0, 18,1, 94,2, 117,3, 119,4, 128,5
-			db 138,6, 158,7, 168,8, 178,9, 188,10, 198,11, 208,12, 228,13, 255,14
-dex_blows:	db 10,0, 19,1, 68,2, 108,3, 118,4, 119,5, 128,6, 138,7, 148,8, 158,9
-			db 168,10, 255,11
 
 /* get_money - starting gold (get_money in CREATE.C): 325 + 1d25 + social
 	class * 6, less 5 per stat point over 10, plus charisma's, +50 if female */

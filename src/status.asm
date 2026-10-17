@@ -1,0 +1,381 @@
+/* status.asm - stats, timed effects and what follows from them  [resident]
+	References: MISC2.C tohit_adj/todam_adj/toac_adj/con_adj/calc_hitpoints/
+	prt_experience, DESC.C known1/known1_p/sample/identify.
+	The timed effects themselves tick in effects.asm (PAGE_MAGIC); code in an
+	overlay that changes stats or bonuses sets p_update, and the main loop
+	does the recalculating here, where it can reach every overlay.
+ */
+
+/* update_stuff - redo whatever p_update asks for */
+update_stuff:
+	ld a,(p_update)
+	or a
+	ret z
+	ld b,a
+	xor a
+	ld (p_update),a
+	bit PU_BONUS,b
+	jr z,.hp
+	push bc
+	FARCALL PAGE_ITEMS, calc_bonuses	; (works out the stat bonuses first)
+	pop bc
+.hp:
+	bit PU_HP,b
+	ret z
+	jp calc_hitpoints
+
+/* pending_actions - an item command chose something the magic overlay
+	carries out (the C does both in one function) */
+pending_actions:
+	ld a,(pending_magic)
+	or a
+	ret z
+	ld b,a
+	xor a
+	ld (pending_magic),a
+	ld a,(pending_arg)
+	FARCALL PAGE_MAGIC, magic_action	; B = action, A = argument
+	ret
+
+/* stat_bonuses - to-hit, to-dam, to-ac, hit points per level and the
+	blows column from the current stats (MISC2.C's *_adj functions) */
+stat_bonuses:
+	ld a,(p_stat+A_DEX)
+	ld hl,dex_tohit
+	call threshold
+	ld b,a
+	ld a,(p_stat+A_STR)
+	ld hl,str_tohit
+	push bc
+	call threshold
+	pop bc
+	add a,b
+	ld (p_stat_tohit),a
+	ld a,(p_stat+A_STR)
+	ld hl,str_todam
+	call threshold
+	ld (p_stat_todam),a
+	ld a,(p_stat+A_DEX)
+	ld hl,dex_toac
+	call threshold
+	ld (p_stat_toac),a
+	ld a,(p_stat+A_CON)
+	ld hl,con_hp
+	call threshold
+	ld (p_con_adj),a
+	ld a,(p_stat+A_DEX)
+	ld hl,dex_blows
+	call threshold
+	ld (p_dex_index),a
+	ret
+
+/* threshold - A = stat, HL = table of (limit, value) pairs ending with
+	limit 255 -> A = the value of the first pair whose limit is above it */
+threshold:
+	cp (hl)
+	jr c,.found
+	inc hl
+	inc hl
+	jr threshold
+.found:
+	inc hl
+	ld a,(hl)
+	ret
+
+; MISC2.C's stat adjustments as (stat below this, value) pairs
+; (18/xx is stored as 18 + xx, so 18/100 = 118)
+dex_tohit:	db 4,-3, 6,-2, 8,-1, 16,0, 17,1, 18,2, 69,3, 118,4, 119,5, 128,6
+			db 138,7, 148,8, 158,9, 168,10, 178,11, 188,12, 198,13, 218,14, 228,15, 255,17
+str_tohit:	db 4,-3, 5,-2, 7,-1, 18,0, 94,1, 109,2, 117,3, 119,4, 128,5, 138,6
+			db 148,7, 158,8, 168,9, 178,10, 188,11, 198,12, 218,13, 228,14, 255,16
+str_todam:	db 4,-2, 5,-1, 16,0, 17,1, 18,2, 94,3, 109,4, 119,5, 128,6, 138,7
+			db 148,8, 158,9, 168,10, 178,11, 188,12, 198,13, 218,14, 228,16, 255,20
+dex_toac:	db 4,-4, 5,-3, 6,-2, 7,-1, 15,0, 18,1, 59,2, 94,3, 117,4, 119,5
+			db 128,6, 138,7, 148,8, 158,9, 168,10, 178,11, 188,12, 198,13, 218,14, 228,15, 255,17
+con_hp:		db 4,-4, 5,-3, 6,-2, 7,-1, 17,0, 18,1, 94,2, 117,3, 119,4, 128,5
+			db 138,6, 158,7, 168,8, 178,9, 188,10, 198,11, 208,12, 228,13, 255,14
+dex_blows:	db 10,0, 19,1, 68,2, 108,3, 118,4, 119,5, 128,6, 138,7, 148,8, 158,9
+			db 168,10, 255,11
+
+/* calc_hitpoints - p_mhp = player_hp[lev-1] + con_adj * lev, at least
+	lev + 1, +10 heroic, +20 berserk. When it changes, current hit points
+	change in proportion (calc_hitpoints in MISC2.C) */
+calc_hitpoints:
+	ld a,(p_lev)
+	dec a
+	add a,a
+	ld hl,P_HP_TABLE
+	add hl,a
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	ld a,(p_con_adj)
+	ld e,a
+	rla
+	sbc a,a
+	ld d,a								; DE = con_adj
+	ld a,(p_lev)
+	ld b,a
+.times:
+	add hl,de
+	djnz .times
+	ld a,(p_lev)
+	inc a
+	ld e,a
+	ld d,0
+	bit 7,h
+	jr nz,.least
+	push hl
+	or a
+	sbc hl,de
+	pop hl
+	jr nc,.enough
+.least:
+	ex de,hl
+.enough:
+	ld a,(p_status)
+	bit PY_HERO,a
+	jr z,.no_hero
+	ld de,10
+	add hl,de
+.no_hero:
+	bit PY_SHERO,a
+	jr z,.no_shero
+	ld de,20
+	add hl,de
+.no_shero:
+	ld de,(p_mhp)
+	ld a,d
+	or e
+	jr z,.store							; still being created
+	push hl
+	or a
+	sbc hl,de
+	pop hl
+	ret z								; no change
+	ld (ch_new),hl
+	ld hl,(p_chp)
+	bit 7,h
+	jr nz,.new							; dead anyway
+	ld (ch_val+2),hl					; ((chp << 16) + frac) / mhp * new
+	ld hl,(p_chp_frac)
+	ld (ch_val),hl
+	call div32_16
+	ld bc,(ch_new)
+	call mul32_16
+	ld hl,(ch_val)
+	ld (p_chp_frac),hl
+	ld hl,(ch_val+2)
+	ld (p_chp),hl
+.new:
+	ld hl,(ch_new)
+.store:
+	ld (p_mhp),hl
+	ret
+
+/* div32_16 - ch_val /= DE (DE > 0). Clobbers A, B, HL, IX */
+div32_16:
+	ld ix,ch_val
+	ld hl,0								; remainder
+	ld b,32
+.loop:
+	sla (ix+0)
+	rl (ix+1)
+	rl (ix+2)
+	rl (ix+3)
+	adc hl,hl
+	jr c,.over							; past 16 bits: certainly >= DE
+	or a
+	sbc hl,de
+	jr nc,.one
+	add hl,de
+	jr .next
+.over:
+	or a
+	sbc hl,de
+.one:
+	inc (ix+0)
+.next:
+	djnz .loop
+	ret
+
+/* mul32_16 - ch_val = low 32 bits of ch_val * BC. Clobbers A, DE, HL */
+mul32_16:
+	ld hl,0
+	ld de,0
+	ld a,16
+.loop:
+	add hl,hl							; DE:HL <<= 1
+	rl e
+	rl d
+	sla c
+	rl b
+	jr nc,.next
+	push bc
+	ld bc,(ch_val)
+	add hl,bc
+	ex de,hl
+	ld bc,(ch_val+2)
+	adc hl,bc
+	ex de,hl
+	pop bc
+.next:
+	dec a
+	jr nz,.loop
+	ld (ch_val),hl
+	ld (ch_val+2),de
+	ret
+
+/* update_max_exp - max_exp follows exp up (prt_experience) */
+update_max_exp:
+	ld hl,(p_exp+2)
+	ld de,(p_max_exp+2)
+	or a
+	sbc hl,de
+	ret c
+	jr nz,.raise
+	ld hl,(p_exp)
+	ld de,(p_max_exp)
+	sbc hl,de							; (carry is clear)
+	ret c
+	ret z
+.raise:
+	ld hl,(p_exp)
+	ld (p_max_exp),hl
+	ld hl,(p_exp+2)
+	ld (p_max_exp+2),hl
+	ret
+
+; ---------------------------------------------------------------- flavours
+
+/* flavour_class - IY = kind -> carry and A = its object_offset() if the
+	kind has a flavour (only potions so far) */
+flavour_class:
+	ld a,(iy+K_TVAL)
+	cp TV_POTION1
+	jr z,.potion
+	cp TV_POTION2
+	jr z,.potion
+	or a
+	ret
+.potion:
+	ld a,OFS_POTION
+	scf
+	ret
+
+/* ident_addr - IY = kind -> carry and HL = its object_ident byte, if it
+	has a flavour. Clobbers A, DE */
+ident_addr:
+	call flavour_class
+	ret nc
+	ld e,a
+	ld d,64
+	mul d,e
+	ld a,(iy+K_FLAVOUR)
+	add de,a
+	ld hl,object_ident
+	add hl,de
+	scf
+	ret
+
+/* item_known - IX = item, IY = its kind -> carry if the player knows what
+	it is: store bought, no flavour, or learnt (known1_p). Clobbers A, DE, HL */
+item_known:
+	bit ID_STORE_BIT,(ix+I_IDENT)
+	scf
+	ret nz
+	call ident_addr
+	ccf
+	ret c								; nothing to learn
+	bit OD_KNOWN_BIT,(hl)
+	scf
+	ret nz
+	or a
+	ret
+
+/* flavour_index - IY = flavoured kind -> A = its colour (after this game's
+	shuffle). Clobbers HL */
+flavour_index:
+	ld a,(iy+K_FLAVOUR)
+	ld hl,flavour_map
+	add hl,a
+	ld a,(hl)
+	ret
+
+/* flavour_name - IY = flavoured kind -> HL = its colour's name. Leaves
+	FLAVOUR_PAGE in the data window: page the kind back before using IY.
+	Clobbers A */
+flavour_name:
+	call flavour_index
+	nextreg NR_MMU1,FLAVOUR_PAGE
+	add a,a
+	ld hl,colour_names
+	add hl,a
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	ret
+
+/* learn_kind - A = kind: the player now knows what it is (identify):
+	known, no longer just tried, and stacks of it in the pack combine */
+learn_kind:
+	push af
+	call kind_addr
+	call ident_addr
+	jr nc,.done
+	set OD_KNOWN_BIT,(hl)
+	res OD_TRIED_BIT,(hl)
+	pop af
+	jp pack_combine
+.done:
+	pop af
+	ret
+
+/* try_kind - A = kind: the player tried it without learning what it is
+	(sample). Clobbers DE, HL */
+try_kind:
+	call kind_addr
+	call ident_addr
+	ret nc
+	set OD_TRIED_BIT,(hl)
+	ret
+
+; ---------------------------------------------------------------- variables
+
+p_stat_max:		ds 6				; what restoring brings stats back to
+p_max_exp:		dd 0
+p_max_dlv:		db 0				; deepest level, for word of recall
+p_speed:		db 0				; signed: below 0 is fast (the C's speed)
+p_status:		dw 0				; PY_ and PY2_ bits
+p_update:		db 0				; PU_ bits
+p_new_level:	db 0				; set when word of recall fires
+pending_magic:	db 0				; PM_ action for the magic overlay
+pending_arg:	db 0
+; timed effects, words, cleared together by player_init
+p_timed:
+p_blind:		dw 0
+p_confused:		dw 0
+p_afraid:		dw 0
+p_poisoned:		dw 0
+p_fast:			dw 0
+p_slow:			dw 0
+p_cut:			dw 0				; signed
+p_stun:			dw 0				; signed
+p_hero:			dw 0
+p_shero:		dw 0
+p_blessed:		dw 0
+p_protevil:		dw 0
+p_resist_heat:	dw 0
+p_resist_cold:	dw 0
+p_detect_inv:	dw 0
+p_tim_infra:	dw 0
+p_word_recall:	dw 0
+P_TIMED_SIZE	equ $-p_timed
+; what the player knows (object_ident, 64 per object_offset class)
+object_ident:	ds 8*64
+flavour_map:	ds MAX_FLAVOURS		; colour shown for each flavour slot
+; scratch
+ch_new:			dw 0
+ch_val:			dd 0

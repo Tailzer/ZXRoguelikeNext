@@ -71,7 +71,8 @@ place_monster:
 	ld (ix+M_HP+1),h
 	ld (ix+M_MAXHP),l
 	ld (ix+M_MAXHP+1),h
-	ld a,(iy+R_SPEED)
+	ld a,(p_speed)						; cspeed = speed - 10 + py speed
+	add a,(iy+R_SPEED)
 	sub 10
 	ld (ix+M_SPEED),a
 	ld (ix+M_ML),0

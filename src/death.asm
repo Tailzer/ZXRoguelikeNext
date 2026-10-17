@@ -53,7 +53,14 @@ player_died_screen:
 	ld a,h
 	cp high KILLER_STARVATION
 	jr nz,.monster
-	ld hl,txt_starvation
+	ld a,l								; starvation, poison, potions...
+	add a,a
+	ld hl,killer_texts
+	add hl,a
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
 	call msg_add
 	jr .killer_done
 .monster:
@@ -119,3 +126,11 @@ txt_try_again:	db "Press any key to start again.",0
 txt_starvation:	db "starvation",0
 txt_level_:		db "Level ",0
 txt_space_d:	db " ",0
+
+killer_texts:	dw txt_starvation, txt_k_detonation, txt_k_death, txt_k_ruination
+				dw txt_k_poison, txt_k_wound
+txt_k_detonation: db "a potion of Detonation",0
+txt_k_death:	db "a potion of Death",0
+txt_k_ruination: db "a potion of Ruination",0
+txt_k_poison:	db "poison",0
+txt_k_wound:	db "a fatal wound",0

@@ -5,6 +5,31 @@
 /* try_move - B = dx, C = dy. Moves if the square is passable; bumping a
 	closed door opens it (Angband's easy_open behaviour) */
 try_move:
+	ld a,(p_confused)					; confused or stunned: 3 in 4 moves
+	ld hl,p_confused+1					; go a random way (move_char)
+	or (hl)
+	ld hl,(p_stun)
+	or h
+	or l
+	jr z,.steady
+	push bc
+	ld a,4
+	call randint
+	pop bc
+	cp 2
+	jr c,.steady
+	ld a,9
+	call randint
+	cp 5
+	jp z,.stay
+	dec a
+	add a,a
+	ld hl,keypad_deltas
+	add hl,a
+	ld c,(hl)							; dy
+	inc hl
+	ld b,(hl)							; dx
+.steady:
 	ld a,(player_x)
 	add a,b
 	ld e,a
@@ -66,7 +91,18 @@ try_move:
 	jp show_message
 .monster:
 	call mon_at
-	jp py_attack
+	ld hl,(p_afraid)
+	ld a,h
+	or l
+	jp z,py_attack
+	ld a,1
+	ld (turn_taken),a
+	ld hl,msg_too_afraid
+	jp show_message
+.stay:									; stumbled on the spot
+	ld a,1
+	ld (turn_taken),a
+	ret
 
 /* store_here - A = the store whose door the player is on */
 store_here:
@@ -137,6 +173,11 @@ go_up:
 /* new_level - generate a level for dun_level (0 = the town) and drop the
 	player in it */
 new_level:
+	ld a,(dun_level)					; the deepest so far, for recall
+	ld hl,p_max_dlv
+	cp (hl)
+	jr c,$+3
+	ld (hl),a
 	ld hl,msg_generating
 	call show_message
 	call rng_mix
