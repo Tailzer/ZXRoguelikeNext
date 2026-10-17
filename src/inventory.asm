@@ -244,65 +244,6 @@ kit_kind:			db 0
 
 ; ---------------------------------------------------------------- lists
 
-/* show_pack - list the pack on the screen, A = class filter (0 = all,
-	IC_WEAPON = anything wearable). -> A = items listed */
-show_pack:
-	ld (list_filter),a
-	xor a
-	ld (list_shown),a
-	ld (list_slot),a
-.each:
-	ld a,(list_slot)
-	call pack_slot
-	ld a,(ix+I_KIND)
-	cp ITEM_EMPTY
-	jr z,.done
-	call filter_ok
-	jr nc,.next
-	call msg_begin						; "a) a Ration of Food"
-	ld a,(list_slot)
-	add a,'a'
-	call list_label
-	call objdes_msg
-	ld a,(list_shown)
-	call list_line
-	ld hl,list_shown
-	inc (hl)
-.next:
-	ld hl,list_slot
-	inc (hl)
-	ld a,(hl)
-	cp PACK_MAX
-	jr c,.each
-.done:
-	ld a,(list_shown)
-	ret
-
-/* filter_ok - IX = item -> carry if it passes list_filter */
-filter_ok:
-	ld a,(list_filter)
-	or a
-	scf
-	ret z
-	ld b,a
-	ld a,(ix+I_KIND)
-	call kind_addr
-	ld a,(iy+K_CLASS)
-	ld c,a
-	ld a,b
-	cp IC_WEAPON
-	jr z,.wearable
-	cp c
-	scf
-	ret z
-	or a
-	ret
-.wearable:
-	ld a,c
-	cp IC_WEAPON
-	ccf
-	ret
-
 /* show_equip - list the four equipment slots */
 show_equip:
 	xor a
@@ -343,69 +284,6 @@ show_equip:
 	ld a,(hl)
 	cp EQ_SLOTS
 	jr c,.each
-	ret
-
-/* list_label - A = letter: start a list line with "a) " */
-list_label:
-	ld (txt_label),a
-	ld hl,txt_label
-	jp msg_add
-
-/* list_line - A = line number: print the built line in the list window */
-list_line:
-	ld hl,(msg_ptr)
-	ld (hl),0
-	add a,LIST_TOP
-	ld d,a
-	push de
-	call clear_row
-	pop de
-	ld e,LIST_LEFT
-	ld hl,msg_buf
-	ld c,ATTR_WHITE
-	jp print_at
-
-/* prompt - HL = question for the message line */
-prompt:
-	push hl
-	call msg_clear
-	pop hl
-	ld d,MSG_ROW
-	ld e,0
-	ld c,ATTR_YELLOW
-	jp print_at
-
-/* choose_pack - HL = question, A = class filter -> carry and A = slot,
-	IX = item if a listed item was picked */
-choose_pack:
-	push hl
-	call show_pack
-	pop hl
-	or a
-	jr z,.none
-	call prompt
-	call read_ascii
-	push af
-	call msg_clear
-	pop af
-	sub 'a'
-	cp PACK_MAX
-	ret nc								; not a letter in range: cancel
-	ld (list_slot),a
-	call pack_slot
-	ld a,(ix+I_KIND)
-	cp ITEM_EMPTY
-	jr z,.cancel
-	call filter_ok
-	ret nc
-	ld a,(list_slot)
-	scf
-	ret
-.none:
-	or a
-	ret
-.cancel:
-	or a
 	ret
 
 ; ---------------------------------------------------------------- commands
@@ -548,6 +426,40 @@ cmd_quaff:
 	ld (turn_taken),a
 	ret
 
+/* cmd_read - 'r': read a scroll (SCROLLS.C; the effects are in the magic
+	overlay). You need to see and to think straight */
+cmd_read:
+	ld hl,(p_blind)
+	ld a,h
+	or l
+	ld hl,msg_cant_see
+	jp nz,msg_print
+	ld hl,(p_confused)
+	ld a,h
+	or l
+	ld hl,msg_too_confused
+	jp nz,msg_print
+	call pack_count
+	or a
+	ld hl,msg_pack_empty
+	jp z,msg_print
+	ld hl,txt_read_which
+	ld a,IC_SCROLL
+	call choose_pack
+	jr c,.read
+	ld a,IC_SCROLL
+	call pack_has_class
+	ret c
+	ld hl,msg_no_scrolls
+	jp msg_print
+.read:
+	ld (pending_arg),a
+	ld a,PM_READ
+	ld (pending_magic),a
+	ld a,1
+	ld (turn_taken),a
+	ret
+
 /* cmd_eat - 'E': eat some food (EAT.C, add_food in MISC1.C) */
 cmd_eat:
 	ld hl,txt_eat_which
@@ -572,27 +484,6 @@ cmd_eat:
 	call use_one
 	ld a,1
 	ld (turn_taken),a
-	ret
-
-/* pack_has_class - A = class -> carry if the pack has one
-	(so an empty choice can be told apart from "you have none") */
-pack_has_class:
-	ld (list_filter),a
-	ld ix,PACK
-	ld b,PACK_MAX
-.loop:
-	ld a,(ix+I_KIND)
-	cp ITEM_EMPTY
-	jr z,.next
-	push bc
-	call filter_ok
-	pop bc
-	ret c
-.next:
-	ld de,ITEM_SIZE
-	add ix,de
-	djnz .loop
-	or a
 	ret
 
 /* cmd_drop - 'd': put one of something on the floor (one item per square) */
@@ -769,8 +660,6 @@ msg_add_u16:
 	ld (msg_ptr),de
 	ret
 
-LIST_TOP			equ 1
-LIST_LEFT			equ 2
 
 equip_names:	dw txt_eq_weapon, txt_eq_body, txt_eq_shield, txt_eq_helm
 				dw txt_eq_cloak, txt_eq_gloves, txt_eq_boots
@@ -782,7 +671,6 @@ txt_eq_cloak:	db "About body  : ",0
 txt_eq_gloves:	db "On hands    : ",0
 txt_eq_boots:	db "On feet     : ",0
 txt_nothing:	db "(nothing)",0
-txt_label:		db "a) ",0
 txt_any_key:	db "-- press a key --",0
 txt_wear_which:	db "Wear or wield which item? (letter, or space)",0
 txt_takeoff_which: db "Take off which item? (letter, or space)",0
@@ -801,15 +689,16 @@ txt_found:		db "You have found ",0
 txt_gold_worth:	db " gold pieces worth of ",0
 msg_pack_empty:	db "You are not carrying anything.",0
 msg_no_potions:	db "You are not carrying any potions.",0
+msg_no_scrolls:	db "You are not carrying any scrolls!",0
+msg_cant_see:	db "You can't see to read the scroll.",0
+msg_too_confused: db "You are too confused to read a scroll.",0
+txt_read_which:	db "Read which scroll? (letter, or space)",0
 msg_no_food:	db "You are not carrying any food.",0
 msg_no_room:	db "You have no room in your pack.",0
 msg_already_item: db "There is already something here.",0
 msg_nothing_here: db "There is nothing here to pick up.",0
 msg_floor_full:	db "There is no room on the floor.",0
 
-list_filter:	db 0
-list_shown:		db 0
-list_slot:		db 0
 cmd_slot:		db 0
 cmd_equip:		db 0
 drop_src:		dw 0

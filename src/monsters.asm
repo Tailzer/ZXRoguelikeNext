@@ -320,6 +320,30 @@ mod16_8:
 /* mon_move - IX = monster, IY = race. Random wandering for erratic
 	movers, otherwise head for the player; stationary ones only attack */
 mon_move:
+	ld a,(ix+M_CONFUSED)				; confused: stumbles at random, and
+	or a								; 1 in 8 comes round
+	jr z,.clear_headed
+	ld hl,move_dirs
+	ld b,5
+.dizzy:
+	push bc
+	push hl
+	ld a,9
+	call randint
+	pop hl
+	pop bc
+	ld (hl),a
+	inc hl
+	djnz .dizzy
+	bit RM_ONLY_ATT,(iy+R_MOVE)
+	call z,make_move
+	ld a,8
+	call randint
+	dec a
+	ret nz
+	ld (ix+M_CONFUSED),a
+	ret
+.clear_headed:
 	bit RM_75,(iy+R_MOVE)
 	jr z,.not75
 	ld a,100

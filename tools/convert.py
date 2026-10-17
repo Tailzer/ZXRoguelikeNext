@@ -201,7 +201,7 @@ def race_record(r):
     for bit, (field, flag) in enumerate((("cdefense", "UNIQUE"), ("cdefense", "MAX_HP"),
                                          ("cmove", "MV_INVIS"), ("cdefense", "EVIL"),
                                          ("cdefense", "UNDEAD"), ("cdefense", "DEMON"),
-                                         ("cdefense", "NO_INFRA"))):
+                                         ("cdefense", "NO_INFRA"), ("cdefense", "CHARM_SLEEP"))):
         if r[field] & value(flag):
             flags |= 1 << bit
     rec = bytearray(RACE_SIZE)
@@ -209,7 +209,7 @@ def race_record(r):
     rec[0:16] = bytes([r["char"], (16 + (r["colour"] or 15)) * 2, move, exp & 255, exp >> 8,
                        min(r["sleep"], 255), min(r["aaf"], 255), min(r["ac"], 255),
                        min(r["speed"], 255), r["hd"][0], r["hd"][1], min(r["level"], 255),
-                       min(r["rarity"], 255), flags, 0, 0])
+                       min(r["rarity"], 255), flags, 1 if r["cmove"] & 0x80000000 else 0, 0])
     for i, a in enumerate(r["attacks"][:4]):
         rec[16 + i * 4:20 + i * 4] = bytes(a)
     rec[RACE_NAME_OFS:] = db_name(r["name"], RACE_SIZE - RACE_NAME_OFS)
@@ -220,9 +220,14 @@ def race_record(r):
 
 # tval -> (class, equipment) for the kinds the game can use so far
 CLASSES = {"TV_FOOD": 1, "TV_POTION1": 2, "TV_POTION2": 2,
-           "TV_SWORD": 3, "TV_HAFTED": 3, "TV_POLEARM": 3,
-           "TV_SOFT_ARMOR": 4, "TV_HARD_ARMOR": 4, "TV_SHIELD": 5, "TV_HELM": 6,
-           "TV_CLOAK": 7, "TV_GLOVES": 8, "TV_BOOTS": 9}
+           "TV_SCROLL1": 3, "TV_SCROLL2": 3,
+           "TV_SWORD": 4, "TV_HAFTED": 4, "TV_POLEARM": 4,
+           "TV_SOFT_ARMOR": 5, "TV_HARD_ARMOR": 5, "TV_SHIELD": 6, "TV_HELM": 7,
+           "TV_CLOAK": 8, "TV_GLOVES": 9, "TV_BOOTS": 10}
+# scroll effects that wait for later milestones: enchanting and cursing
+# (magical pluses), glyphs, traps, recharging (wands), acquirement
+SCROLL_LATER = {"TV_SCROLL1": 0x00000001 | 0x00000002 | 0x00000004 | 0x00002000 | 0x00200000 | 0x01000000,
+                "TV_SCROLL2": 0x00000001 | 0x00000002 | 0x00000004 | 0x00000008 | 0x00000400 | 0x00000800}
 # potion flag bits the game understands: Cure Light/Serious/Critical Wounds
 HEAL_DICE = {0x00001000: 2, 0x00002000: 4, 0x00004000: 6}
 
@@ -250,6 +255,8 @@ def usable(o):
         return None
     if cls == 1 and o["flags"]:                     # food with magical effects
         return None
+    if cls == 3 and o["flags"] & SCROLL_LATER[o["tval_name"]]:
+        return None
     return cls
 
 
@@ -257,6 +264,8 @@ def display_name(o, cls):
     name = o["name"]
     if cls == 2:
         name = "& Potion~ of " + name
+    elif cls == 3:
+        name = "& Scroll~ of " + name
     return name
 
 
@@ -332,8 +341,9 @@ def main():
              f"NUM_KINDS\t\tequ {len(kinds)}",
              f"NUM_ALLOC\t\tequ {len(alloc)}",
              f"KIND_RATION\t\tequ {kind_named('Ration', 1)}",
+             f"KIND_SLIME_MOLD\tequ {kind_named('Slime Mold', 1)}",
              f"KIND_CLW\t\tequ {kind_named('Cure Light', 2)}",
-             f"KIND_BROADSWORD\tequ {kind_named('Broadsword', 3)}",
+             f"KIND_BROADSWORD\tequ {kind_named('Broadsword', 4)}",
              f"KIND_CHAIN_MAIL\tequ {[i for i, (o, c) in enumerate(kinds) if o['name'] == 'Chain Mail'][0]}",
              ""]
     lines = [note, "; m_level[]: how many races have level <= n (n = 0-99)", "mon_level_table:"]
@@ -394,6 +404,14 @@ def flavour_tables(note):
     lines.append("\tdb " + ",".join(str((16 + (c or 15)) * 2) for c in tcs))
     for i, n in enumerate(names):
         lines.append(f"pcol_{i}:\tdb {asm_string(n)},0")
+    syl = [x.strip('"') for x in c_array(src, "syllables[")]
+    lines += ["", f"MAX_TITLES\t\tequ {value('MAX_TITLES')}\t\t\t; scroll titles, made up each game",
+              f"NUM_SYLLABLES\t\tequ {len(syl)}", "syllables:"]
+    for i in range(0, len(syl), 8):
+        lines.append("\tdw " + ",".join(f"syl_{j}" for j in range(i, min(i + 8, len(syl)))))
+    for i, n in enumerate(syl):
+        lines.append(f"syl_{i}:\tdb {asm_string(n)},0")
+    lines += ["scroll_titles:\tds MAX_TITLES*10\t\t; (filled by magic_init)"]
     open(os.path.join(OUT, "flavours.asm"), "w").write("\n".join(lines) + "\n")
 
 

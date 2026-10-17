@@ -15,6 +15,7 @@ PAGE_ITEMS			equ 42				; overlay: inventory and item commands
 PAGE_CREATE			equ 43				; overlay: character creation, sheet, death
 PAGE_STORE			equ 51				; overlay: the town's stores
 PAGE_MAGIC			equ 52				; overlay: potions, timed effects, stats
+PAGE_SCROLL			equ 53				; overlay: reading scrolls
 DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
 RACE_PAGE			equ 44				; 5 pages of races (data/races.asm)
 KIND_PAGE			equ 49				; 2 pages of item kinds (data/kinds.asm)
@@ -169,6 +170,7 @@ M_SPEED				equ 9				; signed (cspeed = speed - 10)
 M_CDIS				equ 10				; distance from player
 M_ML				equ 11				; 1 if the player can see it
 M_RACE_HI			equ 12				; race number, high byte ($FF = free slot)
+M_CONFUSED			equ 13				; 1 while confused
 ; race record (data/races.asm, made by tools/convert.py from MONSTERS.C)
 RACE_SIZE			equ 64				; 128 per 8K page
 R_CHAR				equ 0
@@ -194,6 +196,9 @@ RF_EVIL				equ 3
 RF_UNDEAD			equ 4
 RF_DEMON			equ 5
 RF_NO_INFRA			equ 6
+RF_CHARM_SLEEP		equ 7				; can't be confused or slept
+R_FLAGS2			equ 14				; RF2_ bits
+RF2_WIN				equ 0				; CM_WIN: Sauron, Morgoth
 ; R_MOVE bits (MONSTER.H cmove flags)
 RM_ONLY_ATT			equ 0				; MV_ONLY_ATT: never moves
 RM_NORMAL			equ 1				; MV_ATT_NORM: chases
@@ -255,13 +260,14 @@ K_NAME				equ 24				; the name itself, '~' where plurals add 's'
 ; item classes; wearable ones map to equipment slot class - IC_WEAPON
 IC_FOOD				equ 1
 IC_POTION			equ 2
-IC_WEAPON			equ 3
-IC_BODY				equ 4
-IC_SHIELD			equ 5
-IC_HELM				equ 6
-IC_CLOAK			equ 7
-IC_GLOVES			equ 8
-IC_BOOTS			equ 9
+IC_SCROLL			equ 3
+IC_WEAPON			equ 4
+IC_BODY				equ 5
+IC_SHIELD			equ 6
+IC_HELM				equ 7
+IC_CLOAK			equ 8
+IC_GLOVES			equ 9
+IC_BOOTS			equ 10
 TREAS_ROOM_ALLOC	equ 9				; mean objects in rooms
 TREAS_ANY_ALLOC		equ 3				; mean objects anywhere
 TREAS_GOLD_ALLOC	equ 3				; mean piles of treasure
@@ -373,15 +379,20 @@ KILLER_DEATH		equ $FE02
 KILLER_RUINATION	equ $FE03
 KILLER_POISON		equ $FE04
 KILLER_WOUND		equ $FE05
+KILLER_STRAIN		equ $FE06			; casting (mass) genocide
 ; object_ident flags (DESC.C) and the kinds that have flavours
 OD_TRIED_BIT		equ 0
 OD_KNOWN_BIT		equ 1
+TV_SCROLL1			equ 70
+TV_SCROLL2			equ 71
 TV_POTION1			equ 75
 TV_POTION2			equ 76
-OFS_POTION			equ 5				; object_offset() for potions
+OFS_SCROLL			equ 4				; object_offset() for scrolls
+OFS_POTION			equ 5				; and potions
 MAX_FLAVOURS		equ 57				; MAX_COLORS
 ; pending actions for the magic overlay (pending_magic)
 PM_QUAFF			equ 1
+PM_READ				equ 2
 
 ; ---- commands ----
 CMD_MOVE			equ 0
@@ -397,6 +408,7 @@ CMD_EAT				equ 9
 CMD_DROP			equ 10
 CMD_PICKUP			equ 11
 CMD_CHARACTER		equ 12
+CMD_READ			equ 13
 ; key modifiers in key_table
 KM_ANY				equ 0
 KM_SYMBOL			equ 1

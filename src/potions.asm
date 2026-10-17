@@ -45,19 +45,90 @@ magic_init:
 	inc a
 	cp MAX_FLAVOURS
 	jr c,.shuffle
+	; scroll titles: 2 or 3 words of 1 or 2 syllables each, cut at 9
+	nextreg NR_MMU1,FLAVOUR_PAGE
+	ld hl,scroll_titles
+	ld (mi_dst),hl
+	ld a,MAX_TITLES
+.title:
+	ld (mi_i),a
+	ld hl,mi_buf						; a fresh buffer
+	ld b,MI_BUF_SIZE
+.wipe:
+	ld (hl),0
+	inc hl
+	djnz .wipe
+	ld hl,mi_buf
+	ld (mi_ptr),hl
+	ld a,2
+	call randint
+	inc a
+	ld (mi_words),a
+.word:
+	ld a,2
+	call randint
+.syllable:
+	push af
+	ld a,NUM_SYLLABLES
+	call randint
+	dec a
+	add a,a
+	ld hl,syllables
+	add hl,a
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	ld de,(mi_ptr)
+.copy:
+	ld a,(hl)
+	or a
+	jr z,.copied
+	ld (de),a
+	inc hl
+	inc de
+	jr .copy
+.copied:
+	ld (mi_ptr),de
+	pop af
+	dec a
+	jr nz,.syllable
+	ld hl,mi_words
+	dec (hl)
+	jr z,.cut
+	ld hl,(mi_ptr)						; a space between words
+	ld (hl),' '
+	inc hl
+	ld (mi_ptr),hl
+	jr .word
+.cut:
+	ld a,(mi_buf+8)						; end at 8 if that's a space, else 9
+	cp ' '
+	ld hl,mi_buf+8
+	jr z,$+3
+	inc hl
+	ld (hl),0
+	ld hl,mi_buf
+	ld de,(mi_dst)
+	ld bc,10
+	ldir
+	ld (mi_dst),de
+	ld a,(mi_i)
+	dec a
+	jr nz,.title
 	ret
 
 ; ---------------------------------------------------------------- quaff
 
 /* quaff_potion - A = pack slot of the potion to drink */
 quaff_potion:
-	ld (q_slot),a
+	ld (u_slot),a
 	call pack_slot
 	ld a,(ix+I_KIND)
-	ld (q_kind),a
+	ld (u_kind),a
 	call kind_addr
 	ld a,(iy+K_LEVEL)
-	ld (q_level),a
+	ld (u_level),a
 	ld l,(iy+K_P1)
 	ld h,(iy+K_P1+1)
 	ld (q_food),hl
@@ -75,7 +146,7 @@ quaff_potion:
 	ld bc,4
 	ldir
 	xor a
-	ld (q_ident),a
+	ld (u_ident),a
 	ld hl,(q_flags)						; no flags: just a drink
 	ld de,(q_flags+2)
 	ld a,h
@@ -111,44 +182,12 @@ quaff_potion:
 	cp 32
 	jr c,.bit
 .done:
-	ld a,(q_kind)						; known to the player before?
-	call kind_addr
-	call ident_addr
-	bit OD_KNOWN_BIT,(hl)
-	jr nz,.refind
-	ld a,(q_slot)
-	call pack_slot
-	bit ID_STORE_BIT,(ix+I_IDENT)
-	jr nz,.food
-	ld a,(q_ident)
-	or a
-	jr z,.sample
-	ld a,(p_lev)						; exp += (level + lev/2) / lev
-	ld c,a
-	srl a
-	ld hl,q_level
-	add a,(hl)
-	ld l,a
-	ld h,0
-	call div16_8
-	call add_exp
-	call check_level_up
-	ld a,(q_kind)
-	call learn_kind
-.refind:								; learning may have combined stacks
-	ld a,(q_kind)
-	call find_pack_kind
-	ld (q_slot),a
-	jr .food
-.sample:
-	ld a,(q_kind)
-	call try_kind
-.food:
+	call item_used
 	ld hl,(q_food)
 	call add_food
-	ld a,(q_slot)
+	ld a,(u_slot)
 	call desc_remain
-	ld a,(q_slot)
+	ld a,(u_slot)
 	jp use_one
 
 /* potion_effect - A = effect number - 1 (0-63) */
@@ -177,9 +216,6 @@ potion_effects:
 	dw pe_life, pe_augment, pe_ruin, pe_enlight, pe_self, pe_star_heal	; 51-56
 NUM_POTION_EFFECTS	equ ($-potion_effects)/2
 
-ident:
-	ld a,1
-	ld (q_ident),a
 pe_none:								; 46: restore mana (no mana yet)
 	ret
 
@@ -213,7 +249,7 @@ gain_msg:
 	pop hl
 	ret nc
 	call msg_print
-	jr ident
+	jp ident
 
 ; restore a stat
 pe_res_str:
@@ -245,7 +281,7 @@ res_msg:
 	pop hl
 	ret nc
 	call msg_print
-	jr ident
+	jp ident
 
 ; lose a stat (always identifies)
 pe_lose_str:
@@ -482,18 +518,6 @@ pe_experience:
 	call msg_print
 	call check_level_up
 	jp ident
-
-/* add_exp - HL = experience to add. add_exp32 - DE:HL */
-add_exp:
-	ld de,0
-add_exp32:
-	ld bc,(p_exp)
-	add hl,bc
-	ld (p_exp),hl
-	ld hl,(p_exp+2)
-	adc hl,de
-	ld (p_exp+2),hl
-	ret
 
 ; bad things
 pe_sleep:
@@ -811,11 +835,6 @@ pe_self:
 	call msg_flush
 	call self_knowledge
 	jp ident
-
-/* hurt - HL = damage, DE = killer */
-hurt:
-	ld (killer_race),de
-	jp take_hit
 
 ; ---------------------------------------------------------------- cures
 
@@ -1261,20 +1280,6 @@ identify_pack:
 	jr c,.each
 	ret
 
-/* msg_flush - msg_print(NULL): let the player read what's on the line */
-msg_flush:
-	ld a,(msg_col)
-	or a
-	ret z
-	ld e,a
-	inc e
-	ld d,MSG_ROW
-	ld hl,txt_more
-	ld c,ATTR_GREY
-	call print_at
-	call wait_fresh_key
-	jp msg_clear
-
 /* self_knowledge - list what the player knows of their own state over
 	the map (SPELLS.C) */
 self_knowledge:
@@ -1375,6 +1380,9 @@ knowledge:
 	dw p_protevil
 	db $FD
 	dw txt_sk_protevil
+	dw p_confuse_mon
+	db $FD
+	dw txt_sk_glowing
 	dw p_word_recall
 	db $FD
 	dw txt_sk_recall
@@ -1418,42 +1426,6 @@ knowledge:
 	db $FF
 
 ; ---------------------------------------------------------------- words
-
-/* get_w - HL = word -> DE = its value, Z if zero. Preserves HL */
-get_w:
-	ld e,(hl)
-	inc hl
-	ld d,(hl)
-	dec hl
-	ld a,d
-	or e
-	ret
-
-/* set_w - HL = word, DE = value */
-set_w:
-	ld (hl),e
-	inc hl
-	ld (hl),d
-	dec hl
-	ret
-
-/* add_rand - HL = counter, B = base, C = range: counter += 1dC + B */
-add_rand:
-	push hl
-	push bc
-	ld a,c
-	call randint
-	pop bc
-	pop hl
-	add a,b
-	ld e,(hl)
-	inc hl
-	ld d,(hl)
-	add de,a
-	ld (hl),d
-	dec hl
-	ld (hl),e
-	ret
 
 ; ---------------------------------------------------------------- text
 
@@ -1526,6 +1498,7 @@ txt_sk_hero:		db "You feel heroic.",0
 txt_sk_shero:		db "You are in a battle rage.",0
 txt_sk_protevil:	db "You are protected from evil.",0
 txt_sk_recall:		db "You will soon be recalled.",0
+txt_sk_glowing:		db "Your hands are glowing dull red.",0
 txt_sk_infra:		db "Your eyes are sensitive to infrared.",0
 txt_sk_see_inv:		db "You can see invisible creatures.",0
 txt_sk_ffall:		db "You land gently.",0
@@ -1542,14 +1515,15 @@ txt_sk_sus_dex:		db "You will not become clumsy.",0
 ; ---------------------------------------------------------------- variables
 
 mi_i:			db 0
-q_slot:			db 0
-q_kind:			db 0
-q_level:		db 0
+mi_dst:			dw 0
+mi_ptr:			dw 0
+mi_words:		db 0
+MI_BUF_SIZE		equ 32
+mi_buf:			ds MI_BUF_SIZE
 q_food:			dw 0
 q_base:			db 0
 q_flags:		dd 0
 q_bit:			db 0
-q_ident:		db 0
 q_any:			db 0
 hp_num:			dw 0
 ex_val:			dd 0

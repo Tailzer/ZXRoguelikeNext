@@ -157,6 +157,8 @@ item_glyph:
 	ld c,(iy+K_ATTR)
 	call flavour_class
 	jr nc,.plain
+	cp OFS_POTION						; (only potions have colours)
+	jr nz,.plain
 	call flavour_index
 	nextreg NR_MMU1,FLAVOUR_PAGE
 	ld hl,colour_attrs

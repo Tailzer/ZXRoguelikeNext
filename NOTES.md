@@ -21,7 +21,7 @@ Walk into a closed door to open it, or into a monster to attack it; walking onto
 
 `C` (Caps Shift+C) shows the character sheet.
 
-Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels.
+Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels.
 
 ## Milestones
 
@@ -58,7 +58,13 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `E
      - Enlightenment maps the level; Self Knowledge lists your state; *Enlightenment* does both and identifies the pack
      - overeating now slows you, and being fast burns food faster, as in the C
      - not yet: mana (Restore Mana does nothing), hallucination, prices above 65535 (they show as 65535), haggling
-   - 9a-2: scrolls and the `r` command
+   - 9a-2: scrolls and the `r` command *(done)* — `SCROLLS.C`, `SPELLS.C`, `MISC2.C` teleport, `MISC1.C` summon_monster/summon_undead
+     - 30 scroll kinds: Identify, Light, Darkness, Phase Door, Teleport, Teleport Level, Word of Recall, Magic Mapping, Treasure/Object Detection, Door/Stair Location, Detect Invisible, Monster Confusion, Protection from Evil, Blessing/Holy Chant/Holy Prayer, Create Food, Summon Monster/Undead, Aggravate Monster, Genocide, Mass Genocide, Dispel Undead, Trap/Door Destruction, *Destruction*, Remove Curse and *Remove Curse* (nothing is cursed yet), Trap Detection (no traps yet)
+     - unknown scrolls go by a title made up each game from `TABLES.C`'s syllables (`a Scroll titled "ha nagkli"`); identified like potions
+     - can't read while blind or confused; Identify isn't used up if you choose nothing
+     - monsters can be confused (Monster Confusion's glowing hands, on your next hit or theirs) and wander at random until it wears off (1 in 8 a turn); protection from evil repels evil monsters up to your level
+     - item classes renumbered: food 1, potion 2, scroll 3, weapon 4 ... boots 10
+     - not yet: enchant/curse scrolls, Rune of Protection, Trap Creation, Recharging, Acquirement (not generated until their milestones)
    - 9b: wands, staffs, rods; 9c: rings, amulets, magical pluses (enchant/curse scrolls); 9d: spells and monster spells
 10. Saving to SD card
 
@@ -93,12 +99,13 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 | 42 `PAGE_ITEMS` | `inventory.asm`, `data/blows.asm` | item commands, picking up, starting kit |
 | 43 `PAGE_CREATE` | `create.asm`, `death.asm`, `data/player.asm` | making a character, the `C` sheet, the tombstone |
 | 51 `PAGE_STORE` | `store.asm`, `data/stores.asm` | the stores: stock, prices, buying and selling |
-| 52 `PAGE_MAGIC` | `potions.asm`, `effects.asm` | quaffing, stat changes, timed effects (every turn), the colour shuffle |
+| 52 `PAGE_MAGIC` | `potions.asm`, `effects.asm` | quaffing, stat changes, timed effects (every turn), the colour and title shuffle |
+| 53 `PAGE_SCROLL` | `scrolls.asm` | reading scrolls (summons go through `level_call` to the level overlay) |
 
-Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 49-50 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page) followed on page 50 (`FLAVOUR_PAGE`) by `data/flavours.asm`, the potion colours. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
+Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 49-50 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page) followed on page 50 (`FLAVOUR_PAGE`) by `data/flavours.asm`: the potion colours, the title syllables and the buffer this game's scroll titles are written into. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
 
-Resident code ends around `$A8BB` after milestone 9a-1 (`status.asm` holds the stat tables, timed-effect counters, what the player knows and the colour order), about 1.8K below the monster list. The creation overlay is at 7.6K of 8K; the magic overlay at 6.3K.
+Resident code ends around `$ABFC` after milestone 9a-2 (`status.asm` holds the stat tables, timed-effect counters, what the player knows, the colour order and the after-use identify logic; `pack.asm` the item lists and chooser), about 1K below the monster list. The creation overlay is at 7.6K of 8K, the magic overlay 6.3K, the scroll overlay 2.6K.
 
 Overlays that change stats or bonuses set `p_update`; `draw_view` (main loop only) runs `update_stuff`, which pages the items overlay to recalculate. Item commands that need the magic overlay leave `pending_magic` for `pending_actions` in the main loop.
 
-Rules: only resident code uses `FARCALL`; overlay code may call resident code but never another overlay; data an overlay owns stays in that overlay. New overlays go in the next free pages (42, 43...) with an `MMU 2, page, $4000` block in `roguelike.asm`.
+Rules: only resident code uses `FARCALL` (one exception: `level_call`, which the scroll overlay uses to reach the level overlay and which pages the scroll overlay back before returning); overlay code may call resident code but never another overlay; data an overlay owns stays in that overlay. New overlays go in the next free pages (42, 43...) with an `MMU 2, page, $4000` block in `roguelike.asm`.

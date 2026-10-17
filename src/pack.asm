@@ -32,8 +32,13 @@ objdes_msg:
 	call .name
 	jr .suffix
 .unknown_one:							; "& %s Potion~" always has one
+	call flavour_class
+	cp OFS_SCROLL
+	ld a,'S'							; ("& Scroll~ titled ...")
+	jr z,.unknown_art
 	call flavour_name
 	ld a,(hl)
+.unknown_art:
 	call .article
 	ld b,0
 	jr .flavoured
@@ -53,9 +58,12 @@ objdes_msg:
 	call .name
 	jr .suffix
 .flavoured:								; B = 1 for plural
-	push bc
 	ld a,(ix+I_KIND)					; (the colours may be paged in)
 	call kind_addr
+	call flavour_class
+	cp OFS_SCROLL
+	jr z,.titled
+	push bc
 	call flavour_name
 	call msg_add
 	ld a,(ix+I_KIND)
@@ -63,6 +71,16 @@ objdes_msg:
 	pop bc
 	ld hl,txt_potion_tilde
 	call .copy_hl
+	jr .suffix
+.titled:								; Scroll~ titled "abra kadab"
+	ld hl,txt_scroll_tilde
+	call .copy_hl
+	call flavour_name
+	call msg_add
+	ld a,(ix+I_KIND)
+	call kind_addr
+	ld hl,txt_quote
+	call msg_add
 .suffix:
 	ld a,(od_unknown)					; " {tried}"
 	or a
@@ -340,6 +358,151 @@ use_one:
 	ld a,b
 	jp pack_remove
 
+; ---------------------------------------------------------------- lists
+
+/* show_pack - list the pack on the screen, A = class filter (0 = all,
+	IC_WEAPON = anything wearable). -> A = items listed */
+show_pack:
+	ld (list_filter),a
+	xor a
+	ld (list_shown),a
+	ld (list_slot),a
+.each:
+	ld a,(list_slot)
+	call pack_slot
+	ld a,(ix+I_KIND)
+	cp ITEM_EMPTY
+	jr z,.done
+	call filter_ok
+	jr nc,.next
+	call msg_begin						; "a) a Ration of Food"
+	ld a,(list_slot)
+	add a,'a'
+	call list_label
+	call objdes_msg
+	ld a,(list_shown)
+	call list_line
+	ld hl,list_shown
+	inc (hl)
+.next:
+	ld hl,list_slot
+	inc (hl)
+	ld a,(hl)
+	cp PACK_MAX
+	jr c,.each
+.done:
+	ld a,(list_shown)
+	ret
+
+/* filter_ok - IX = item -> carry if it passes list_filter */
+filter_ok:
+	ld a,(list_filter)
+	or a
+	scf
+	ret z
+	ld b,a
+	ld a,(ix+I_KIND)
+	call kind_addr
+	ld a,(iy+K_CLASS)
+	ld c,a
+	ld a,b
+	cp IC_WEAPON
+	jr z,.wearable
+	cp c
+	scf
+	ret z
+	or a
+	ret
+.wearable:
+	ld a,c
+	cp IC_WEAPON
+	ccf
+	ret
+
+/* list_label - A = letter: start a list line with "a) " */
+list_label:
+	ld (txt_label),a
+	ld hl,txt_label
+	jp msg_add
+
+/* list_line - A = line number: print the built line in the list window */
+list_line:
+	ld hl,(msg_ptr)
+	ld (hl),0
+	add a,LIST_TOP
+	ld d,a
+	push de
+	call clear_row
+	pop de
+	ld e,LIST_LEFT
+	ld hl,msg_buf
+	ld c,ATTR_WHITE
+	jp print_at
+
+/* prompt - HL = question for the message line */
+prompt:
+	push hl
+	call msg_clear
+	pop hl
+	ld d,MSG_ROW
+	ld e,0
+	ld c,ATTR_YELLOW
+	jp print_at
+
+/* choose_pack - HL = question, A = class filter -> carry and A = slot,
+	IX = item if a listed item was picked */
+choose_pack:
+	push hl
+	call show_pack
+	pop hl
+	or a
+	jr z,.none
+	call prompt
+	call read_ascii
+	push af
+	call msg_clear
+	pop af
+	sub 'a'
+	cp PACK_MAX
+	ret nc								; not a letter in range: cancel
+	ld (list_slot),a
+	call pack_slot
+	ld a,(ix+I_KIND)
+	cp ITEM_EMPTY
+	jr z,.cancel
+	call filter_ok
+	ret nc
+	ld a,(list_slot)
+	scf
+	ret
+.none:
+	or a
+	ret
+.cancel:
+	or a
+	ret
+
+/* pack_has_class - A = class -> carry if the pack has one
+	(so an empty choice can be told apart from "you have none") */
+pack_has_class:
+	ld (list_filter),a
+	ld ix,PACK
+	ld b,PACK_MAX
+.loop:
+	ld a,(ix+I_KIND)
+	cp ITEM_EMPTY
+	jr z,.next
+	push bc
+	call filter_ok
+	pop bc
+	ret c
+.next:
+	ld de,ITEM_SIZE
+	add ix,de
+	djnz .loop
+	or a
+	ret
+
 txt_a_:			db "a ",0
 txt_an_:		db "an ",0
 txt_space_:		db " ",0
@@ -350,6 +513,8 @@ txt_d:			db "d",0
 txt_close_br:	db ")",0
 txt_no_more_:	db "no more ",0
 txt_potion_tilde: db " Potion~",0
+txt_scroll_tilde: db "Scroll~ titled \"",0
+txt_quote:		db "\"",0
 txt_tried:		db " {tried}",0
 txt_you_have_r:	db "You have ",0
 txt_slot_r:		db " (a).",0
@@ -362,3 +527,9 @@ comb_kind:		db 0
 comb_first:		db 0
 comb_try:		db 0
 comb_dst:		dw 0
+LIST_TOP			equ 1
+LIST_LEFT			equ 2
+txt_label:		db "a) ",0
+list_filter:	db 0
+list_shown:		db 0
+list_slot:		db 0

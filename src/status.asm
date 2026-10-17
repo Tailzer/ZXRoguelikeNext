@@ -33,9 +33,25 @@ pending_actions:
 	ld b,a
 	xor a
 	ld (pending_magic),a
+	ld a,b
+	cp PM_READ
 	ld a,(pending_arg)
+	jr z,.read
 	FARCALL PAGE_MAGIC, magic_action	; B = action, A = argument
 	ret
+.read:
+	FARCALL PAGE_SCROLL, read_scroll
+	ret
+
+/* level_call - HL = a routine in the level overlay, called from the scroll
+	overlay, which is paged back in afterwards (flags come back) */
+level_call:
+	nextreg NR_MMU2,PAGE_LEVEL
+	call .go
+	nextreg NR_MMU2,PAGE_SCROLL
+	ret
+.go:
+	jp (hl)
 
 /* stat_bonuses - to-hit, to-dam, to-ac, hit points per level and the
 	blows column from the current stats (MISC2.C's *_adj functions) */
@@ -250,14 +266,22 @@ update_max_exp:
 ; ---------------------------------------------------------------- flavours
 
 /* flavour_class - IY = kind -> carry and A = its object_offset() if the
-	kind has a flavour (only potions so far) */
+	kind has a flavour (potions and scrolls so far) */
 flavour_class:
 	ld a,(iy+K_TVAL)
 	cp TV_POTION1
 	jr z,.potion
 	cp TV_POTION2
 	jr z,.potion
+	cp TV_SCROLL1
+	jr z,.scroll
+	cp TV_SCROLL2
+	jr z,.scroll
 	or a
+	ret
+.scroll:
+	ld a,OFS_SCROLL
+	scf
 	ret
 .potion:
 	ld a,OFS_POTION
@@ -303,10 +327,21 @@ flavour_index:
 	ld a,(hl)
 	ret
 
-/* flavour_name - IY = flavoured kind -> HL = its colour's name. Leaves
-	FLAVOUR_PAGE in the data window: page the kind back before using IY.
-	Clobbers A */
+/* flavour_name - IY = flavoured kind -> HL = its colour's name, or its
+	title for a scroll. Leaves FLAVOUR_PAGE in the data window: page the
+	kind back before using IY. Clobbers A, DE */
 flavour_name:
+	call flavour_class
+	cp OFS_SCROLL
+	jr nz,.colour
+	ld e,(iy+K_FLAVOUR)					; scroll_titles + flavour * 10
+	ld d,10
+	mul d,e
+	ld hl,scroll_titles
+	add hl,de
+	nextreg NR_MMU1,FLAVOUR_PAGE
+	ret
+.colour:
 	call flavour_index
 	nextreg NR_MMU1,FLAVOUR_PAGE
 	add a,a
@@ -342,6 +377,125 @@ try_kind:
 	set OD_TRIED_BIT,(hl)
 	ret
 
+; ---------------------------------------------------------------- using items
+
+/* item_used - after quaffing or reading item u_slot (kind u_kind, level
+	u_level): if it did something noticeable (u_ident) and wasn't known,
+	learn it, with (level + lev/2) / lev experience; if not, it's tried.
+	Leaves u_slot on the item, which identifying may have moved */
+item_used:
+	ld a,(u_slot)						; still where it was?
+	call pack_slot
+	ld a,(ix+I_KIND)
+	ld hl,u_kind
+	cp (hl)
+	call nz,.refind
+	ld a,(u_kind)
+	call kind_addr
+	call ident_addr
+	bit OD_KNOWN_BIT,(hl)
+	ret nz								; known already
+	ld a,(u_slot)
+	call pack_slot
+	bit ID_STORE_BIT,(ix+I_IDENT)
+	ret nz								; (the C's known1_p)
+	ld a,(u_ident)
+	or a
+	jr z,.sample
+	ld a,(p_lev)						; exp += (level + lev/2) / lev
+	ld c,a
+	srl a
+	ld hl,u_level
+	add a,(hl)
+	ld l,a
+	ld h,0
+	call div16_8
+	call add_exp
+	call check_level_up
+	ld a,(u_kind)
+	call learn_kind
+.refind:								; learning combines stacks
+	ld a,(u_kind)
+	call find_pack_kind
+	ld (u_slot),a
+	ret
+.sample:
+	ld a,(u_kind)
+	jp try_kind
+
+/* ident - the item being used did something noticeable */
+ident:
+	ld a,1
+	ld (u_ident),a
+	ret
+
+/* add_exp - HL = experience to add. add_exp32 - DE:HL */
+add_exp:
+	ld de,0
+add_exp32:
+	ld bc,(p_exp)
+	add hl,bc
+	ld (p_exp),hl
+	ld hl,(p_exp+2)
+	adc hl,de
+	ld (p_exp+2),hl
+	ret
+
+/* hurt - HL = damage, DE = killer */
+hurt:
+	ld (killer_race),de
+	jp take_hit
+
+/* msg_flush - msg_print(NULL): let the player read what's on the line */
+msg_flush:
+	ld a,(msg_col)
+	or a
+	ret z
+	ld e,a
+	inc e
+	ld d,MSG_ROW
+	ld hl,txt_more
+	ld c,ATTR_GREY
+	call print_at
+	call wait_fresh_key
+	jp msg_clear
+
+/* get_w - HL = word -> DE = its value, Z if zero. Preserves HL */
+get_w:
+	ld e,(hl)
+	inc hl
+	ld d,(hl)
+	dec hl
+	ld a,d
+	or e
+	ret
+
+/* set_w - HL = word, DE = value */
+set_w:
+	ld (hl),e
+	inc hl
+	ld (hl),d
+	dec hl
+	ret
+
+/* add_rand - HL = counter, B = base, C = range: counter += 1dC + B */
+add_rand:
+	push hl
+	push bc
+	ld a,c
+	call randint
+	pop bc
+	pop hl
+	add a,b
+	ld e,(hl)
+	inc hl
+	ld d,(hl)
+	add de,a
+	ld (hl),d
+	dec hl
+	ld (hl),e
+	ret
+
 ; ---------------------------------------------------------------- variables
 
 p_stat_max:		ds 6				; what restoring brings stats back to
@@ -353,6 +507,10 @@ p_update:		db 0				; PU_ bits
 p_new_level:	db 0				; set when word of recall fires
 pending_magic:	db 0				; PM_ action for the magic overlay
 pending_arg:	db 0
+u_slot:			db 0				; the item being quaffed or read
+u_kind:			db 0
+u_level:		db 0
+u_ident:		db 0
 ; timed effects, words, cleared together by player_init
 p_timed:
 p_blind:		dw 0
@@ -372,6 +530,7 @@ p_resist_cold:	dw 0
 p_detect_inv:	dw 0
 p_tim_infra:	dw 0
 p_word_recall:	dw 0
+p_confuse_mon:	dw 0				; hands glowing (not timed)
 P_TIMED_SIZE	equ $-p_timed
 ; what the player knows (object_ident, 64 per object_offset class)
 object_ident:	ds 8*64

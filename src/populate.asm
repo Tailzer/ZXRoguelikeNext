@@ -76,6 +76,7 @@ place_monster:
 	sub 10
 	ld (ix+M_SPEED),a
 	ld (ix+M_ML),0
+	ld (ix+M_CONFUSED),0
 	ld hl,0
 	ld a,(place_sleep)
 	or a
@@ -273,6 +274,8 @@ alloc_town_monsters:
 	levels deeper. Out-of-depth uniques are picked again */
 get_mons_num:
 	ld a,(dun_level)
+/* get_mons_num_a - the same for level A */
+get_mons_num_a:
 	or a
 	jr nz,.dungeon
 	ld hl,(mon_level_table)				; the town: any of its folk
@@ -280,7 +283,6 @@ get_mons_num:
 	dec hl
 	ret
 .dungeon:
-	ld a,(dun_level)
 	cp MAX_MONS_LEVEL+1
 	jr c,$+4
 	ld a,MAX_MONS_LEVEL
@@ -372,6 +374,130 @@ m_level:
 	ld l,a
 	ret
 
+/* summon_monster - D = y, E = x: a monster from a little deeper appears
+	next to there, awake (summon_monster in MISC1.C) -> carry if one did */
+summon_monster:
+	push de
+	ld a,(dun_level)
+	add a,MON_SUMMON_ADJ
+	call get_mons_num_a
+	ld (place_race),hl
+	pop de
+	call summon_spot
+	ret nc
+	xor a
+	ld (place_sleep),a
+	push de
+	ld hl,(place_race)
+	call race_addr
+	pop de
+	bit RM_GROUP,(iy+R_MOVE)
+	jr z,.single
+	call place_group
+	scf
+	ret
+.single:
+	call place_monster
+	scf
+	ret
+
+/* summon_undead - D = y, E = x: an undead (not unique, below level + 5)
+	appears next to there, awake (summon_undead in MISC1.C) -> carry */
+summon_undead:
+	push de
+.pick:
+	ld hl,NUM_RACES						; m = randint(l) - 1, then look on
+	call randint16						; up to 20 races for one that fits
+	dec hl
+	ld b,21
+.look:
+	push bc
+	push hl
+	call race_addr
+	pop hl
+	pop bc
+	bit RF_UNDEAD,(iy+R_FLAGS)
+	jr z,.next
+	bit RF_UNIQUE,(iy+R_FLAGS)
+	jr nz,.next
+	ld a,(dun_level)
+	add a,5
+	cp (iy+R_LEVEL)
+	jr z,.next
+	jr c,.next
+	ld (place_race),hl
+	pop de
+	call summon_spot
+	ret nc
+	xor a
+	ld (place_sleep),a
+	call place_monster
+	scf
+	ret
+.next:
+	inc hl
+	push hl
+	ld de,NUM_RACES
+	or a
+	sbc hl,de
+	pop hl
+	jr nc,.pick
+	djnz .look
+	jr .pick
+
+/* summon_spot - D = y, E = x -> D, E = a random empty open square next to
+	it (10 tries), carry if found */
+summon_spot:
+	ld (ss_centre),de
+	ld b,10
+.try:
+	push bc
+	ld a,3
+	call randint
+	ld hl,ss_centre+1
+	add a,(hl)
+	sub 2
+	ld d,a
+	push de
+	ld a,3
+	call randint
+	pop de
+	ld hl,ss_centre
+	add a,(hl)
+	sub 2
+	ld e,a
+	call in_bounds
+	jr nc,.no
+	push de
+	call map_addr
+	pop de
+	ld a,(hl)
+	bit F_MON_BIT,a
+	jr nz,.no
+	and TERRAIN_MASK
+	cp T_FLOOR
+	jr z,.player
+	cp T_CORRIDOR
+	jr z,.player
+	cp T_FLOOR_LIT
+	jr nz,.no
+.player:
+	ld a,(player_y)
+	cp d
+	jr nz,.yes
+	ld a,(player_x)
+	cp e
+	jr z,.no
+.yes:
+	pop bc
+	scf
+	ret
+.no:
+	pop bc
+	djnz .try
+	or a
+	ret
+
 /* place_group - D = y, E = x, place_race. 1d13 awake members spread
 	round the spot, as place_group()'s fall-through switch does */
 place_group:
@@ -412,6 +538,8 @@ group_offsets:							; dy, dx for cases 13 down to 1
 	db 0,-2, 0,2, 2,0, -2,0, 1,1, 1,-1, -1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0, 0,0
 
 place_race:		dw 0
+ss_centre:		dw 0
+MON_SUMMON_ADJ	equ 2
 place_sleep:	db 0
 alloc_left:		db 0
 gm_base:		db 0

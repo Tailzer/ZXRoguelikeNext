@@ -251,6 +251,7 @@ key_table:
 	db $FB,%00000010,KM_NONE,CMD_WIELD,0,0	; w: wear/wield
 	db $FB,%00010000,KM_NONE,CMD_TAKEOFF,0,0	; t: take off
 	db $FB,%00000001,KM_NONE,CMD_QUAFF,0,0	; q: quaff
+	db $FB,%00001000,KM_NONE,CMD_READ,0,0	; r: read
 	db $FD,%00000100,KM_NONE,CMD_DROP,0,0	; d: drop
 	db $FD,%00010000,KM_NONE,CMD_PICKUP,0,0	; g: pick up
 	db $FE,%00001000,KM_CAPS,CMD_CHARACTER,0,0	; C: character sheet

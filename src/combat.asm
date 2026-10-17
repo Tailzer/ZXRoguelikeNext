@@ -296,6 +296,7 @@ py_attack:
 	ld hl,txt_full_stop
 	call msg_add
 	call msg_end
+	call confuse_touch					; Monster Confusion's glowing hands
 	ld hl,(hit_damage)
 	call mon_take_hit
 	ret c								; it died: no more blows
@@ -445,6 +446,9 @@ mon_take_hit:
 	bit RF_UNIQUE,(iy+R_FLAGS)			; a unique stays dead
 	call nz,unique_killed
 	; message, then remove it
+	ld a,(mth_quiet)					; (dispel undead says its own)
+	or a
+	jr nz,.quiet
 	call msg_begin
 	ld hl,txt_you_slain					; undead and demons are destroyed
 	ld a,(iy+R_FLAGS)
@@ -458,6 +462,7 @@ mon_take_hit:
 	ld hl,txt_full_stop
 	call msg_add
 	call msg_end
+.quiet:
 	call mon_remove
 	call check_level_up
 	scf									; it died
@@ -595,9 +600,47 @@ mon_attack:
 	ld e,CLA_MISC_ADJ
 	mul d,e
 	add hl,de
+	ld hl,(p_protevil)					; protection from evil may repel it
+	ld a,h
+	or l
+	jr z,.unprotected
+	bit RF_EVIL,(iy+R_FLAGS)
+	jr z,.unprotected
+	ld a,(p_lev)
+	cp (iy+R_LEVEL)						; lev + 1 > level
+	jr c,.unprotected
+	ld a,100
+	call randint
+	ld hl,p_lev
+	add a,(hl)
+	jr c,.repelled
+	cp 51
+	jr c,.unprotected
+.repelled:
+	call msg_begin						; "The Orc is repelled."
+	ld a,1
+	ld (name_cap),a
+	call mon_name_to_msg
+	ld hl,txt_repelled
+	call msg_add
+	call msg_end
+	jp .blow
+.unprotected:
+	ld a,(atk_type)						; (test_hit needs the power again)
+	ld hl,attack_power-1
+	add hl,a
+	ld a,(hl)
+	ld l,a
+	rla
+	sbc a,a
+	ld h,a
+	ld d,(iy+R_LEVEL)
+	ld e,CLA_MISC_ADJ
+	mul d,e
+	add hl,de
 	ld a,(p_ac)
 	call test_hit
-	jr nc,.missed
+	jp nc,.missed
 	call msg_begin						; "The Jackal bites you."
 	ld a,1
 	ld (name_cap),a
@@ -619,6 +662,10 @@ mon_attack:
 .say_it:
 	call msg_add
 	call msg_end
+	ld hl,(p_protevil)					; touching glowing hands confuses
+	ld a,h								; it too (unless repelling evil)
+	or l
+	call z,confuse_touch
 	ld a,(atk_dice)
 	ld b,a
 	ld a,(atk_sides)
@@ -674,6 +721,36 @@ mon_attack:
 	call msg_add
 	call msg_end
 	jp .blow
+
+/* confuse_touch - IX = monster the player hit, or that hit the player:
+	if their hands glow (Monster Confusion), it may become confused */
+confuse_touch:
+	ld a,(p_confuse_mon)
+	or a
+	ret z
+	xor a
+	ld (p_confuse_mon),a
+	ld hl,msg_hands_stop
+	call msg_print
+	call msg_begin
+	ld a,1
+	ld (name_cap),a
+	call mon_race
+	call mon_name_to_msg
+	bit RF_CHARM_SLEEP,(iy+R_FLAGS)
+	jr nz,.unaffected
+	ld a,MAX_MONS_LEVEL
+	call randint
+	cp (iy+R_LEVEL)
+	jr c,.unaffected
+	ld (ix+M_CONFUSED),1
+	ld hl,txt_appears_confused
+	jr .say
+.unaffected:
+	ld hl,txt_is_unaffected
+.say:
+	call msg_add
+	jp msg_end
 
 /* div16_8 - HL / C -> HL = quotient, A = remainder. Clobbers B */
 div16_8:
@@ -797,3 +874,8 @@ atk_desc:		db 0
 atk_dice:		db 0
 atk_sides:		db 0
 atk_damage:		dw 0
+mth_quiet:		db 0				; mon_take_hit: no "You have slain"
+msg_hands_stop:	db "Your hands stop glowing.",0
+txt_appears_confused: db " appears confused.",0
+txt_is_unaffected: db " is unaffected.",0
+txt_repelled:	db " is repelled.",0
