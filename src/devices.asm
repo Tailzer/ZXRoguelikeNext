@@ -471,6 +471,62 @@ act_effects:
 	dw ae_td, ae_teleport, ae_restore, ae_resist, sleep_monsters		; 17-21
 	dw ae_recharge, rd_detect, ae_dispel_evil, ae_protevil, ae_one_ring	; 22-26
 	dw ae_ball														; 27 (a breath)
+	dw ae_sleep_one, ae_poly, ae_slow_one, ae_light_line, ae_sleep_adj	; 28-32
+	dw earthquake, detect_evil, ae_detect_mon						; 33-35
+
+/* do_effect - one of activate's effects for a spell: sp_entry (16 bytes,
+	as act_table's) and sp_name, in high RAM. -> A = 1 if it was called off
+	(no direction) */
+do_effect:
+	ld hl,sp_entry
+	ld de,a_entry
+	ld bc,16
+	ldir
+	ld hl,sp_name
+	ld de,a_name
+	ld bc,32
+	ldir
+	xor a
+	ld (a_msg),a
+	ld (a_msg2),a
+	ld (a_cancel),a
+	ld a,(a_effect)
+	ld hl,act_effects-2
+	call jump_table
+	ld a,(a_cancel)
+	ret
+
+ae_sleep_one:
+	call ae_dir
+	ret nc
+	jp wd_sleep_mon
+ae_poly:
+	call ae_dir
+	ret nc
+	jp wd_poly
+ae_slow_one:
+	call ae_dir
+	ret nc
+	jp wd_slow_mon
+ae_light_line:
+	call ae_dir
+	ret nc
+	ld hl,msg_blue_line
+	call msg_print
+	ld a,(d_dir)
+	jp light_line
+ae_sleep_adj:							; sleep_monsters1: those next to you
+	ld hl,.adjacent
+	jp in_sight_each
+.adjacent:
+	ld a,(ix+M_CDIS)
+	cp 2
+	ret nc
+	jp sleep_monsters.one
+ae_detect_mon:
+	xor a
+	ld hl,msg_sense_monsters
+	jp show_monsters
 
 /* ae_dir - a direction -> carry; none: a_cancel set */
 ae_dir:
@@ -589,8 +645,9 @@ ae_resist:								; 20 + 1d20 more of each
 	ld hl,p_resist_cold
 	ld bc,20*256+20
 	jp add_rand
-ae_recharge:
-	XCALL PAGE_SCROLL, sc_recharge
+ae_recharge:							; (Thingol: recharge(60))
+	ld a,60
+	XCALL PAGE_SCROLL, recharge_n
 	ret
 ae_dispel_evil:							; dispel evil for 5 x level
 	ld a,(p_lev)

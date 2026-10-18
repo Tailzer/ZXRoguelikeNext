@@ -219,6 +219,8 @@ knowledge:
 	SK p_hero, $FD, SK_NONE, txt_sk_hero
 	SK p_shero, $FD, SK_NONE, txt_sk_shero
 	SK p_protevil, $FD, SK_NONE, txt_sk_protevil
+	SK p_shield, $FD, SK_NONE, txt_sk_shield
+	SK p_invuln, $FD, SK_NONE, txt_sk_invuln
 	SK p_confuse_mon, $FD, SK_NONE, txt_sk_glowing
 	SK p_word_recall, $FD, SK_NONE, txt_sk_recall
 	SK 0, $FD, 8, txt_sk_stealth
@@ -239,12 +241,15 @@ knowledge:
 	SK 0, $FA, SK_F2+7, txt_sk_im_cold
 	SK p_resist_cold, $FD, SK_BOTH|21, txt_sk_cold2
 	SK p_resist_cold, $FD, 21, txt_sk_res_cold
-	SK 0, $F9, SK_F2+8, txt_sk_im_acid
-	SK 0, $FD, 20, txt_sk_res_acid
-	SK 0, $F9, SK_F2+14, txt_sk_im_poison
-	SK 0, $FD, 28, txt_sk_res_poison
-	SK 0, $F9, SK_F2+9, txt_sk_im_lightning
-	SK 0, $FD, 25, txt_sk_res_lightning
+	SK 0, $FA, SK_F2+8, txt_sk_im_acid
+	SK p_resist_acid, $FD, SK_BOTH|20, txt_sk_acid2
+	SK p_resist_acid, $FD, 20, txt_sk_res_acid
+	SK 0, $FA, SK_F2+14, txt_sk_im_poison
+	SK p_resist_poison, $FD, SK_BOTH|28, txt_sk_poison2
+	SK p_resist_poison, $FD, 28, txt_sk_res_poison
+	SK 0, $FA, SK_F2+9, txt_sk_im_lightning
+	SK p_resist_light, $FD, SK_BOTH|25, txt_sk_lightning2
+	SK p_resist_light, $FD, 25, txt_sk_res_lightning
 	SK 0, 2, SK_F2+17, txt_sk_res_light		; (elves)
 	SK 0, 6, SK_F2+18, txt_sk_res_dark		; (half-orcs)
 	SK 0, $FD, SK_F2+15, txt_sk_res_conf
@@ -360,3 +365,8 @@ txt_sk_res_chaos:	db "You are resistant to blasts of chaos.",0
 txt_sk_res_shards:	db "You are resistant to blasts of shards.",0
 txt_sk_res_nexus:	db "You are resistant to nexus attacks.",0
 txt_sk_res_nether:	db "You are resistant to nether forces.",0
+txt_sk_shield:		db "You are protected by a mystic shield.",0
+txt_sk_invuln:		db "You are temporarily invulnerable.",0
+txt_sk_acid2:		db "You resist acid exceptionally well.",0
+txt_sk_poison2:		db "You resist poison exceptionally well.",0
+txt_sk_lightning2:	db "You resist lightning exceptionally well.",0

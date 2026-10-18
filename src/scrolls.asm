@@ -1356,6 +1356,7 @@ uncurse_all:
 
 ; ---------------------------------------------------------------- 25
 
+rc_num:			db 60
 uc_spare:		db 0				; 1: remove_curse, which spares some
 msg_one_ring:	db "The One Ring resists all attempts to remove it!",0
 
@@ -1364,6 +1365,11 @@ msg_one_ring:	db "The One Ring resists all attempts to remove it!",0
 sc_recharge:
 	ld hl,msg_recharge_scroll
 	call msg_print
+	ld a,60
+/* recharge_n - A = its strength: recharge(num) in SPELLS.C (the scroll's
+	60; spells 5, 40, 100) */
+recharge_n:
+	ld (rc_num),a
 	call ident
 	ld a,FILTER_CHARGED
 	call pack_has_class
@@ -1383,7 +1389,9 @@ sc_recharge:
 	ld e,a
 	ld d,10
 	mul d,e
-	ld hl,60+100
+	ld a,(rc_num)
+	ld hl,100
+	add hl,a
 	or a
 	sbc hl,de
 	ld e,(iy+K_LEVEL)
@@ -1421,7 +1429,7 @@ sc_recharge:
 	ld a,(iy+K_LEVEL)
 	add a,2
 	ld c,a
-	ld a,60
+	ld a,(rc_num)
 	call div8
 	inc a
 	call randint

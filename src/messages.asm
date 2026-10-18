@@ -60,6 +60,7 @@ txt_lev:		db "Lv ",0
 txt_exp:		db "  Exp ",0
 txt_hp:			db "  HP ",0
 txt_slash:		db "/",0
+txt_sp:			db "  SP ",0
 txt_gold:		db "  AU ",0
 txt_depth:		db "  ",0
 txt_hungry:		db "  Hungry",0

@@ -276,6 +276,20 @@ draw_status:
 	call print_str
 	ld hl,(p_mhp)
 	call print_u16
+	ld hl,(p_mana)						; casters: mana too
+	ld a,h
+	or l
+	jr z,.no_mana
+	push hl
+	ld hl,txt_sp
+	call print_str
+	ld hl,(p_cmana)
+	call print_u16
+	ld hl,txt_slash
+	call print_str
+	pop hl
+	call print_u16
+.no_mana:
 	ld hl,txt_gold
 	call print_str
 	ld hl,p_gold

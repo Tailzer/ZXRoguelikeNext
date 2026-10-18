@@ -255,6 +255,9 @@ key_table:
 	db $FE,%00000010,KM_NONE,CMD_AIM,0,0	; z: aim a wand
 	db $FE,%00000010,KM_CAPS,CMD_USE,0,0	; Z: use a staff
 	db $FD,%00000001,KM_CAPS,CMD_ACTIVATE,0,0	; A: activate an artifact
+	db $7F,%00000100,KM_NONE,CMD_CAST,0,0	; m: cast a spell
+	db $DF,%00000001,KM_CAPS,CMD_BROWSE,0,0	; P: browse a book
+	db $FD,%00010000,KM_CAPS,CMD_STUDY,0,0	; G: learn spells
 	db $FD,%00000001,KM_NONE,CMD_ZAP,0,0	; a: activate a rod
 	db $FD,%00000100,KM_NONE,CMD_DROP,0,0	; d: drop
 	db $FD,%00010000,KM_NONE,CMD_PICKUP,0,0	; g: pick up

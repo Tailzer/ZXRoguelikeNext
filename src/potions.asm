@@ -874,6 +874,8 @@ lose_exp:
 	cp (hl)
 	ret z
 	ld (hl),a
+	ld hl,p_update						; (spells and mana: update_stuff)
+	set PU_BONUS,(hl)
 	jp calc_hitpoints
 
 /* cmp32 - HL, DE -> 32-bit values: carry if (HL) < (DE), Z if equal */

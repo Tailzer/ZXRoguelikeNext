@@ -1,6 +1,74 @@
-/* magic_init.asm - this game's flavours  [overlay: PAGE_MISC]
+/* magic_init.asm - a new character's start  [overlay: PAGE_MISC]
 	Reference: DESC.C magic_init. Run once for each new character.
  */
+
+/* player_init - start the character create_character made: level 1,
+	full hit points, fed, carrying the class's kit */
+player_init:
+	xor a
+	ld (p_speed),a
+	ld (p_eq_speed),a					; nothing worn yet
+	ld hl,p_stat_mod
+	ld b,6
+	call .zero
+	ld (p_status),a						; (before calc_hitpoints looks)
+	ld (p_status+1),a
+	ld (p_update),a
+	ld (p_new_level),a
+	ld (pending_magic),a
+	ld (p_max_dlv),a
+	ld (p_dead),a
+	ld (p_hunger),a
+	ld (p_paralysed),a
+	inc a
+	ld (p_lev),a
+	ld hl,0
+	ld (p_exp),hl
+	ld (p_exp+2),hl
+	ld (p_exp_frac),hl
+	ld (p_chp_frac),hl
+	ld (p_max_exp),hl
+	ld (p_max_exp+2),hl
+	call stat_bonuses
+	call calc_hitpoints
+	ld hl,(p_mhp)
+	ld (p_chp),hl
+	ld hl,FOOD_START
+	ld (p_food),hl
+	ld hl,uniques_dead					; a new world: every unique alive
+	ld b,(NUM_RACES+7)/8
+	call .zero
+	ld hl,p_timed						; no effects running
+	ld b,P_TIMED_SIZE
+	call .zero
+	ld hl,object_ident					; nothing learnt yet
+	ld b,0
+	call .zero
+	call .zero
+	ld hl,p_stat						; stats start at their maximum
+	ld de,p_stat_max
+	ld bc,6
+	ldir
+	ld hl,SPELL_STATE					; no spells learnt, no mana
+	ld b,SPELL_STATE_SIZE
+	call .zero
+	ld hl,s_order						; (99: no spell)
+	ld b,64
+.none:
+	ld (hl),99
+	inc hl
+	djnz .none
+	call magic_init						; this game's flavours
+	OVCALL PAGE_ITEMS, starting_kit, PAGE_MISC	; (works out the bonuses)
+	ld hl,p_update						; (and spells: update_stuff)
+	set PU_BONUS,(hl)
+	ret
+.zero:
+	ld (hl),0
+	inc hl
+	djnz .zero
+	ret
+
 
 /* magic_init - this game's flavours: potion colours (all but the first
 	three: slime mold, apple juice, water), staff woods, wand and rod

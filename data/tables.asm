@@ -7,15 +7,15 @@
 ; included in all such copies.
 
 NUM_RACES		equ 549
-NUM_KINDS		equ 326
-NUM_ALLOC		equ 338
+NUM_KINDS		equ 344
+NUM_ALLOC		equ 356
 KIND_RATION		equ 0
 KIND_SLIME_MOLD	equ 1
 KIND_CLW		equ 175
 KIND_BROADSWORD	equ 8
 KIND_CHAIN_MAIL	equ 61
 KIND_RING_SPEED	equ 88
-KIND_RING_POWER	equ 320
+KIND_RING_POWER	equ 338
 
 ; the treasures: name, symbol, colour, base value
 gold_table:

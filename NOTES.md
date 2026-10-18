@@ -21,7 +21,7 @@ Walk into a closed door to open it, or into a monster to attack it; walking onto
 
 `C` (Caps Shift+C) shows the character sheet.
 
-Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `z` aim a wand, `Z` (Caps Shift+Z) use a staff, `a` activate a rod, `A` (Caps Shift+A) activate an artifact, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels. Directions: `1`-`9` or `hjklyubn`.
+Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `z` aim a wand, `Z` (Caps Shift+Z) use a staff, `a` activate a rod, `A` (Caps Shift+A) activate an artifact, `m` cast a spell, `P` (Caps Shift+P) browse a book, `G` (Caps Shift+G) learn new spells, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels. Directions: `1`-`9` or `hjklyubn`.
 
 ## Milestones
 
@@ -130,7 +130,17 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - an activation's timeout is kept in the item's floor position bytes, unused while it's carried (cleared as it's picked up)
      - not yet: chaos, disenchantment, sound, shards, light, darkness, confusion and the elements' "raw mana" act as magic missiles (as in the C without colour), resist poison/acid/lightning timers (Colluin gives heat and cold only), the Phial, Star and Arkenstone (no lights), Cubragol (no bolts)
      - (fixed in passing: dying of genocide's strain had no name on the tombstone)
-   - 9d: spells and monster spells
+   - 9d-1: mage spells *(done)* — `MAGIC.C` cast, `MORIA2.C` cast_spell, `MISC2.C` calc_spells/gain_spells/calc_mana/spell_chance/print_spells/stat_adj, `DUNGEON.C` regenmana and the new timers, `SPELLS.C` door_creation/stair_creation/detect_enchantment, `PLAYER.C` magic_spell/spell_names
+     - books are items now: the four Books of Magic Spells and five special ones, and the priests' books (inert until 9d-2); mages, rogues and rangers start with [Magic for Beginners]; the Magic shop and Temple stock them; they stack
+     - learning: as calc_spells allows (level from the class's first spell level, and INT's stat_adj), "You can learn some new spells now."; `G` lists what the books carried teach and you pick; spells above your level, or beyond what INT allows, are forgotten and remembered again in the order learnt
+     - mana: calc_mana's table by INT and level (+1, so 2 at first), less a quarter in gloves (mages, rogues, rangers), less 1 per point of armour class over 35; it comes back like hit points (and faster with regeneration); shown as "SP 5/7" on the status line
+     - `P` lists a book's spells with level, mana and failure chance, "unknown", "forgotten" or "untried"; `m` casts one: spell_chance's failure (stunned: +15 or +25), "You failed to get the spell off!", first success gives 4 x its experience, and too little mana asks "You summon your limited strength..." then faints you (1d(5 x shortfall) turns, 1 in 3 a point of CON)
+     - all 59 mage spells: bolts and balls that grow with level, detections, phase door and teleports, cures, confusion, sleep (one, adjacent, all in sight), slow, polymorph, stone to mud, spear of light, create food, recharging (5, 40, 100), identify, haste, destruction, genocide and mass genocide, door and stair creation, teleport level, earthquake, recall, detect evil and enchantment, the resistances, heroism, berserk, a mystic shield (+50 AC), essence of speed and a globe of invulnerability (+100 AC, no damage)
+     - new timers: shield, invulnerability, resist acid, poison and lightning (with the C's messages, and in Self Knowledge)
+     - the spells live in a data page (66) and their code in a new overlay (55); they borrow the device overlay's bolts and balls through `do_effect`, and scroll and potion effects through `OVCALL`
+     - to make room: `player_init` moved to the misc overlay, the dead uniques and the message buffer to high RAM with the spell state
+     - not yet: priests' prayers (9d-2), no light needed to read (there are no light sources), Hellfire and Meteor Swarm hit as magic missiles (as in the C without colour)
+   - 9d-2: prayers; 9d-3: monster spells and breath; 9d-4: monster melee side effects
 10. Saving to SD card
 
 ## Memory map
@@ -149,6 +159,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
 | `$B780-$B8CF` | pack (12 x 14) then equipment (room for 12 x 14; 10 in use: weapon, body, shield, helm, cloak, gloves, boots, neck, right hand, left hand) |
 | `$B8D0-$B9FB` | the character's hit points per level (50 words) and experience needed per level (50 dwords) |
 | `$B9FC-$BA1B` | store owners, entry counts, door positions (the stock itself is in the store overlay) |
+| `$BA1C-$BB42` | dead uniques, the message buffer, what the player knows of spells, mana, and the spell-to-device effect buffer |
 | `$BC00-$BDBF` | IM2 vector table + jump |
 | `$BEC0-$BFFF` | stack |
 | `$C000-$F30B` | dungeon map, 198x66 bytes (pages 32/33): low 4 bits terrain, bit 4 room, bit 5 lit/remembered, bit 6 player light, bit 7 monster here |
@@ -167,11 +178,12 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 | 51 `PAGE_STORE` | `store.asm`, `data/stores.asm` | the stores: stock, prices, buying and selling |
 | 52 `PAGE_MAGIC` | `potions.asm`, `effects.asm` | quaffing, stat changes, timed effects (every turn), the colour and title shuffle |
 | 53 `PAGE_SCROLL` | `scrolls.asm` | reading scrolls (summons go through `level_call` to the level overlay) |
+| 55 `PAGE_SPELL` | `spells.asm` | spells: learning, mana, browsing, casting and the mage spells |
 | 54 `PAGE_DEVICE` | `devices.asm` | wands, staffs, rods and artifact activation: bolts, balls, beams (borrows scroll and potion effects through `device_xcall`) |
 
-Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 60-62 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page); the flavours (`data/flavours.asm`: potion colours, woods, metals, stones, amulets, the title syllables, the buffer this game's scroll titles are written into, normal_table) have their own page. 63 `EGO_PAGE` = `data/egos.asm` (ego and artifact names, flags and numbers, 24 bytes each); 64 `FLAVOUR_PAGE` = `data/flavours.asm`; 65 `ACT_PAGE` = `data/activate.asm`. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
+Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 60-62 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page); the flavours (`data/flavours.asm`: potion colours, woods, metals, stones, amulets, the title syllables, the buffer this game's scroll titles are written into, normal_table) have their own page. 63 `EGO_PAGE` = `data/egos.asm` (ego and artifact names, flags and numbers, 24 bytes each); 64 `FLAVOUR_PAGE` = `data/flavours.asm`; 65 `ACT_PAGE` = `data/activate.asm`; 66 `SPELL_PAGE` = `data/spells.asm`. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
 
-Resident code ends around `$AEF6` after milestone 9c-3c (about 260 bytes left; `magic_items.asm` moved to the misc overlay, the knowledge tables to `$7C00` and the experience table into the creation overlay to make room) (`status.asm` holds the stat tables, timed-effect counters, what the player knows, the colour order and the after-use identify logic; `pack.asm` the item lists and chooser), the monster list starting at `$B000`. The creation overlay is at 7.6K of 8K, the magic overlay 6.3K, the items overlay 6.6K, the store overlay 7.1K, the scroll overlay 3.7K, the device overlay 7.6K, the misc overlay 3.3K.
+Resident code ends around `$AEA1` after milestone 9d-1 (about 350 bytes left; `player_init` moved to the misc overlay, `magic_items.asm` moved to the misc overlay, the knowledge tables to `$7C00` and the experience table into the creation overlay to make room) (`status.asm` holds the stat tables, timed-effect counters, what the player knows, the colour order and the after-use identify logic; `pack.asm` the item lists and chooser), the monster list starting at `$B000`. The creation overlay is at 7.7K of 8K, the magic overlay 6.7K, the items overlay 7.1K, the store overlay 7.1K, the scroll overlay 3.7K, the device overlay 7.7K, the spell overlay 4.3K, the misc overlay 3.4K.
 
 Overlays that change stats or bonuses set `p_update`; `draw_view` (main loop only) runs `update_stuff`, which pages the items overlay to recalculate. Item commands that need the magic overlay leave `pending_magic` for `pending_actions` in the main loop.
 

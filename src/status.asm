@@ -21,8 +21,17 @@ update_stuff:
 	pop bc
 .hp:
 	bit PU_HP,b
+	push bc
+	call nz,calc_hitpoints
+	pop bc
+	ld hl,p_update						; spells and mana, after the bonuses
+	ld a,(hl)
+	or b
+	bit PU_SPELLS,a
 	ret z
-	jp calc_hitpoints
+	res PU_SPELLS,(hl)
+	FARCALL PAGE_SPELL, update_spells
+	ret
 
 /* pending_actions - an item command chose something the magic overlay
 	carries out (the C does both in one function) */
@@ -641,7 +650,7 @@ item_used:
 	ld hl,(u_kind)						; things that stack)
 	call kind_addr
 	ld a,(iy+K_CLASS)
-	cp IC_WAND
+	call stackable
 	ret nc
 	ld hl,(u_kind)
 	call find_pack_kind
@@ -738,6 +747,7 @@ p_stat_mod:		ds 6				; signed: what equipment adds to each stat
 p_eflags2:		dd 0				; the C's flags2 of everything worn (F2_ bits)
 p_stat_use:		ds 6				; the stats in use (the C's use_stat)
 cs_num:			db 0
+mana_regen:		db 0				; this turn's regeneration (for mana)
 new_rec:		ds ITEM_SIZE		; an item an overlay is having made in the misc
 									; overlay (OVCALL new_item): outside the window
 p_status:		dw 0				; PY_ and PY2_ bits
@@ -773,6 +783,11 @@ p_resist_cold:	dw 0
 p_detect_inv:	dw 0
 p_tim_infra:	dw 0
 p_word_recall:	dw 0
+p_shield:		dw 0				; a mystic shield (+50 AC)
+p_invuln:		dw 0				; invulnerable (+100 AC, no damage)
+p_resist_acid:	dw 0
+p_resist_light:	dw 0				; (lightning)
+p_resist_poison: dw 0
 p_confuse_mon:	dw 0				; hands glowing (not timed)
 P_TIMED_SIZE	equ $-p_timed
 ; what the player knows and this game's flavours live in bank 5's spare

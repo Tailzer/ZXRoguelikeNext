@@ -118,6 +118,8 @@ objdes_msg:
 	call item_kind_addr
 .no_ego:
 	ld a,(iy+K_CLASS)
+	cp IC_MAGIC_BOOK
+	jp nc,.notes
 	cp IC_WEAPON
 	jr z,.weapon
 	jr nc,.armour
@@ -344,6 +346,14 @@ objdes_msg:
 	ld hl,txt_an_
 	jp msg_add
 .name:									; copy the name, '~' -> 's' if B=1
+	ld a,(iy+K_CLASS)					; (books: "Book~ of Magic Spells
+	ld hl,txt_magic_book				;  [Magic for Beginners]")
+	cp IC_MAGIC_BOOK
+	call z,.copy_hl
+	ld a,(iy+K_CLASS)
+	ld hl,txt_prayer_book
+	cp IC_PRAYER_BOOK
+	call z,.copy_hl
 	push bc
 	call kind_name
 	pop bc
@@ -446,8 +456,8 @@ pack_carry:
 	call item_kind_addr
 	ld (carry_kind),hl
 	ld a,(iy+K_CLASS)
-	cp IC_WAND
-	jr nc,.new_slot						; only food, potions and scrolls stack
+	call stackable
+	jr nc,.new_slot						; only food, potions, scrolls, books stack
 	call item_known
 	sbc a,a
 	ld (carry_known),a
@@ -497,13 +507,22 @@ pack_carry:
 	scf
 	ret
 
+/* stackable - A = class -> carry if things of it stack: food, potions,
+	scrolls and books */
+stackable:
+	cp IC_WAND
+	ret c
+	cp IC_MAGIC_BOOK
+	ccf
+	ret
+
 /* pack_combine - HL = a kind just identified: its stacks in the pack join
 	the first one (identify in DESC.C) */
 pack_combine:
 	ld (comb_kind),hl
 	call kind_addr						; (wands and the like never merge)
 	ld a,(iy+K_CLASS)
-	cp IC_WAND
+	call stackable
 	ret nc
 	xor a
 	ld (comb_first),a
@@ -657,8 +676,10 @@ filter_ok:
 	ret z
 	or a
 	ret
-.wearable:
+.wearable:								; (not books)
 	ld a,c
+	cp IC_MAGIC_BOOK
+	ret nc
 	cp IC_WEAPON
 	ccf
 	ret
@@ -774,6 +795,8 @@ txt_staff_:		db " Staff",0
 txt_wand_:		db " Wand",0
 txt_rod_:		db " Rod",0
 txt_ring_:		db " Ring",0
+txt_magic_book:	db "Book~ of Magic Spells ",0
+txt_prayer_book: db "Holy Book~ of Prayers ",0
 txt_to_stealth:	db " to stealth)",0
 txt_amulet_:	db " Amulet",0
 txt_charges_:	db " charges)",0

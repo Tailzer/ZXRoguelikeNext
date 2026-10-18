@@ -35,6 +35,8 @@
 		and the special objects, each once a game
 	Milestone 9c-3c: Activation - the A command, activate()'s effects and
 		recharging
+	Milestone 9d-1: Mage spells - books, learning, mana, browsing and
+		casting, all 59 mage spells
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -74,7 +76,7 @@ start:
 enter_dungeon:
 	FARCALL PAGE_CREATE, create_character
 	call clear_screen
-	call player_init
+	FARCALL PAGE_MISC, player_init
 	call rand16							; a new town for a new character
 	ld (town_seed),hl
 	FARCALL PAGE_STORE, store_init		; and new shopkeepers
@@ -132,6 +134,7 @@ dispatch:
 	call update_view
 	call monsters_act
 	call hunger_tick					; A = how fast we heal
+	ld (mana_regen),a
 	ld b,a
 	ld hl,(p_poisoned)					; not while poisoned or bleeding
 	ld de,(p_cut)
@@ -141,6 +144,8 @@ dispatch:
 	or e
 	ld a,b
 	call z,regenhp
+	ld a,(mana_regen)					; mana comes back too
+	FARCALL PAGE_SPELL, regenmana
 	FARCALL PAGE_MAGIC, timed_tick
 	ld a,(p_eflags+1)					; a ring of teleportation
 	bit EF1_TELEPORT,a
@@ -180,7 +185,7 @@ dispatch:
 .stay:
 	ld a,1
 	ld (turn_taken),a
-	jr .after
+	jp .after
 .character:
 	FARCALL PAGE_CREATE, show_character
 	jp main_loop
@@ -196,6 +201,7 @@ item_commands:							; in CMD_INVEN order
 	dw cmd_quaff, cmd_eat, cmd_drop, cmd_pickup
 	dw 0, cmd_read						; (CMD_CHARACTER is handled above)
 	dw cmd_aim, cmd_use, cmd_zap, cmd_activate
+	dw cmd_cast, cmd_browse, cmd_study
 player_died:
 	FARCALL PAGE_CREATE, player_died_screen
 	jp enter_dungeon
@@ -284,6 +290,11 @@ magic_end:
 scroll_end:
 	ASSERT scroll_end <= $6000, "Scroll overlay is over 8K"
 
+	MMU 2, PAGE_SPELL, $4000
+	include "src/spells.asm"
+spell_end:
+	ASSERT spell_end <= $6000, "Spell overlay is over 8K"
+
 	MMU 2, PAGE_DEVICE, $4000
 	include "src/devices.asm"
 device_end:
@@ -316,6 +327,11 @@ egos_end:
 	include "data/activate.asm"
 acts_end:
 	ASSERT $$acts_end == ACT_PAGE, "Activations run past their page"
+
+	MMU 1 n, SPELL_PAGE, DATA_WINDOW	; spells: each class's, their names
+	include "data/spells.asm"
+spells_end:
+	ASSERT $$spells_end == SPELL_PAGE, "Spells run past their page"
 
 	SAVENEX OPEN "build/roguelike.nex", start, stack_top
 	SAVENEX CORE 3,0,0

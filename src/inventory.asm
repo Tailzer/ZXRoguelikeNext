@@ -34,6 +34,8 @@ starting_kit:
 	ld (kit_kind),hl
 	call kind_addr
 	ld a,(iy+K_CLASS)
+	cp IC_MAGIC_BOOK					; (books are carried)
+	jr nc,.carry
 	sub IC_WEAPON
 	jr c,.carry
 	ld e,a								; equipment slot = class - IC_WEAPON
@@ -68,6 +70,8 @@ starting_kit:
 	armour class, to-hit/dam and the weapon's numbers, and blows from
 	attack_blows() */
 calc_bonuses:
+	ld hl,p_update						; (spells and mana follow: gloves,
+	set PU_SPELLS,(hl)					;  armour, the spell stat)
 	call equip_flags
 	call stat_bonuses
 	xor a
@@ -167,6 +171,14 @@ calc_bonuses:
 	jp p,$+4
 	xor a								; (armour class can't go below 0)
 	ld (hl),a
+	ld a,(p_status+1)					; a mystic shield: +50; invulnerable:
+	ld b,50								; +100 (at most 255)
+	bit PY2_SHIELD,a
+	call nz,.more_ac
+	ld a,(p_status+1)
+	ld b,100
+	bit PY2_INVULN,a
+	call nz,.more_ac
 	ld a,(EQUIP+EQ_WEAPON*ITEM_SIZE+I_KIND_HI)
 	cp ITEM_EMPTY
 	jr nz,.armed
@@ -299,6 +311,14 @@ calc_bonuses:
 	add hl,de
 	ld a,(hl)
 	ld (p_blows),a
+	ret
+
+.more_ac:
+	ld a,(p_ac)
+	add a,b
+	jr nc,$+4
+	ld a,255
+	ld (p_ac),a
 	ret
 
 /* equip_flags - p_eflags (the race's gifts and the flags of everything
@@ -895,6 +915,17 @@ cmd_activate:
 	ld (pending_magic),a
 	ld a,1
 	ld (turn_taken),a
+	ret
+
+/* cmd_cast, cmd_browse, cmd_study - 'm', 'P', 'G': the spell overlay */
+cmd_cast:
+	OVCALL PAGE_SPELL, sp_cast, PAGE_ITEMS
+	ret
+cmd_browse:
+	OVCALL PAGE_SPELL, sp_browse, PAGE_ITEMS
+	ret
+cmd_study:
+	OVCALL PAGE_SPELL, sp_study, PAGE_ITEMS
 	ret
 
 /* cmd_eat - 'E': eat some food (EAT.C, add_food in MISC1.C) */

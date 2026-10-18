@@ -265,7 +265,7 @@ entry_is_kind:
 stacks:
 	call item_kind_addr
 	ld a,(iy+K_CLASS)
-	cp IC_WAND
+	call stackable
 	jr nc,.no
 	xor a
 	ret
@@ -610,6 +610,8 @@ item_cost:
 	jp .offer
 .known:
 	ld a,(iy+K_CLASS)
+	cp IC_MAGIC_BOOK
+	jp nc,.offer						; (books: just their cost)
 	cp IC_AMULET
 	jp nc,.jewel
 	cp IC_WEAPON

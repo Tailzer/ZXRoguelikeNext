@@ -38,6 +38,14 @@ AE_DISPEL_EVIL		equ 24
 AE_PROTEVIL		equ 25
 AE_ONE_RING		equ 26
 AE_BREATH		equ 27
+AE_SLEEP_ONE		equ 28
+AE_POLY		equ 29
+AE_SLOW_ONE		equ 30
+AE_LIGHT_LINE		equ 31
+AE_SLEEP_ADJ		equ 32
+AE_EARTHQUAKE		equ 33
+AE_DETECT_EVIL		equ 34
+AE_DETECT_MON		equ 35
 NUM_ACTS		equ 60
 
 act_table:
@@ -161,64 +169,64 @@ act_table:
 	dw SN_GONDOR
 	db AE_HEAL,0
 	dw 500,acs_50,0,0,500,0	; SN_GONDOR
-	dw $8000+317
+	dw $8000+335
 	db AE_BALL,5
 	dw 120,acs_52,0,acs_51,222,222	; Power named Narya
-	dw $8000+318
+	dw $8000+336
 	db AE_BALL,4
 	dw 200,acs_54,0,acs_53,222,333	; Power named Nenya
-	dw $8000+319
+	dw $8000+337
 	db AE_BALL,1
 	dw 250,acs_56,0,acs_55,222,444	; Power named Vilya
-	dw $8000+320
+	dw $8000+338
 	db AE_ONE_RING,0
 	dw 0,acs_57,0,0,444,444	; Power
-	dw $8000+321
+	dw $8000+339
 	db AE_DISPEL_EVIL,0
 	dw 0,acs_58,0,0,444,222	; Ingwe
-	dw $8000+322
+	dw $8000+340
 	db AE_PROTEVIL,0
 	dw 0,acs_59,acs_60,0,222,222	; Carlammas
-	dw $8000+323
+	dw $8000+341
 	db AE_FAST,0
 	dw 50*256+100,acs_61,0,0,200,0	; Tulkas
-	dw $8000+284
+	dw $8000+302
 	db AE_BALL,1
 	dw 100,acs_63,0,acs_62,444,444	; Blue Dragon Scale Mail
-	dw $8000+285
+	dw $8000+303
 	db AE_BALL,4
 	dw 110,acs_65,0,acs_64,444,444	; White Dragon Scale Mail
-	dw $8000+286
+	dw $8000+304
 	db AE_BALL,3
 	dw 130,acs_67,0,acs_66,444,444	; Black Dragon Scale Mail
-	dw $8000+287
+	dw $8000+305
 	db AE_BALL,2
 	dw 150,acs_69,0,acs_68,444,444	; Green Dragon Scale Mail
-	dw $8000+288
+	dw $8000+306
 	db AE_BALL,5
 	dw 200,acs_71,0,acs_70,444,444	; Red Dragon Scale Mail
-	dw $8000+289
+	dw $8000+307
 	db AE_BREATH,5
 	dw 250,0,0,acb_71,222,222	; Multi-Hued Dragon Scale Mail
-	dw $8000+300
+	dw $8000+318
 	db AE_BALL,0
 	dw 120,acs_83,0,acs_82,444,444	; Bronze Dragon Scale Mail
-	dw $8000+301
+	dw $8000+319
 	db AE_BALL,0
 	dw 130,acs_85,0,acs_84,444,444	; Gold Dragon Scale Mail
-	dw $8000+304
+	dw $8000+322
 	db AE_BREATH,2
 	dw 220,0,0,acb_91,300,300	; Chaos Dragon Scale Mail
-	dw $8000+305
+	dw $8000+323
 	db AE_BREATH,2
 	dw 230,0,0,acb_98,300,300	; Law Dragon Scale Mail
-	dw $8000+306
+	dw $8000+324
 	db AE_BREATH,4
 	dw 250,0,0,acb_105,300,300	; Balance Dragon Scale Mail
-	dw $8000+307
+	dw $8000+325
 	db AE_BREATH,2
 	dw 200,0,0,acb_118,300,300	; Shining Dragon Scale Mail
-	dw $8000+308
+	dw $8000+326
 	db AE_BALL,0
 	dw 300,acs_107,0,acs_106,300,300	; Power Dragon Scale Mail
 

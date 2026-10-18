@@ -17,9 +17,11 @@ PAGE_STORE			equ 51				; overlay: the town's stores
 PAGE_MAGIC			equ 52				; overlay: potions, timed effects, stats
 PAGE_SCROLL			equ 53				; overlay: reading scrolls
 PAGE_DEVICE			equ 54				; overlay: wands, staffs, rods
+PAGE_SPELL			equ 55				; overlay: spells, mana, learning
 DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
 EGO_PAGE			equ 63				; ego names and flags (data/egos.asm)
 ACT_PAGE			equ 65				; what activating does (data/activate.asm)
+SPELL_PAGE			equ 66				; each class's spells, their names
 RACE_PAGE			equ 44				; 5 pages of races (data/races.asm)
 KIND_PAGE			equ 60				; item kinds, 128 per page (data/kinds.asm)
 FLAVOUR_PAGE		equ 64				; flavour names and colours, titles, normal_table
@@ -386,6 +388,8 @@ IC_GLOVES			equ 12
 IC_BOOTS			equ 13
 IC_AMULET			equ 14				; (slot 7, the neck)
 IC_RING				equ 15				; (slots 8 and 9)
+IC_MAGIC_BOOK		equ 16				; (carried, not worn)
+IC_PRAYER_BOOK		equ 17
 FILTER_CHARGED		equ $FE				; choose_pack filter: wand or staff
 TREAS_ROOM_ALLOC	equ 9				; mean objects in rooms
 TREAS_ANY_ALLOC		equ 3				; mean objects anywhere
@@ -417,7 +421,29 @@ SE_IDENT			equ 9				;  ID_CURSED (home items keep theirs)
 STORE_OWNER			equ P_EXP_TABLE+200
 STORE_COUNT			equ STORE_OWNER+NUM_STORES
 STORE_DOOR			equ STORE_COUNT+NUM_STORES	; (y, x) for each store
-	ASSERT STORE_DOOR+NUM_STORES*2 <= IM2_TABLE
+; then: data moved out of the resident bank
+uniques_dead		equ STORE_DOOR+NUM_STORES*2	; one bit per race (dead uniques)
+msg_buf				equ uniques_dead+(NUM_RACES+7)/8	; 81: the message being built
+; what the player knows of spells (MISC2.C calc_spells/gain_spells), and mana
+SPELL_STATE			equ msg_buf+81
+s_learned			equ SPELL_STATE		; dword: spells 0-30 learnt
+s_learned2			equ s_learned+4		; dword: spells 32-62
+s_worked			equ s_learned2+4	; cast at least once (experience)
+s_worked2			equ s_worked+4
+s_forgotten			equ s_worked2+4		; forgotten (level or stat too low)
+s_forgotten2		equ s_forgotten+4
+s_order				equ s_forgotten2+4	; 64: spells in the order learnt, 99 = none
+s_new				equ s_order+64		; how many more may be learnt now
+p_mana				equ s_new+1			; word: maximum mana
+p_cmana				equ p_mana+2		; word: current mana
+p_cmana_frac		equ p_cmana+2		; word: x 2^-16
+SPELL_STATE_SIZE	equ p_cmana_frac+2-SPELL_STATE
+sp_entry			equ p_cmana_frac+2	; 16: an effect for the device overlay
+sp_name				equ sp_entry+16		; 32: its name
+p_spell				equ sp_name+32		; the class's spells: 0, 1 mage, 2 priest
+p_first_spell		equ p_spell+1		; the level it may first learn them
+HIGH_RAM_END		equ p_first_spell+1
+	ASSERT HIGH_RAM_END <= IM2_TABLE
 MIN_MALLOC_TD		equ 4				; townsfolk by day
 MIN_MALLOC_TN		equ 8				; and by night
 
@@ -492,9 +518,12 @@ PY_SHERO			equ 7
 PY2_BLESSED			equ 0
 PY2_DET_INV			equ 1
 PY2_TIM_INFRA		equ 2
+PY2_SHIELD			equ 3
+PY2_INVULN			equ 4
 ; p_update bits: recalculations overlays leave to the main loop
 PU_BONUS			equ 0				; stat bonuses, calc_bonuses
 PU_HP				equ 1				; calc_hitpoints
+PU_SPELLS			equ 2				; calc_spells, calc_mana (after the bonuses)
 ; the C's item flags (TREASURE.C), as bits of each byte of p_eflags
 EF0_SEARCH			equ 6				; byte 0 (bits 0-5: the stats)
 EF0_SLOW_DIGEST		equ 7
@@ -593,6 +622,9 @@ CMD_AIM				equ 14				; z: aim a wand
 CMD_USE				equ 15				; Z: use a staff
 CMD_ZAP				equ 16				; a: activate a rod
 CMD_ACTIVATE		equ 17				; A: activate an artifact
+CMD_CAST			equ 18				; m: cast a spell
+CMD_BROWSE			equ 19				; P: browse a book
+CMD_STUDY			equ 20				; G: learn new spells
 ; key modifiers in key_table
 KM_ANY				equ 0
 KM_SYMBOL			equ 1

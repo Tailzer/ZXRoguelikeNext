@@ -14,62 +14,6 @@ BTH_PLUS_ADJ		equ 3
 MAX_PLAYER_LEVEL	equ 50
 REGEN_HPBASE		equ 1442			; PLAYER_REGEN_HPBASE
 
-/* player_init - start the character create_character made: level 1,
-	full hit points, fed, carrying the class's kit */
-player_init:
-	xor a
-	ld (p_speed),a
-	ld (p_eq_speed),a					; nothing worn yet
-	ld hl,p_stat_mod
-	ld b,6
-	call .zero
-	ld (p_status),a						; (before calc_hitpoints looks)
-	ld (p_status+1),a
-	ld (p_update),a
-	ld (p_new_level),a
-	ld (pending_magic),a
-	ld (p_max_dlv),a
-	ld (p_dead),a
-	ld (p_hunger),a
-	ld (p_paralysed),a
-	inc a
-	ld (p_lev),a
-	ld hl,0
-	ld (p_exp),hl
-	ld (p_exp+2),hl
-	ld (p_exp_frac),hl
-	ld (p_chp_frac),hl
-	ld (p_max_exp),hl
-	ld (p_max_exp+2),hl
-	call stat_bonuses
-	call calc_hitpoints
-	ld hl,(p_mhp)
-	ld (p_chp),hl
-	ld hl,FOOD_START
-	ld (p_food),hl
-	ld hl,uniques_dead					; a new world: every unique alive
-	ld b,(NUM_RACES+7)/8
-	call .zero
-	ld hl,p_timed						; no effects running
-	ld b,P_TIMED_SIZE
-	call .zero
-	ld hl,object_ident					; nothing learnt yet
-	ld b,0
-	call .zero
-	call .zero
-	ld hl,p_stat						; stats start at their maximum
-	ld de,p_stat_max
-	ld bc,6
-	ldir
-	FARCALL PAGE_MISC, magic_init		; this game's flavours
-	FARCALL PAGE_ITEMS, starting_kit	; also works out the bonuses
-	ret
-.zero:
-	ld (hl),0
-	inc hl
-	djnz .zero
-	ret
-
 /* test_hit - HL = bth + pth*3 + level*adj (signed), A = target AC.
 	-> carry if it hits. 1 in 20 always misses, 1 in 20 always hits */
 test_hit:
@@ -144,6 +88,11 @@ randint16:
 	hit points drop below zero (0 hp is still alive, as in the C) */
 take_hit:
 	ex de,hl
+	ld hl,(p_invuln)					; invulnerable: nothing hurts
+	ld a,h
+	or l
+	jr z,$+5
+	ld de,0
 	ld hl,(p_chp)
 	or a
 	sbc hl,de
@@ -625,6 +574,8 @@ check_level_up:
 .gain:
 	ld hl,p_lev
 	inc (hl)
+	ld hl,p_update						; (spells and mana: update_stuff)
+	set PU_BONUS,(hl)
 	call calc_hitpoints					; current hp rise in proportion
 	call msg_begin
 	ld hl,txt_welcome_level
@@ -904,7 +855,6 @@ p_chp:			dw 0				; signed: below 0 is dead
 p_chp_frac:		dw 0
 p_dead:			db 0
 killer_race:	dw 0				; race, or KILLER_STARVATION
-uniques_dead:	ds (NUM_RACES+7)/8	; one bit per race
 p_food:			dw 0				; signed
 p_hunger:		db 0				; HUNGER_ state
 p_paralysed:	db 0				; turns left fainted

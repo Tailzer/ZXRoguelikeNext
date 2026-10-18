@@ -37,6 +37,19 @@ timed_tick:
 	call count_down
 	ld ix,te_det_inv
 	call status_effect
+	ld ix,te_shield
+	call status_effect
+	ld ix,te_invuln
+	call status_effect
+	ld hl,p_resist_acid
+	ld de,msg_no_res_acid
+	call count_down
+	ld hl,p_resist_light
+	ld de,msg_no_res_light
+	call count_down
+	ld hl,p_resist_poison
+	ld de,msg_no_res_poison
+	call count_down
 	ld ix,te_tim_infra
 	call status_effect
 	call rod_tick
@@ -531,6 +544,12 @@ te_shero:		dw p_shero,p_status
 te_blessed:		dw p_blessed,p_status+1
 				db 1<<PY2_BLESSED
 				dw blessed_on,blessed_off
+te_shield:		dw p_shield,p_status+1
+				db 1<<PY2_SHIELD
+				dw bonus_update,shield_off
+te_invuln:		dw p_invuln,p_status+1
+				db 1<<PY2_INVULN
+				dw invuln_on,invuln_off
 te_det_inv:		dw p_detect_inv,p_status+1
 				db 1<<PY2_DET_INV
 				dw monsters_see_all,monsters_see_all
@@ -620,6 +639,18 @@ blessed_on:
 blessed_off:
 	call bonus_update
 	ld hl,msg_prayer_over
+	jp msg_print
+shield_off:
+	call bonus_update
+	ld hl,msg_shield_off
+	jp msg_print
+invuln_on:
+	call bonus_update
+	ld hl,msg_steel
+	jp msg_print
+invuln_off:
+	call bonus_update
+	ld hl,msg_skin_normal
 	jp msg_print
 no_op:
 	ret
@@ -946,6 +977,12 @@ msg_righteous:		db "You feel righteous!",0
 msg_prayer_over:	db "The prayer has expired.",0
 msg_no_res_heat:	db "You no longer feel safe from flame.",0
 msg_no_res_cold:	db "You no longer feel safe from cold.",0
+msg_no_res_acid:	db "You no longer feel safe from acid.",0
+msg_no_res_light:	db "You no longer feel safe from lightning.",0
+msg_no_res_poison:	db "You no longer feel safe from poison.",0
+msg_shield_off:		db "Your mystic shield crumbles away.",0
+msg_steel:			db "Your skin turns into steel!",0
+msg_skin_normal:	db "Your skin returns to normal.",0
 
 rt_slot:		db 0
 fl_i:			db 0

@@ -16,6 +16,7 @@ CONSTANT.H) and writes:
   data/artifacts.asm which kinds may be which artifacts, the special objects
                     (misc overlay)
   data/activate.asm what activating an artifact does (activation page)
+  data/spells.asm   each class's spells and their names (spell page)
 
 Usage:  tools/convert.py [path to Angband SRC]   (default ~/Downloads/angband-pc1.2/SRC,
         or $ANGBAND_SRC)
@@ -244,7 +245,7 @@ CLASSES = {"TV_FOOD": 1, "TV_POTION1": 2, "TV_POTION2": 2,
            "TV_SWORD": 7, "TV_HAFTED": 7, "TV_POLEARM": 7,
            "TV_SOFT_ARMOR": 8, "TV_HARD_ARMOR": 8, "TV_SHIELD": 9, "TV_HELM": 10,
            "TV_CLOAK": 11, "TV_GLOVES": 12, "TV_BOOTS": 13,
-           "TV_AMULET": 14, "TV_RING": 15}
+           "TV_AMULET": 14, "TV_RING": 15, "TV_MAGIC_BOOK": 16, "TV_PRAYER_BOOK": 17}
 DEVICE_NOUN = {4: "Wand", 5: "Staff", 6: "Rod", 14: "Amulet", 15: "Ring"}
 # scroll effects that wait for later milestones: glyphs, traps, acquirement
 SCROLL_LATER = {"TV_SCROLL1": 0x00002000 | 0x00200000,
@@ -316,8 +317,8 @@ CHARGES = None
 
 def kind_record(o, cls):
     name = display_name(o, cls)
-    article = name.startswith("& ")
-    if article:
+    article = name.startswith("& ") or cls in (16, 17)    # (books: "a Book of...")
+    if name.startswith("& "):
         name = name[2:]
     effect = 0                                       # equipment: what magic_treasure
     if o["name"] == "& Whip":                        # treats specially
@@ -452,6 +453,7 @@ def main():
 
     ego_tables(note, objs, kinds, kind_of, specials)
     activate_tables(note, kinds)
+    spell_tables(note)
     player_tables(note, objs, kinds, kind_of)
     flavour_tables(note)
     store_tables(note, objs, kind_of)
@@ -815,7 +817,9 @@ ACTS = [
 ]
 AE = ["BOLT", "BALL", "DRAIN", "MUD", "TELE_MON", "CONF_MON", "FAST", "FAST0", "HEAL", "HEAL_CUT",
       "FEAR_POISON", "RECALL", "IDENTIFY", "PROBE", "MASS_GEN", "GENOCIDE", "TD", "TELEPORT", "RESTORE",
-      "RESIST", "SLEEP", "RECHARGE", "DETECT", "DISPEL_EVIL", "PROTEVIL", "ONE_RING", "BREATH"]
+      "RESIST", "SLEEP", "RECHARGE", "DETECT", "DISPEL_EVIL", "PROTEVIL", "ONE_RING", "BREATH",
+      # (spells use these too, through do_effect)
+      "SLEEP_ONE", "POLY", "SLOW_ONE", "LIGHT_LINE", "SLEEP_ADJ", "EARTHQUAKE", "DETECT_EVIL", "DETECT_MON"]
 
 
 def activate_tables(note, kinds):
@@ -858,6 +862,27 @@ def activate_tables(note, kinds):
         lines.append(f"\tdw {key}\n\tdb AE_{eff},{gfv}\n\tdw {numw},{s(msg)},{s(msg2)},{namev},{tb},{tr}\t; {who}")
     lines += [""] + strings
     open(os.path.join(OUT, "activate.asm"), "w").write("\n".join(lines) + "\n")
+
+
+def spell_tables(note):
+    """magic_spell[class-1][63]: level, mana, fail, exp; spell_names[127]"""
+    src = read("PLAYER.C")
+    nums = [value(x) for x in c_array(src, "spell_type magic_spell[")]
+    names = [x.strip('"') for x in c_array(src, "char *spell_names[")]
+    names += [""] * (127 - len(names))               # (the C gives 126 of its 127)
+    assert len(nums) == 5 * 63 * 4
+    lines = [note, "; magic_spell[class-1][63]: level, mana, fail, exp (word) (classes Mage,",
+             "; Priest, Rogue, Ranger, Paladin; level 99: not one of theirs)", "magic_spell:"]
+    for c in range(5):
+        for sp in range(63):
+            l, m, f, e = nums[(c * 63 + sp) * 4:(c * 63 + sp) * 4 + 4]
+            lines.append(f"\tdb {l},{m},{f}\n\tdw {e}")
+    lines += ["", "; spell_names: 63 mage spells, then 63 prayers", "spell_names:"]
+    for i in range(0, 127, 8):
+        lines.append("\tdw " + ",".join(f"spn_{j}" for j in range(i, min(i + 8, 127))))
+    for i, n in enumerate(names):
+        lines.append(f"spn_{i}:\tdb {asm_string(n) + ',' if n else ''}0")
+    open(os.path.join(OUT, "spells.asm"), "w").write("\n".join(lines) + "\n")
 
 
 def c_array(text, start):
