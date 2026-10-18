@@ -7,6 +7,12 @@
 	metals, ring stones and amulet materials shuffled, and the scroll
 	titles made up (magic_init in DESC.C) */
 magic_init:
+	ld hl,art_made						; no artifacts made yet
+	ld b,(NUM_ART_BITS+7)/8
+.unmade:
+	ld (hl),0
+	inc hl
+	djnz .unmade
 	ld hl,flavour_map
 	xor a
 .ident:

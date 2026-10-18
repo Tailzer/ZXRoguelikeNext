@@ -167,7 +167,7 @@ store_create:
 	ld a,OBJ_TOWN_LEVEL
 .chosen:
 	ld ix,new_rec						; make one: HL = kind, A = level
-	OVCALL PAGE_MISC, new_item, PAGE_STORE
+	OVCALL PAGE_MISC, new_store_item, PAGE_STORE
 	bit ID_CURSED_BIT,(ix+I_IDENT)		; must be good (cursed: cost 0),
 	jr nz,.failed						; worth something, and less than the
 	call item_kind_addr					; owner can afford
@@ -647,6 +647,11 @@ item_cost:
 	pop hl
 	ld e,(iy+E_COST)
 	ld d,(iy+E_COST+1)
+	bit EO_ARTIFACT,(iy+E_OPTS)			; an artifact: its own cost
+	jr z,.ego_cost
+	ex de,hl
+	jr .ego_done
+.ego_cost:
 	call .sat_add
 	ld a,(ix+I_PVAL)
 	or a

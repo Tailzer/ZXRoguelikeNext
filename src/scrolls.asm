@@ -1283,9 +1283,10 @@ minus_two_d5:
 	ret
 
 /* sc_remove_curse - every cursed thing worn is freed (remove_curse),
-	except a weapon of Morgul; *remove curse* frees that too */
+	except weapons of Morgul, Calris, Mormegil and the One Ring; *remove
+	curse* frees all but the One Ring (remove_all_curse) */
 sc_remove_curse:
-	ld a,SN_MORGUL
+	ld a,1
 	ld (uc_spare),a
 	call uncurse_all.go
 	ret nc
@@ -1309,10 +1310,34 @@ uncurse_all:
 	jr z,.next
 	bit ID_CURSED_BIT,(ix+I_IDENT)
 	jr z,.next
+	ld a,(ix+I_KIND)					; the One Ring resists
+	cp KIND_RING_POWER & 255
+	jr nz,.not_one
+	ld a,(ix+I_KIND_HI)
+	cp KIND_RING_POWER >> 8
+	jr nz,.not_one
+	ld a,(uc_spare)
+	or a
+	jr nz,.next
+	push bc
+	push de
+	push ix
+	ld hl,msg_one_ring
+	call msg_print
+	pop ix
+	pop de
+	pop bc
+	jr .next
+.not_one:
 	ld a,(uc_spare)
 	or a
 	jr z,.free
-	cp (ix+I_NAME2)
+	ld a,(ix+I_NAME2)
+	cp SN_MORGUL
+	jr z,.next
+	cp SN_CALRIS
+	jr z,.next
+	cp SN_MORMEGIL
 	jr z,.next
 .free:
 	res ID_CURSED_BIT,(ix+I_IDENT)
@@ -1331,7 +1356,8 @@ uncurse_all:
 
 ; ---------------------------------------------------------------- 25
 
-uc_spare:		db 0				; an ego remove_curse can't touch
+uc_spare:		db 0				; 1: remove_curse, which spares some
+msg_one_ring:	db "The One Ring resists all attempts to remove it!",0
 
 /* sc_recharge - recharge(60): more charges for a wand or staff, but it
 	may explode (recharge in SPELLS.C) */

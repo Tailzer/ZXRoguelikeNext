@@ -17,9 +17,19 @@ OBJ_STD_MIN			equ 7
 	pluses, charges, and whatever magic_treasure gives at that level */
 new_item:
 	ld (mt_level),a
+	xor a
+.unique:
+	ld (mt_nounique),a
 	call new_plain
 	ld a,(mt_level)
 	jr magic_treasure
+
+/* new_store_item - as new_item, but never an artifact (store_create's
+	not_unique) */
+new_store_item:
+	ld (mt_level),a
+	ld a,1
+	jr new_item.unique
 
 /* new_plain - IX = record, HL = kind: one of it, just as it comes (base
 	pluses, charges or a ring's number, cursed if the kind always is, no
@@ -155,11 +165,13 @@ magic_treasure:
 .resist:
 	ld a,3
 	call .art
+	ret c
 	ld a,b
 	jp .ego
 .resist_acid:							; (not mithril or adamantite)
 	ld a,3
 	call .art
+	ret c
 	ld a,(mt_kego)
 	bit KE_NO_RA,a
 	ret nz
@@ -168,6 +180,7 @@ magic_treasure:
 .resistance:							; 1 in 3 of Elvenkind, with
 	ld a,3								; 1d3 stealth
 	call .art
+	ret c
 	ld a,3
 	call randint
 	dec a
@@ -242,6 +255,7 @@ magic_treasure:
 	jr z,.weapon_named
 	ld a,2
 	call .art
+	ret c
 .weapon_named:
 	ld a,(mt_ego)
 	call .ego
@@ -308,9 +322,22 @@ magic_treasure:
 
 .gloves:
 	call .magical
-	jr nc,.gloves_cursed
+	jp nc,.gloves_cursed
 	ld bc,1*256+20
 	call .ac_plus
+	ld a,(mt_kego)						; gauntlets: 1 in 4 of the special
+	bit KE_GAUNTLETS,a					; ones may be an artifact
+	jr z,.gloves_ego
+	ld a,4
+	call randint
+	cp 1
+	jr nz,.gloves_ego
+	call .special
+	jr nc,.gloves_ego
+	ld hl,art_table
+	call .unique_art
+	ret c
+.gloves_ego:
 	call .special
 	ret nc
 	ld a,10
@@ -324,6 +351,7 @@ magic_treasure:
 	jr c,.agility						; 7-9 agility
 	ld a,3								; 10 power
 	call .art
+	ret c
 	ld a,SN_POWER
 	call .ego
 	set ID_SHOWHD_BIT,(ix+I_IDENT)
@@ -400,6 +428,7 @@ magic_treasure:
 .speed_boots:
 	ld a,2
 	call .art
+	ret c
 	ld a,SN_SPEED
 	call .ego
 	ld a,1
@@ -440,6 +469,7 @@ magic_treasure:
 	ld (mt_ego),a
 	ld a,2
 	call .art
+	ret c
 	ld a,(mt_ego)
 	cp 3
 	jr c,.intelligence					; 1-2
@@ -476,6 +506,7 @@ magic_treasure:
 	jr nz,.not_might
 	ld a,2
 	call .art
+	ret c
 	ld a,SN_MIGHT
 	jr .crown_1d3
 .not_might:
@@ -540,9 +571,27 @@ magic_treasure:
 
 .cloak:									; only special ones get pluses
 	call .magical
-	jr nc,.cursed_cloak
+	jp nc,.cursed_cloak
 	call .special
 	ret nc
+	ld a,(mt_kego)						; 1 in 10 Cloaks, 1 in 20 Shadow
+	ld b,10								; Cloaks may be an artifact
+	bit KE_CLOAK,a
+	jr nz,.art_cloak
+	ld b,20
+	bit KE_SHADOW,a
+	jr z,.cloak_ego
+.art_cloak:
+	ld a,b
+	call randint
+	cp 1
+	jr nz,.cloak_ego
+	ld hl,art_cloak_table
+	call .unique_art
+	jr nc,.cloak_ego
+	ld bc,1*256+20						; and + m_bonus(1, 20)
+	jp .ac_plus
+.cloak_ego:
 	ld a,2
 	call randint
 	dec a
@@ -652,9 +701,25 @@ magic_treasure:
 .special:								; magik(special) -> carry
 	ld a,(mt_special)
 	jp magik
-.art:									; the C's 1 in A chance of an
-	call randint						; artifact instead (9c-3b): rolled,
-	or a								; but none made yet. Keeps B
+.art:									; 1 in A (unique_weapon, unique_armour)
+	push bc								; it's an artifact instead: carry.
+	call randint						; Keeps BC
+	pop bc
+	cp 1
+	jr nz,.no_art
+	push bc
+	ld hl,art_table
+	call .unique_art
+	pop bc
+	ret
+.no_art:
+	or a
+	ret
+.unique_art:							; HL = table: not in a shop
+	ld a,(mt_nounique)
+	or a
+	jp z,make_artifact
+	xor a
 	ret
 .ring:									; by subval (K_FLAVOUR)
 	ld a,(iy+K_FLAVOUR)
@@ -791,7 +856,7 @@ magic_treasure:
 	ret
 .magical:								; magik(chance) -> carry
 	ld a,(mt_chance)
-	jr magik
+	jp magik
 .is_cursed:								; magik(cursed) -> carry, and it is
 	ld a,(mt_cursed)
 	call magik
@@ -809,6 +874,219 @@ weapon_egos:
 	db SN_SO,2,2,0, SN_ST,2,2,0, SN_ST,2,2,0, SN_ST,2,2,0	; 17-20
 	db SN_SG,2,2,0, SN_SG,2,2,0, SN_SG,2,2,0, SN_SDEM,2,2,0	; 21-24
 	db SN_SDEM,2,2,0, SN_SDEM,2,2,0, SN_WEST,3,3,1			; 25-27
+
+/* make_artifact - IX = item, HL = art_table or art_cloak_table: if its
+	kind may be an artifact, 1d(total) picks which by weight, it must then
+	pass its 1 in keep, and not have been made already this game; then it
+	is that artifact: carry (unique_weapon/unique_armour in MISC1.C) */
+make_artifact:
+	ld e,(ix+I_KIND)
+	ld d,(ix+I_KIND_HI)
+.find:
+	ld c,(hl)
+	inc hl
+	ld b,(hl)
+	inc hl
+	ld a,b
+	and c
+	inc a
+	jp z,.none							; ($FFFF: the end)
+	ld a,c
+	cp e
+	jr nz,.next
+	ld a,b
+	cp d
+	jr z,.found
+.next:
+	inc hl								; (the total)
+	ld a,(hl)							; 3 bytes each
+	inc hl
+	ld c,a
+	add a,a
+	add a,c
+	add hl,a
+	jr .find
+.found:
+	ld a,(hl)							; 1d(total)
+	inc hl
+	inc hl
+	push hl
+	call randint
+	pop hl
+.pick:
+	sub (hl)
+	jr c,.got
+	jr z,.got
+	inc hl
+	inc hl
+	inc hl
+	jr .pick
+.got:
+	inc hl
+	ld a,(hl)							; 1 in keep
+	inc hl
+	ld b,(hl)							; B = the artifact
+	cp 2
+	jr c,.kept
+	push bc
+	call randint
+	pop bc
+	cp 1
+	jr nz,.none
+.kept:
+	ld a,b
+	call art_bit
+	and (hl)
+	jr nz,.none							; made already
+	ld a,c
+	or (hl)
+	ld (hl),a
+	ld (ix+I_NAME2),b					; it's this one: its numbers
+	ld a,b
+	call ego_addr
+	ld a,(iy+E_HIT)
+	bit EA_HIT,(iy+E_ART)
+	jr z,$+5
+	ld (ix+I_TOHIT),a
+	ld a,(iy+E_DAM)
+	bit EA_DAM,(iy+E_ART)
+	jr z,$+5
+	ld (ix+I_TODAM),a
+	ld a,(iy+E_P1)
+	bit EA_P1,(iy+E_ART)
+	jr z,$+5
+	ld (ix+I_PVAL),a
+	bit EA_AC,(iy+E_ART)
+	jr z,.curse
+	ld a,(iy+E_AC)
+	bit EA_AC_SET,(iy+E_ART)
+	jr nz,$+5
+	add a,(ix+I_TOAC)
+	ld (ix+I_TOAC),a
+.curse:
+	bit EO_SHOW_HD,(iy+E_OPTS)
+	jr z,$+6
+	set ID_SHOWHD_BIT,(ix+I_IDENT)
+	bit EF3_CURSED,(iy+E_FLAGS+3)
+	jr z,$+6
+	set ID_CURSED_BIT,(ix+I_IDENT)
+	scf
+	ret
+.none:
+	or a
+	ret
+
+/* art_bit - A = artifact (or special object) -> HL = its art_made byte,
+	A = its bit there, C = the same. Clobbers DE */
+art_bit:
+	ld e,a
+	srl a
+	srl a
+	srl a
+	ld hl,art_made
+	add hl,a
+	ld a,e
+	and 7
+	ld de,bit_masks
+	add de,a
+	ld a,(de)
+	ld c,a
+	ret
+
+/* try_special - IX = a floor record (y, x set): 1 time in 10 of those
+	where 1d513 > 502, special_place_object (MISC2.C): up to 20 tries at
+	one of its 12 cases, each 1 in r, not made already, not 40 levels
+	too deep, and 1 in m if at all deeper; then it's here: carry */
+try_special:
+	ld hl,MAX_OBJECTS
+	call randint16
+	ld de,SPECIAL_OBJ+1
+	or a
+	sbc hl,de
+	jr c,.none
+	ld a,10
+	call randint
+	cp 1
+	jr nz,.none
+	xor a
+	ld (sp_done),a
+.again:
+	ld a,(sp_done)
+	cp 21
+	jr nc,.none
+	inc a
+	ld (sp_done),a
+	ld a,12
+	call randint
+	dec a
+	ld e,a
+	ld d,5
+	mul d,e
+	ld hl,special_cases
+	add hl,de
+	ld e,(hl)
+	inc hl
+	ld d,(hl)
+	inc hl
+	ld a,d
+	and e
+	inc a
+	jr z,.again							; (a light: not yet)
+	ld (sp_kind),de
+	ld a,(hl)							; 1 in r
+	inc hl
+	ld b,(hl)							; (1 in m if it's deeper)
+	inc hl
+	ld c,(hl)							; its bit
+	push bc
+	call randint
+	pop bc
+	cp 1
+	jr nz,.again
+	ld a,c
+	push bc
+	call art_bit
+	pop bc
+	and (hl)
+	jr nz,.again
+	push bc
+	ld hl,(sp_kind)
+	call kind_addr
+	pop bc
+	ld a,(dun_level)					; level - 40 > dun_level: no
+	add a,40
+	jr c,.near
+	cp (iy+K_LEVEL)
+	jr c,.again
+.near:
+	ld a,(dun_level)					; deeper: 1 in m
+	cp (iy+K_LEVEL)
+	jr nc,.place
+	ld a,b
+	push bc
+	call randint
+	pop bc
+	cp 1
+	jr nz,.again
+.place:
+	ld a,c
+	call art_bit
+	or (hl)
+	ld (hl),a
+	ld hl,(sp_kind)
+	call new_plain
+	scf
+	ret
+.none:
+	or a
+	ret
+
+bit_masks:		db 1,2,4,8,16,32,64,128
+art_made:		ds (NUM_ART_BITS+7)/8	; artifacts made this game
+sp_done:		db 0
+sp_kind:		dw 0
+
+	include "data/artifacts.asm"		; generated: which kinds are which
 
 /* magik - A = chance in 100 -> carry if 1d100 <= it */
 magik:
@@ -908,3 +1186,4 @@ mt_special:		db 0
 mt_crown:		db 0
 mt_ego:			db 0
 mt_kego:		db 0
+mt_nounique:	db 0				; 1: in a shop (no artifacts)

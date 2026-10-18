@@ -211,15 +211,28 @@ calc_bonuses:
 	ld (w_slays),de
 	call item_dice
 	ld (w_dice),a
-	ld a,(iy+K_SIDES)
+	ld a,b
 	ld (w_sides),a
 	ld l,(iy+K_WEIGHT)
 	ld h,(iy+K_WEIGHT+1)
 	ld a,(ix+I_NAME2)					; a weapon of Morgul weighs 10 lb
-	cp SN_MORGUL						; more
-	jr nz,.weight
+	cp SN_MORGUL						; more; an artifact may weigh what
+	jr nz,.artifact						; it likes
 	ld de,100
 	add hl,de
+	jr .weight
+.artifact:
+	or a
+	jr z,.weight
+	push hl
+	call ego_addr
+	ld e,(iy+E_WEIGHT)
+	ld d,(iy+E_WEIGHT+1)
+	pop hl
+	ld a,d
+	or e
+	jr z,.weight
+	ex de,hl
 .weight:
 	ld (w_weight),hl
 	; attack_blows: too heavy if weight > STR*15 (to-hit drops by the excess)

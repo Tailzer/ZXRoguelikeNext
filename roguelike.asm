@@ -31,6 +31,8 @@
 		stat, speed and other bonuses, sustains, resistances
 	Milestone 9c-3a: Ego items - magic_treasure's egos, slays and brands,
 		stealth, infravision, regeneration, telepathy
+	Milestone 9c-3b: Artifacts - unique_weapon, unique_armour, the cloaks
+		and the special objects, each once a game
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -295,9 +297,13 @@ races_end:
 
 	MMU 1 n, KIND_PAGE, DATA_WINDOW		; 128 kinds per page, then the flavours
 	include "data/kinds.asm"
-	include "data/flavours.asm"			; generated: potion colours
 kinds_end:
-	ASSERT $$colour_names == FLAVOUR_PAGE && $$kinds_end == FLAVOUR_PAGE, "Flavours must sit on FLAVOUR_PAGE"
+	ASSERT $$kinds_end < KIND_PAGE+3 || ($$kinds_end == KIND_PAGE+3 && kinds_end == DATA_WINDOW), "Kinds run past their pages"
+
+	MMU 1 n, FLAVOUR_PAGE, DATA_WINDOW	; flavours, titles, normal_table
+	include "data/flavours.asm"			; generated: potion colours
+flavours_end:
+	ASSERT $$flavours_end == FLAVOUR_PAGE, "Flavours run past their page"
 
 	MMU 1 n, EGO_PAGE, DATA_WINDOW		; ego items: names, flags, values
 	include "data/egos.asm"

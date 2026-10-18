@@ -12,7 +12,9 @@ CONSTANT.H) and writes:
   data/blows.asm    blows_table (items overlay)
   data/stores.asm   store owners, race price table, what each store stocks
   data/flavours.asm potion colour names (flavour page)
-  data/egos.asm     ego item names and what they do (ego page)
+  data/egos.asm     ego item and artifact names and what they do (ego page)
+  data/artifacts.asm which kinds may be which artifacts, the special objects
+                    (misc overlay)
 
 Usage:  tools/convert.py [path to Angband SRC]   (default ~/Downloads/angband-pc1.2/SRC,
         or $ANGBAND_SRC)
@@ -325,6 +327,7 @@ def kind_record(o, cls):
         effect |= 4
     if o["name"] == "& Pair of Metal Shod Boots":
         effect |= 8
+    effect |= {"& Set of Gauntlets": 16, "& Cloak": 32, "& Shadow Cloak": 64}.get(o["name"], 0)
     colour = o["colour"] or 15                       # (potions take their flavour's colour)
     rec = bytearray(KIND_SIZE)
     rec[0:16] = bytes([o["char"], (16 + colour) * 2, cls, effect, min(o["level"], 255),
@@ -386,7 +389,9 @@ def main():
     # different depths share a kind, so they stack); dungeon objects only
     kinds, kind_of = [], {}
     alloc = []                                       # (level, kind, rare) per dungeon object
-    for i, o in enumerate(objs[:max_dungeon_obj + 23]):  # + the store-only objects
+    specials = special_objects()                     # + the rings and amulets
+    for i in list(range(max_dungeon_obj + 23)) + sorted(specials):  # (store-only too)
+        o = objs[i]
         cls = usable(o)
         if not cls:
             continue
@@ -424,6 +429,7 @@ def main():
              f"KIND_BROADSWORD\tequ {kind_named('Broadsword', 7)}",
              f"KIND_CHAIN_MAIL\tequ {[i for i, (o, c) in enumerate(kinds) if o['name'] == 'Chain Mail'][0]}",
              f"KIND_RING_SPEED\tequ {kind_named('Speed', 15)}",
+             f"KIND_RING_POWER\tequ {kind_of[('Power', value('TV_RING'))]}",
              ""]
     lines = [note, "; m_level[]: how many races have level <= n (n = 0-99)", "mon_level_table:"]
     for i in range(0, len(m_level), 10):
@@ -443,7 +449,7 @@ def main():
         lines.append(f"gn_{nm.replace(' ', '_')}:\tdb {asm_string(nm)},0")
     open(os.path.join(OUT, "tables.asm"), "w").write("\n".join(lines) + "\n")
 
-    ego_tables(note)
+    ego_tables(note, objs, kinds, kind_of, specials)
     player_tables(note, objs, kinds, kind_of)
     flavour_tables(note)
     store_tables(note, objs, kind_of)
@@ -518,7 +524,7 @@ EGO_EXTRA = {"SN_MAGI_ROBE": "SN_MAGI", "SN_FIRE2": "SN_FIRE"}   # ids past the 
 EGO_DICE = {"SN_FIRE2": 2}                                         # the whip of fire with 2d3
 
 
-def ego_tables(note):
+def ego_tables(note, objs, kinds, kind_of, specials):
     src = read("TREASURE.C")
     names = [None if x.strip() == "NULL" else x.strip().strip('"') for x in c_array(src, "special_names[")]
     sn = {k: value(k) for k in DEFS if k.startswith("SN_") and k != "SN_ARRAY_SIZE"}
@@ -529,25 +535,209 @@ def ego_tables(note):
     flag = lambda s: sum(value("TR_" + f) for f in s.split())
     lines = [note, f"; {len(names)} ego names: SN_ numbers as in CONSTANT.H, then " +
              ", ".join(f"{k} {sn[k]}" for k in EGO_EXTRA),
-             "; 16 bytes each: flags, flags2, cost added, cost per point of p1, EO_ options,",
-             "; dice (0 = the kind's), name", ""]
-    lines += [f"{k}\t\tequ {sn[k]}" for k in sorted(EGOS, key=lambda k: sn[k])]
+             "; 24 bytes each: flags, flags2, cost added (an artifact's: its cost), cost per",
+             "; point of p1, EO_ options, dice (0 = the kind's), name; then an artifact's",
+             "; sides, weight, to-hit, to-dam, AC, p1 and which of those it sets (EA_)", ""]
+    lines += [f"{k}\t\tequ {v}" for k, v in sorted(sn.items(), key=lambda kv: kv[1])]
     lines += [f"NUM_EGOS\t\tequ {len(names)}", "", "ego_table:"]
+    choices = artifacts()
+    arts = {a["sn"]: a for v in choices.values() for a, p in v}
     for i in range(len(names)):
         key = next((k for k in EGOS if sn[k] == i), None)
+        art = next((a for k, a in arts.items() if sn.get(k) == i), None)
+        ext = bytes(8)
         if key:
             f1, f2, cost, p1cost, opts = EGOS[key]
             o = (1 if "P" in opts else 0) | (2 if "H" in opts else 0) | (4 if "D" in opts else 0)
             rec = (flag(f1).to_bytes(4, "little") + flag(f2).to_bytes(4, "little") +
                    bytes([cost & 255, cost >> 8, p1cost & 255, p1cost >> 8, o, EGO_DICE.get(key, 0)]))
+        elif art:
+            a = art
+            cost = min(a.get("cost", 0), 65535)
+            o = (1 if a["show_p1"] else 0) | (2 if a["show_hd"] else 0) | 8 | (16 if a["own"] else 0)
+            rec = ((a["flags"] & 0xFFFFFFFF).to_bytes(4, "little") + (a["flags2"] & 0xFFFFFFFF).to_bytes(4, "little") +
+                   bytes([cost & 255, cost >> 8, 0, 0, o, a.get("dice", 0)]))
+            w = a.get("weight", 0)
+            ea = (1 if "hit" in a else 0) | (2 if "dam" in a else 0) | (4 if "ac" in a else 0) \
+                | (8 if a.get("ac_set") else 0) | (16 if "p1" in a else 0)
+            ext = bytes([a.get("sides", 0), w & 255, w >> 8, a.get("hit", 0) & 255, a.get("dam", 0) & 255,
+                         a.get("ac", 0) & 255, a.get("p1", 0) & 255, ea])
         else:
             rec = bytes(14)
         nm = f"egn_{i}" if names[i] else "0"
-        lines.append("\tdb " + ",".join(str(b) for b in rec) + f"\n\tdw {nm}" + (f"\t; {names[i]}" if names[i] else ""))
+        lines.append("\tdb " + ",".join(str(b) for b in rec) + f"\n\tdw {nm}\n\tdb " + ",".join(str(b) for b in ext)
+                     + (f"\t; {names[i]}" if names[i] else ""))
     for i, n in enumerate(names):
         if n:
             lines.append(f"egn_{i}:\tdb {asm_string(n)},0")
     open(os.path.join(OUT, "egos.asm"), "w").write("\n".join(lines) + "\n")
+
+    # which kinds may become which artifacts (unique_weapon, unique_armour,
+    # the cloaks): 1d(total) picks one by weight, then it must pass 1 in keep
+    def table(label, entries):
+        out = ["", label + ":"]
+        for name, v in entries:
+            plain = lambda o: o["name"].replace("& ", "")
+            ks = [i for i, (o, c) in enumerate(kinds) if o["name"] == name
+                  or (not name.startswith("& ") and plain(o).startswith(name))]
+            den = lcm(*(p.denominator for a, p in v))
+            assert den < 256
+            for k in ks:
+                out.append(f"\tdw {k}\t\t\t\t; {kinds[k][0]['name']}")
+                out.append(f"\tdb {den},{len(v)}" + "".join(f", {int(p * den)},{a['keep']},{a['sn']}" for a, p in v))
+        out.append("\tdw $FFFF")
+        return out
+    lines = [note, f"MAX_OBJECTS\t\tequ {value('MAX_OBJECTS')}", f"SPECIAL_OBJ\t\tequ {value('SPECIAL_OBJ')}", "",
+             "; kind, then 1d(first byte) chooses among (weight, 1 in keep, artifact)"]
+    lines += table("art_table", [(k, v) for k, v in choices.items() if not k.startswith("cloak:")])
+    lines += table("art_cloak_table", [(k[6:], v) for k, v in choices.items() if k.startswith("cloak:")])
+    n = sum(1 for idx in specials if (objs[idx]["name"], objs[idx]["tval"]) in kind_of)
+    lines += [f"NUM_ART_BITS\tequ {len(names) + n}"]
+    # its 12 cases in order: the kind, or $FFFF for the lights the game hasn't
+    lines += ["", "; special_place_object's 12 cases: kind (or $FFFF), 1 in r, 1 in m deeper, bit",
+              "special_cases:"]
+    n = 0
+    for idx, (r, m) in sorted(specials.items()):
+        o = objs[idx]
+        if (o["name"], o["tval"]) in kind_of:
+            lines.append(f"\tdw {kind_of[(o['name'], o['tval'])]}\n\tdb {r},{m},{len(names) + n}\t; {o['name']}")
+            n += 1
+        else:
+            lines.append(f"\tdw $FFFF\n\tdb 0,0,0\t\t; {o['name']} (not yet)")
+    open(os.path.join(OUT, "artifacts.asm"), "w").write("\n".join(lines) + "\n")
+
+
+# ---------------------------------------------------------------- artifacts
+
+from fractions import Fraction
+from math import lcm
+
+
+def brace_block(text, i):
+    """text[i] is '{': -> (inside, index after the closing brace)"""
+    depth = 0
+    for j in range(i, len(text)):
+        if text[j] == "{":
+            depth += 1
+        elif text[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[i + 1:j], j + 1
+    raise ValueError("unbalanced")
+
+
+def art_fields(stmts):
+    """An artifact's statements (unique_weapon/unique_armour) -> its record"""
+    a = dict(keep=1)
+    for m in re.finditer(r"if\s*\(randint\((\d+)\)\s*>\s*1\)\s*(?:return 0|break|goto again)", stmts):
+        a["keep"] *= int(m.group(1))
+    m = re.search(r"name2\s*\|?=\s*(\w+)", stmts)
+    sn = m.group(1)
+    a["sn"] = sn if sn.startswith("SN_") else "SN_" + sn
+    num = lambda f: re.search(r"->" + f + r"\s*=\s*(-?\d+)L?\s*;", stmts)
+    for f, key in (("tohit", "hit"), ("todam", "dam"), (r"damage\[0\]", "dice"), (r"damage\[1\]", "sides"),
+                   ("weight", "weight"), ("p1", "p1"), ("cost", "cost")):
+        m = num(f)
+        if m:
+            a[key] = int(m.group(1))
+    m = re.search(r"->toac\s*(\+?)=\s*(-?\d+)", stmts)
+    if m:
+        a["ac"], a["ac_set"] = int(m.group(2)), m.group(1) == ""
+    for f in ("flags", "flags2"):
+        m = re.search(r"->" + f + r"\s*(\|?)=\s*\(?([^;]*?)\)?\s*;", stmts)
+        a[f] = value(" ".join(m.group(2).split())) if m else 0
+        if f == "flags":
+            a["own"] = bool(m) and m.group(1) == ""
+    a["show_p1"] = "ID_SHOW_P1" in stmts
+    a["show_hd"] = "ID_SHOW_HITDAM" in stmts
+    return a
+
+
+def art_choices(body):
+    """A kind's block -> [(artifact, probability)]"""
+    body = body.strip()
+    keep = 1
+    while True:                                      # a chance before the choice
+        m = re.match(r"if\s*\(randint\((\d+)\)\s*>\s*1\)\s*return 0;\s*", body)
+        if not m:
+            break
+        keep *= int(m.group(1))
+        body = body[m.end():]
+    out = []
+    m = re.match(r"switch\s*\(randint\((\d+)\)\)\s*{", body)
+    if m:
+        n = int(m.group(1))
+        inside, _ = brace_block(body, m.end() - 1)
+        parts = re.split(r"((?:\s*(?:case \d+|default)\s*:)+)", inside)
+        used = 0
+        groups = []
+        for k in range(1, len(parts), 2):
+            labels = re.findall(r"case (\d+)|(default)", parts[k])
+            count = sum(1 for c, d in labels if c)
+            if any(d for c, d in labels):
+                count = None
+            groups.append((count, parts[k + 1]))
+            used += count or 0
+        for count, stmts in groups:
+            p = Fraction(count if count is not None else n - used, n)
+            out.append((art_fields(stmts), p))
+    elif body.startswith("if (randint("):           # if 1 in k ... else if ... else
+        rest, left = body, Fraction(1)
+        while rest:
+            m = re.match(r"(?:else\s*)?if\s*\(randint\((\d+)\)\s*==\s*1\)\s*{", rest)
+            if m:
+                p = Fraction(1, int(m.group(1)))
+                inside, end = brace_block(rest, m.end() - 1)
+                out.append((art_fields(inside), left * p))
+                left *= 1 - p
+                rest = rest[end:].strip()
+                continue
+            m = re.match(r"else\s*{", rest)
+            inside, end = brace_block(rest, m.end() - 1)
+            out.append((art_fields(inside), left))
+            rest = rest[end:].strip()
+    else:
+        out.append((art_fields(body), Fraction(1)))
+    for a, p in out:
+        a["keep"] *= keep
+    return out
+
+
+def artifacts():
+    """-> {kind name or prefix: [(artifact, probability)]}, from unique_weapon,
+    unique_armour and the cloaks in magic_treasure"""
+    src = strip_comments(read("MISC1.C"))
+    src = re.sub(r"if\s*\(wizard\s*\|\|\s*peek\)\s*msg_print\([^;]*\);", "", src)
+    src = re.sub(r"else\s+good_item_flag\s*=\s*TRUE\s*;", "", src)
+    choices = {}
+    for fn in ("int unique_weapon(", "int unique_armour("):
+        i = src.index(fn)
+        body, _ = brace_block(src, src.index("{", i))
+        for m in re.finditer(r"if\s*\(!strn?cmp\(\"([^\"]+)\",\s*name(?:,\s*\d+)?\)\)\s*{", body):
+            inside, _ = brace_block(body, m.end() - 1)
+            choices[m.group(1)] = art_choices(inside)
+    # the cloaks: 1 in 10 Cloaks and 1 in 20 Shadow Cloaks of the special ones
+    i = src.index("case TV_CLOAK:", src.index("void magic_treasure"))
+    for name in ("& Cloak", "& Shadow Cloak"):
+        j = src.index('"' + name + '"', i)
+        k = src.index("switch", j)
+        sw = src[k:src.index("{", k)] + "{" + brace_block(src, src.index("{", k))[0] + "}"
+        choices["cloak:" + name] = art_choices(sw)
+    return choices
+
+
+def special_objects():
+    """special_place_object (MISC2.C): object index -> (1 in r, 1 in m if deeper)"""
+    src = strip_comments(read("MISC2.C"))
+    i = src.index("int special_place_object")
+    body = src[i:src.index("void place_object", i)]
+    out = {}
+    for m in re.finditer(r"case \(SPECIAL_OBJ([+-]\d+)?\):(.*?)break;", body, re.S):
+        idx = value("SPECIAL_OBJ") + int(m.group(1) or 0)
+        r = re.search(r"if \(randint\((\d+)\)>1\) goto again;\s*if \(\w+\) goto again", m.group(2))
+        d = re.search(r"\(randint\((\d+)\)>1\)\) goto again", m.group(2))
+        out[idx] = (int(r.group(1)) if r else 1, int(d.group(1)))
+    return out
 
 
 def c_array(text, start):

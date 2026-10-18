@@ -41,15 +41,34 @@ self_knowledge:
 	call sk_flag						; carry if its flag is set
 	bit 6,(ix+3)
 	jr z,.either
-	jr nc,.next							; both: counter and flag, and then
+	jp nc,.next							; both: counter and flag, and then
 	ld a,c								; not the next line
 	or a
-	jr z,.next
+	jp z,.next
 	call .show
 	ld de,SK_SIZE
 	add ix,de
-	jr .next
+	jp .next
 .either:
+	push af
+	ld a,(ix+2)							; an immunity: then not the
+	cp $F9								; resistances after it
+	jr c,.not_immune
+	cp $FB
+	jr nc,.not_immune
+	pop af
+	jp nc,.next
+	call .show
+	ld a,(ix+2)
+	sub $F8								; ($FA skip 2, $F9 skip 1)
+	ld b,a
+.skip:
+	ld de,SK_SIZE
+	add ix,de
+	djnz .skip
+	jp .next
+.not_immune:
+	pop af
 	jr c,.shown
 	ld a,c
 	or a
@@ -94,6 +113,12 @@ self_knowledge:
 	ld a,(EQUIP+EQ_WEAPON*ITEM_SIZE+I_NAME2)
 	cp SN_MORGUL
 	jr z,.say
+	ld hl,txt_sk_calris
+	cp SN_CALRIS
+	jr z,.say
+	ld hl,txt_sk_mormegil
+	cp SN_MORMEGIL
+	jr z,.say
 	ld hl,txt_sk_accursed
 .say:
 	ld (ix+4),l							; (the table is in RAM)
@@ -127,7 +152,7 @@ self_knowledge:
 	jp print_at
 
 /* sk_flag - IX = knowledge entry -> carry if its flag is set: 0-31 a bit
-	of p_eflags, 32-37 a sustained stat, 40-63 a bit of p_eflags2, bit 7
+	of p_eflags, 32-56 a bit of p_eflags2, 57-62 a sustained stat, bit 7
 	none */
 sk_flag:
 	ld a,(ix+3)
@@ -137,9 +162,9 @@ sk_flag:
 	ld hl,p_eflags
 	cp 32
 	jr c,.bits
-	cp 40
-	jr c,.sustain
-	sub 40								; 40-63: flags2
+	cp SK_SUST
+	jr nc,.sustain
+	sub 32								; 32-56: flags2
 	ld hl,p_eflags2
 .bits:
 	ld b,a
@@ -158,7 +183,7 @@ sk_flag:
 	djnz .bit
 	ret
 .sustain:
-	sub 32
+	sub SK_SUST
 	ld b,a
 	ld a,(p_sustain)
 	jr .rot
@@ -167,14 +192,15 @@ sk_flag:
 	ret
 
 ; counter (0 = none), race ($FD = none, $FE = has infravision, $FC the
-; weapon's slay in flag's low bits, $FB a cursed weapon), flag (SK_),
+; weapon's slay in flag's low bits, $FB a cursed weapon, $FA/$F9 an
+; immunity: shown if its flag is, and then not the 2/1 lines after), flag (SK_),
 ; text: shown if the counter is running, the race has it or the flag is set;
 ; SK_BOTH: only if counter and flag both are, and then not the next line
 SK_SIZE			equ 6
 SK_NONE			equ $80
 SK_BOTH			equ $40
-SK_SUST			equ 32
-SK_F2			equ 40
+SK_F2			equ 32
+SK_SUST			equ 57
 	MACRO SK counter, race, flag, text
 		dw counter
 		db race, flag
@@ -206,16 +232,28 @@ knowledge:
 	SK 0, $FD, SK_F2+5, txt_sk_esp
 	SK 0, $FD, SK_F2+3, txt_sk_hold_life
 	SK 0, $FD, SK_F2+10, txt_sk_light
-	SK 0, RACE_DWARF, SK_NONE, txt_sk_res_blind
+	SK 0, RACE_DWARF, SK_F2+23, txt_sk_res_blind
+	SK 0, $FA, SK_F2+6, txt_sk_im_fire
 	SK p_resist_heat, $FD, SK_BOTH|19, txt_sk_fire2
 	SK p_resist_heat, $FD, 19, txt_sk_res_fire
+	SK 0, $FA, SK_F2+7, txt_sk_im_cold
 	SK p_resist_cold, $FD, SK_BOTH|21, txt_sk_cold2
 	SK p_resist_cold, $FD, 21, txt_sk_res_cold
+	SK 0, $F9, SK_F2+8, txt_sk_im_acid
 	SK 0, $FD, 20, txt_sk_res_acid
+	SK 0, $F9, SK_F2+14, txt_sk_im_poison
 	SK 0, $FD, 28, txt_sk_res_poison
+	SK 0, $F9, SK_F2+9, txt_sk_im_lightning
 	SK 0, $FD, 25, txt_sk_res_lightning
-	SK 0, 2, SK_NONE, txt_sk_res_light		; elves
-	SK 0, 6, SK_NONE, txt_sk_res_dark		; half-orcs
+	SK 0, 2, SK_F2+17, txt_sk_res_light		; (elves)
+	SK 0, 6, SK_F2+18, txt_sk_res_dark		; (half-orcs)
+	SK 0, $FD, SK_F2+15, txt_sk_res_conf
+	SK 0, $FD, SK_F2+16, txt_sk_res_sound
+	SK 0, $FD, SK_F2+20, txt_sk_res_disen
+	SK 0, $FD, SK_F2+19, txt_sk_res_chaos
+	SK 0, $FD, SK_F2+21, txt_sk_res_shards
+	SK 0, $FD, SK_F2+22, txt_sk_res_nexus
+	SK 0, $FD, SK_F2+24, txt_sk_res_nether
 	SK 0, $FD, 0, txt_sk_str
 	SK 0, $FD, 1, txt_sk_int
 	SK 0, $FD, 2, txt_sk_wis
@@ -308,3 +346,17 @@ txt_sk_evil:		db "Your weapon fights against evil with holy fury.",0
 txt_sk_frigid:		db "Your frigid weapon freezes your foes.",0
 txt_sk_flaming:		db "Your flaming weapon burns your foes.",0
 txt_sk_electric:	db "Your weapon electrocutes your foes.",0
+txt_sk_calris:		db "Your bastard sword is wickedly accursed.",0
+txt_sk_mormegil:	db "Your two-handed sword radiates an aura of unspeakable evil.",0
+txt_sk_im_fire:		db "You are completely immune to fire.",0
+txt_sk_im_cold:		db "You are completely immune to cold.",0
+txt_sk_im_acid:		db "You are completely immune to acid.",0
+txt_sk_im_poison:	db "You are completely immune to poison.",0
+txt_sk_im_lightning: db "You are completely immune to lightning.",0
+txt_sk_res_conf:	db "You are resistant to confusion.",0
+txt_sk_res_sound:	db "You are resistant to sonic attacks.",0
+txt_sk_res_disen:	db "You are resistant to disenchantment.",0
+txt_sk_res_chaos:	db "You are resistant to blasts of chaos.",0
+txt_sk_res_shards:	db "You are resistant to blasts of shards.",0
+txt_sk_res_nexus:	db "You are resistant to nexus attacks.",0
+txt_sk_res_nether:	db "You are resistant to nether forces.",0

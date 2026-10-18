@@ -139,10 +139,11 @@ objdes_msg:
 	ld hl,txt_open_br
 	call msg_add
 	call item_dice
+	push bc
 	call msg_add_u8
 	ld hl,txt_d
 	call msg_add
-	ld a,(iy+K_SIDES)
+	pop af
 	call msg_add_u8
 	ld hl,txt_close_br
 	call msg_add

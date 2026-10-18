@@ -21,7 +21,7 @@ DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
 EGO_PAGE			equ 63				; ego names and flags (data/egos.asm)
 RACE_PAGE			equ 44				; 5 pages of races (data/races.asm)
 KIND_PAGE			equ 60				; item kinds, 128 per page (data/kinds.asm)
-FLAVOUR_PAGE		equ KIND_PAGE+(NUM_KINDS-1)/128	; the flavours follow the kinds
+FLAVOUR_PAGE		equ 64				; flavour names and colours, titles, normal_table
 IM2_TABLE			equ $BC00			; 257 bytes of $BD
 KNOWLEDGE			equ $7C00			; bank 5's spare 1K, after the tile definitions:
 object_ident		equ KNOWLEDGE		;  what the player knows, 64 per object_offset
@@ -307,6 +307,9 @@ KE_WHIP				equ 0				; (whips of fire)
 KE_ROBE				equ 1				; (robes of the Magi)
 KE_NO_RA			equ 2				; mithril and adamantite: never resist acid
 KE_SHOD				equ 3				; metal shod boots: never stealth
+KE_GAUNTLETS		equ 4				; (the artifact gauntlets)
+KE_CLOAK			equ 5				; (the artifact cloaks)
+KE_SHADOW			equ 6
 K_LEVEL				equ 4
 K_WEIGHT			equ 5				; word, tenths of a pound
 K_DICE				equ 7
@@ -339,7 +342,7 @@ MC_RING				equ 9
 MC_AMULET			equ 10
 OBJ_TOWN_LEVEL		equ 5				; what level store goods are made at
 ; ego items: SN_ numbers come with data/egos.asm, 16 bytes each in EGO_PAGE
-EGO_SIZE			equ 16
+EGO_SIZE			equ 24
 E_FLAGS				equ 0				; dword: flags it adds
 E_FLAGS2			equ 4				; dword: flags2 it adds
 E_COST				equ 8				; word: gold it adds to the value
@@ -348,8 +351,22 @@ E_OPTS				equ 12				; EO_ bits
 EO_SHOW_P1			equ 0				; show its number: " (+2)"
 EO_SHOW_HD			equ 1
 EO_DOUBLE			equ 2				; value doubled
+EO_ARTIFACT			equ 3				; an artifact: its value is E_COST
+EO_OWN_FLAGS		equ 4				; its flags replace the kind's
 E_DICE				equ 13				; dice instead of the kind's (0: the kind's)
 E_NAME				equ 14				; word: its name, "of Resistance"
+E_SIDES				equ 16				; artifacts: sides of its dice (0: the kind's)
+E_WEIGHT			equ 17				; word: its weight (0: the kind's)
+E_HIT				equ 19				; its to-hit, to-dam, AC, number, as
+E_DAM				equ 20				; E_ART says
+E_AC				equ 21
+E_P1				equ 22
+E_ART				equ 23				; EA_ bits
+EA_HIT				equ 0				; sets to-hit
+EA_DAM				equ 1				; sets to-dam
+EA_AC				equ 2				; adds to AC
+EA_AC_SET			equ 3				; (sets it)
+EA_P1				equ 4				; sets its number
 ; item classes; wearable ones map to equipment slot class - IC_WEAPON
 IC_FOOD				equ 1
 IC_POTION			equ 2

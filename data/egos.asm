@@ -7,9 +7,11 @@
 ; included in all such copies.
 
 ; 179 ego names: SN_ numbers as in CONSTANT.H, then SN_MAGI_ROBE 177, SN_FIRE2 178
-; 16 bytes each: flags, flags2, cost added, cost per point of p1, EO_ options,
-; dice (0 = the kind's), name
+; 24 bytes each: flags, flags2, cost added (an artifact's: its cost), cost per
+; point of p1, EO_ options, dice (0 = the kind's), name; then an artifact's
+; sides, weight, to-hit, to-dam, AC, p1 and which of those it sets (EA_)
 
+SN_NULL		equ 0
 SN_R		equ 1
 SN_RA		equ 2
 SN_RF		equ 3
@@ -44,6 +46,8 @@ SN_SEEING		equ 31
 SN_REGENERATION		equ 32
 SN_STUPIDITY		equ 33
 SN_DULLNESS		equ 34
+SN_BLINDNESS		equ 35
+SN_TIMIDNESS		equ 36
 SN_TELEPORTATION		equ 37
 SN_UGLINESS		equ 38
 SN_PROTECTION		equ 39
@@ -51,18 +55,139 @@ SN_IRRITATION		equ 40
 SN_VULNERABILITY		equ 41
 SN_ENVELOPING		equ 42
 SN_FIRE		equ 43
+SN_SLAY_EVIL		equ 44
+SN_DRAGON_SLAYING		equ 45
+SN_EMPTY		equ 46
+SN_LOCKED		equ 47
+SN_POISON_NEEDLE		equ 48
+SN_GAS_TRAP		equ 49
+SN_EXPLOSION_DEVICE		equ 50
+SN_SUMMONING_RUNES		equ 51
+SN_MULTIPLE_TRAPS		equ 52
+SN_DISARMED		equ 53
+SN_UNLOCKED		equ 54
+SN_SLAY_ANIMAL		equ 55
+SN_GROND		equ 56
+SN_RINGIL		equ 57
+SN_AEGLOS		equ 58
+SN_ARUNRUTH		equ 59
+SN_MORMEGIL		equ 60
 SN_MORGUL		equ 61
+SN_ANGRIST		equ 62
+SN_GURTHANG		equ 63
+SN_CALRIS		equ 64
+SN_ACCURACY		equ 65
+SN_ANDURIL		equ 66
 SN_SO		equ 67
 SN_POWER		equ 68
+SN_DURIN		equ 69
+SN_AULE		equ 70
 SN_WEST		equ 71
+SN_DOR		equ 72
 SN_SDEM		equ 73
 SN_ST		equ 74
+SN_BLOODSPIKE		equ 75
+SN_THUNDERFIST		equ 76
+SN_WOUNDING		equ 77
+SN_ORCRIST		equ 78
+SN_GLAMDRING		equ 79
+SN_STING		equ 80
 SN_LIGHT		equ 81
 SN_AGILITY		equ 82
+SN_BACKBITING		equ 83
+SN_DOOMCALLER		equ 84
 SN_SG		equ 85
 SN_TELEPATHY		equ 86
+SN_DRAGONKIND		equ 87
+SN_NENYA		equ 88
+SN_NARYA		equ 89
+SN_VILYA		equ 90
 SN_AMAN		equ 91
+SN_BELEGENNON		equ 92
+SN_FEANOR		equ 93
+SN_ANARION		equ 94
+SN_ISILDUR		equ 95
+SN_FINGOLFIN		equ 96
 SN_ELVENKIND		equ 97
+SN_SOULKEEPER		equ 98
+SN_DOR_LOMIN		equ 99
+SN_MORGOTH		equ 100
+SN_BELEG		equ 101
+SN_DAL		equ 102
+SN_PAURHACH		equ 103
+SN_PAURNIMMEN		equ 104
+SN_PAURAEGEN		equ 105
+SN_CAMMITHRIM		equ 106
+SN_CAMBELEG		equ 107
+SN_HOLHENNETH		equ 108
+SN_PAURNEN		equ 109
+SN_AEGLIN		equ 110
+SN_CAMLOST		equ 111
+SN_NIMLOTH		equ 112
+SN_NAR		equ 113
+SN_BERUTHIEL		equ 114
+SN_GORLIM		equ 115
+SN_NARTHANC		equ 116
+SN_NIMTHANC		equ 117
+SN_DETHANC		equ 118
+SN_GILETTAR		equ 119
+SN_RILIA		equ 120
+SN_BELANGIL		equ 121
+SN_BALLI		equ 122
+SN_LOTHARANG		equ 123
+SN_FIRESTAR		equ 124
+SN_ERIRIL		equ 125
+SN_CUBRAGOL		equ 126
+SN_BARD		equ 127
+SN_COLLUIN		equ 128
+SN_HOLCOLLETH		equ 129
+SN_TOTILA		equ 130
+SN_PAIN		equ 131
+SN_ELVAGIL		equ 132
+SN_AGLARANG		equ 133
+SN_ROHAN		equ 134
+SN_EORLINGAS		equ 135
+SN_BARUKKHELED		equ 136
+SN_WRATH		equ 137
+SN_HARADEKKET		equ 138
+SN_MUNDWINE		equ 139
+SN_GONDRICAM		equ 140
+SN_ZARCUTHRA		equ 141
+SN_CARETH		equ 142
+SN_FORASGIL		equ 143
+SN_CRISDURIAN		equ 144
+SN_COLANNON		equ 145
+SN_HITHLOMIR		equ 146
+SN_THALKETTOTH		equ 147
+SN_ARVEDUI		equ 148
+SN_THRANDUIL		equ 149
+SN_THENGEL		equ 150
+SN_HAMMERHAND		equ 151
+SN_CELEFARN		equ 152
+SN_THROR		equ 153
+SN_MAEDHROS		equ 154
+SN_OLORIN		equ 155
+SN_ANGUIREL		equ 156
+SN_THORIN		equ 157
+SN_CELEBORN		equ 158
+SN_OROME		equ 159
+SN_EONWE		equ 160
+SN_GONDOR		equ 161
+SN_THEODEN		equ 162
+SN_THINGOL		equ 163
+SN_THORONGIL		equ 164
+SN_LUTHIEN		equ 165
+SN_TUOR		equ 166
+SN_ULMO		equ 167
+SN_OSONDIR		equ 168
+SN_TURMIL		equ 169
+SN_CASPANION		equ 170
+SN_TIL		equ 171
+SN_DEATHWREAKER		equ 172
+SN_AVAVIR		equ 173
+SN_TARATOL		equ 174
+SN_RAZORBACK		equ 175
+SN_BLADETURNER		equ 176
 SN_MAGI_ROBE		equ 177
 SN_FIRE2		equ 178
 NUM_EGOS		equ 179
@@ -70,362 +195,541 @@ NUM_EGOS		equ 179
 ego_table:
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
 	dw 0
+	db 0,0,0,0,0,0,0,0
 	db 0,0,56,2,0,0,0,0,212,48,0,0,0,0
-	dw egn_1	; of Resistance
+	dw egn_1
+	db 0,0,0,0,0,0,0,0	; of Resistance
 	db 0,0,16,0,0,0,0,0,232,3,0,0,0,0
-	dw egn_2	; of Resist Acid
+	dw egn_2
+	db 0,0,0,0,0,0,0,0	; of Resist Acid
 	db 0,0,8,0,0,0,0,0,88,2,0,0,0,0
-	dw egn_3	; of Resist Fire
+	dw egn_3
+	db 0,0,0,0,0,0,0,0	; of Resist Fire
 	db 0,0,32,0,0,0,0,0,88,2,0,0,0,0
-	dw egn_4	; of Resist Cold
+	dw egn_4
+	db 0,0,0,0,0,0,0,0	; of Resist Cold
 	db 0,0,0,2,0,0,0,0,244,1,0,0,0,0
-	dw egn_5	; of Resist Lightning
+	dw egn_5
+	db 0,0,0,0,0,0,0,0	; of Resist Lightning
 	db 1,128,65,1,1,0,0,0,16,39,244,1,4,0
-	dw egn_6	; (Holy Avenger)
+	dw egn_6
+	db 0,0,0,0,0,0,0,0	; (Holy Avenger)
 	db 0,9,184,7,0,0,0,0,76,29,244,1,4,0
-	dw egn_7	; (Defender)
+	dw egn_7
+	db 0,0,0,0,0,0,0,0	; (Defender)
 	db 0,64,0,0,0,0,0,0,208,7,0,0,0,0
-	dw egn_8	; of Animal Slaying
+	dw egn_8
+	db 0,0,0,0,0,0,0,0	; of Animal Slaying
 	db 0,32,0,0,0,0,0,0,160,15,0,0,0,0
-	dw egn_9	; of Dragon Slaying
+	dw egn_9
+	db 0,0,0,0,0,0,0,0	; of Dragon Slaying
 	db 0,128,0,0,0,0,0,0,160,15,0,0,0,0
-	dw egn_10	; of Slay Evil
+	dw egn_10
+	db 0,0,0,0,0,0,0,0	; of Slay Evil
 	db 0,0,1,1,0,0,0,0,184,11,0,0,0,0
-	dw egn_11	; of Slay Undead
+	dw egn_11
+	db 0,0,0,0,0,0,0,0	; of Slay Undead
 	db 0,0,12,0,0,0,0,0,184,11,0,0,0,0
-	dw egn_12	; of Flame
+	dw egn_12
+	db 0,0,0,0,0,0,0,0	; of Flame
 	db 0,0,34,0,0,0,0,0,152,8,0,0,0,0
-	dw egn_13	; of Frost
+	dw egn_13
+	db 0,0,0,0,0,0,0,0	; of Frost
 	db 0,0,128,0,0,0,0,0,232,3,0,0,0,0
-	dw egn_14	; of Free Action
+	dw egn_14
+	db 0,0,0,0,0,0,0,0	; of Free Action
 	db 0,0,0,0,0,0,0,0,0,0,0,0,2,0
-	dw egn_15	; of Slaying
+	dw egn_15
+	db 0,0,0,0,0,0,0,0	; of Slaying
 	db 8,0,0,0,0,0,0,0,0,0,0,0,1,0
-	dw egn_16	; of Clumsiness
+	dw egn_16
+	db 0,0,0,0,0,0,0,0	; of Clumsiness
 	db 1,0,0,0,0,0,0,0,0,0,0,0,1,0
-	dw egn_17	; of Weakness
+	dw egn_17
+	db 0,0,0,0,0,0,0,0	; of Weakness
 	db 0,0,0,4,0,0,0,0,250,0,0,0,0,0
-	dw egn_18	; of Slow Descent
+	dw egn_18
+	db 0,0,0,0,0,0,0,0	; of Slow Descent
 	db 0,16,0,0,0,0,0,0,255,255,0,0,1,0
-	dw egn_19	; of Speed
+	dw egn_19
+	db 0,0,0,0,0,0,0,0	; of Speed
 	db 0,1,0,0,0,0,0,0,244,1,0,0,1,0
-	dw egn_20	; of Stealth
+	dw egn_20
+	db 0,0,0,0,0,0,0,0	; of Stealth
 	db 0,16,0,0,0,0,0,0,0,0,0,0,1,0
-	dw egn_21	; of Slowness
+	dw egn_21
+	db 0,0,0,0,0,0,0,0	; of Slowness
 	db 0,2,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_22	; of Noise
+	dw egn_22
+	db 0,0,0,0,0,0,0,0	; of Noise
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_23	; of Great Mass
+	dw egn_23
+	db 0,0,0,0,0,0,0,0	; of Great Mass
 	db 2,0,0,0,0,0,0,0,0,0,244,1,1,0
-	dw egn_24	; of Intelligence
+	dw egn_24
+	db 0,0,0,0,0,0,0,0	; of Intelligence
 	db 4,0,0,0,0,0,0,0,0,0,244,1,1,0
-	dw egn_25	; of Wisdom
+	dw egn_25
+	db 0,0,0,0,0,0,0,0	; of Wisdom
 	db 0,0,0,64,0,0,0,0,0,0,250,0,1,0
-	dw egn_26	; of Infra-Vision
+	dw egn_26
+	db 0,0,0,0,0,0,0,0	; of Infra-Vision
 	db 25,0,128,0,0,0,0,0,232,3,244,1,1,0
-	dw egn_27	; of Might
+	dw egn_27
+	db 0,0,0,0,0,0,0,0	; of Might
 	db 36,0,0,0,0,0,0,0,232,3,244,1,1,0
-	dw egn_28	; of Lordliness
+	dw egn_28
+	db 0,0,0,0,0,0,0,0	; of Lordliness
 	db 2,0,56,2,0,0,0,0,184,11,244,1,1,0
-	dw egn_29	; of the Magi
+	dw egn_29
+	db 0,0,0,0,0,0,0,0	; of the Magi
 	db 32,0,0,0,0,0,0,0,238,2,0,0,1,0
-	dw egn_30	; of Beauty
+	dw egn_30
+	db 0,0,0,0,0,0,0,0	; of Beauty
 	db 64,0,0,1,0,0,0,0,232,3,100,0,1,0
-	dw egn_31	; of Seeing
+	dw egn_31
+	db 0,0,0,0,0,0,0,0	; of Seeing
 	db 0,8,0,0,0,0,0,0,220,5,0,0,0,0
-	dw egn_32	; of Regeneration
+	dw egn_32
+	db 0,0,0,0,0,0,0,0	; of Regeneration
 	db 2,0,0,0,0,0,0,0,0,0,0,0,1,0
-	dw egn_33	; of Stupidity
+	dw egn_33
+	db 0,0,0,0,0,0,0,0	; of Stupidity
 	db 4,0,0,0,0,0,0,0,0,0,0,0,1,0
-	dw egn_34	; of Dullness
+	dw egn_34
+	db 0,0,0,0,0,0,0,0	; of Dullness
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_35	; of Blindness
+	dw egn_35
+	db 0,0,0,0,0,0,0,0	; of Blindness
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_36	; of Timidness
+	dw egn_36
+	db 0,0,0,0,0,0,0,0	; of Timidness
 	db 0,4,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_37	; of Teleportation
+	dw egn_37
+	db 0,0,0,0,0,0,0,0	; of Teleportation
 	db 32,0,0,0,0,0,0,0,0,0,0,0,1,0
-	dw egn_38	; of Ugliness
+	dw egn_38
+	db 0,0,0,0,0,0,0,0	; of Ugliness
 	db 0,0,0,0,0,0,0,0,250,0,0,0,0,0
-	dw egn_39	; of Protection
+	dw egn_39
+	db 0,0,0,0,0,0,0,0	; of Protection
 	db 0,2,0,0,0,0,0,0,0,0,0,0,2,0
-	dw egn_40	; of Irritation
+	dw egn_40
+	db 0,0,0,0,0,0,0,0	; of Irritation
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_41	; of Vulnerability
+	dw egn_41
+	db 0,0,0,0,0,0,0,0	; of Vulnerability
 	db 0,0,0,0,0,0,0,0,0,0,0,0,2,0
-	dw egn_42	; of Enveloping
+	dw egn_42
+	db 0,0,0,0,0,0,0,0	; of Enveloping
 	db 0,0,4,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_43	; of Fire
+	dw egn_43
+	db 0,0,0,0,0,0,0,0	; of Fire
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_44	; of Slay Evil
+	dw egn_44
+	db 0,0,0,0,0,0,0,0	; of Slay Evil
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_45	; of Dragon Slaying
+	dw egn_45
+	db 0,0,0,0,0,0,0,0	; of Dragon Slaying
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_46	; (Empty)
+	dw egn_46
+	db 0,0,0,0,0,0,0,0	; (Empty)
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_47	; (Locked)
+	dw egn_47
+	db 0,0,0,0,0,0,0,0	; (Locked)
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_48	; (Poison Needle)
+	dw egn_48
+	db 0,0,0,0,0,0,0,0	; (Poison Needle)
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_49	; (Gas Trap)
+	dw egn_49
+	db 0,0,0,0,0,0,0,0	; (Gas Trap)
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_50	; (Explosion Device)
+	dw egn_50
+	db 0,0,0,0,0,0,0,0	; (Explosion Device)
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_51	; (Summoning Runes)
+	dw egn_51
+	db 0,0,0,0,0,0,0,0	; (Summoning Runes)
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_52	; (Multiple Traps)
+	dw egn_52
+	db 0,0,0,0,0,0,0,0	; (Multiple Traps)
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_53	; (Disarmed)
+	dw egn_53
+	db 0,0,0,0,0,0,0,0	; (Disarmed)
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_54	; (Unlocked)
+	dw egn_54
+	db 0,0,0,0,0,0,0,0	; (Unlocked)
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_55	; of Slay Animal
+	dw egn_55
+	db 0,0,0,0,0,0,0,0	; of Slay Animal
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_56	; named Grond
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_57	; named Ringil
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_58	; named Aeglos
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_59	; named Arunruth
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_60	; named Mormegil
+	dw egn_56
+	db 0,0,0,0,0,0,0,0	; named Grond
+	db 128,152,163,1,3,12,2,2,255,255,0,0,24,4
+	dw egn_57
+	db 0,0,0,22,25,0,1,19	; named Ringil
+	db 132,0,162,0,18,8,0,2,255,255,0,0,24,1
+	dw egn_58
+	db 20,0,0,15,25,5,4,31	; named Aeglos
+	db 136,0,128,4,17,8,0,2,80,195,0,0,24,3
+	dw egn_59
+	db 0,0,0,20,12,0,4,19	; named Arunruth
+	db 0,18,0,128,0,0,0,2,16,39,0,0,24,0
+	dw egn_60
+	db 0,0,0,216,196,206,255,31	; named Mormegil
 	db 0,2,0,1,0,0,0,0,0,0,0,0,0,0
-	dw egn_61	; of Morgul
+	dw egn_61
+	db 0,0,0,0,0,0,0,0	; of Morgul
+	db 8,128,192,0,18,0,4,2,255,255,0,0,24,2
+	dw egn_62
+	db 5,0,0,10,15,5,4,31	; named Angrist
+	db 129,8,128,8,2,0,0,2,255,255,0,0,24,0
+	dw egn_63
+	db 0,0,0,13,17,0,2,19	; named Gurthang
+	db 16,130,0,136,3,0,16,2,255,255,0,0,24,3
+	dw egn_64
+	db 7,0,0,236,20,0,5,19	; named Calris
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_62	; named Angrist
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_63	; named Gurthang
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_64	; named Calris
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_65	; of Accuracy
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_66	; named Anduril
+	dw egn_65
+	db 0,0,0,0,0,0,0,0	; of Accuracy
+	db 1,128,204,1,18,8,0,2,255,255,0,0,24,0
+	dw egn_66
+	db 0,0,0,10,15,5,4,31	; named Anduril
 	db 0,0,0,0,16,0,0,0,176,4,0,0,0,0
-	dw egn_67	; of Orc Slaying
+	dw egn_67
+	db 0,0,0,0,0,0,0,0	; of Orc Slaying
 	db 1,0,0,0,0,0,0,0,0,0,44,1,3,0
-	dw egn_68	; of Power
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_69	; of Durin
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_70	; of Aule
+	dw egn_68
+	db 0,0,0,0,0,0,0,0	; of Power
+	db 16,0,152,8,19,0,14,2,255,255,0,0,24,0
+	dw egn_69
+	db 0,0,0,10,20,15,3,31	; of Durin
+	db 4,128,185,11,1,16,64,2,255,255,0,0,24,5
+	dw egn_70
+	db 5,0,0,19,21,5,4,31	; of Aule
 	db 25,128,129,1,16,0,0,0,152,58,0,0,4,0
-	dw egn_71	; of Westernesse
+	dw egn_71
+	db 0,0,0,0,0,0,0,0	; of Westernesse
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_72	; named Dor-Lomin
+	dw egn_72
+	db 0,0,0,0,0,0,0,0	; named Dor-Lomin
 	db 0,0,0,0,1,0,0,0,176,4,0,0,0,0
-	dw egn_73	; of Demon Slaying
+	dw egn_73
+	db 0,0,0,0,0,0,0,0	; of Demon Slaying
 	db 0,0,0,0,2,0,0,0,176,4,0,0,0,0
-	dw egn_74	; of Troll Slaying
+	dw egn_74
+	db 0,0,0,0,0,0,0,0	; of Troll Slaying
+	db 1,64,0,1,18,0,64,2,48,117,0,0,24,0
+	dw egn_75
+	db 0,0,0,8,22,0,4,19	; named Bloodspike
+	db 1,64,12,2,18,16,4,2,255,255,0,0,24,0
+	dw egn_76
+	db 0,0,0,5,18,0,4,19	; named Thunderfist
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_75	; named Bloodspike
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_76	; named Thunderfist
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_77	; of Wounding
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_78	; named Orcrist
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_79	; named Glamdring
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_80	; named Sting
+	dw egn_77
+	db 0,0,0,0,0,0,0,0	; of Wounding
+	db 128,129,34,0,16,4,0,2,64,156,0,0,24,0
+	dw egn_78
+	db 0,0,0,10,15,0,3,19	; named Orcrist
+	db 192,128,12,0,16,4,2,2,64,156,0,0,24,0
+	dw egn_79
+	db 0,0,0,10,15,0,0,3	; named Glamdring
+	db 8,0,0,1,16,4,2,2,224,46,0,0,24,0
+	dw egn_80
+	db 0,0,0,7,8,0,2,19	; named Sting
 	db 0,0,0,0,0,4,0,0,244,1,0,0,0,0
-	dw egn_81	; of Light
+	dw egn_81
+	db 0,0,0,0,0,0,0,0	; of Light
 	db 8,0,0,0,0,0,0,0,0,0,144,1,1,0
-	dw egn_82	; of Agility
+	dw egn_82
+	db 0,0,0,0,0,0,0,0	; of Agility
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_83	; of Backbiting
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_84	; named Doomcaller
+	dw egn_83
+	db 0,0,0,0,0,0,0,0	; of Backbiting
+	db 16,194,186,11,50,0,0,2,255,255,0,0,24,0
+	dw egn_84
+	db 0,0,0,18,28,0,251,19	; named Doomcaller
 	db 0,0,0,0,4,0,0,0,176,4,0,0,0,0
-	dw egn_85	; of Giant Slaying
+	dw egn_85
+	db 0,0,0,0,0,0,0,0	; of Giant Slaying
 	db 0,0,0,0,32,0,0,0,80,195,0,0,0,0
-	dw egn_86	; of Telepathy
+	dw egn_86
+	db 0,0,0,0,0,0,0,0	; of Telepathy
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_87	; of Dragonkind
+	dw egn_87
+	db 0,0,0,0,0,0,0,0	; of Dragonkind
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_88	; named Nenya
+	dw egn_88
+	db 0,0,0,0,0,0,0,0	; named Nenya
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_89	; named Narya
+	dw egn_89
+	db 0,0,0,0,0,0,0,0	; named Narya
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_90	; named Vilya
+	dw egn_90
+	db 0,0,0,0,0,0,0,0	; named Vilya
 	db 0,1,16,0,0,0,0,0,136,19,0,0,1,0
-	dw egn_91	; of Aman
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_92	; named Belegennon
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_93	; of Feanor
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_94	; of Anarion
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_95	; of Isildur
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_96	; of Fingolfin
+	dw egn_91
+	db 0,0,0,0,0,0,0,0	; of Aman
+	db 0,1,56,2,0,8,0,2,255,255,0,0,9,0
+	dw egn_92
+	db 0,0,0,0,0,20,4,20	; named Belegennon
+	db 0,17,16,0,0,8,64,2,255,255,0,0,8,0
+	dw egn_93
+	db 0,0,0,0,0,20,1,20	; of Feanor
+	db 0,0,120,2,0,0,0,2,255,255,0,0,8,0
+	dw egn_94
+	db 0,0,0,0,0,20,10,21	; of Anarion
+	db 0,0,56,2,0,0,1,2,64,156,0,0,8,0
+	dw egn_95
+	db 0,0,0,0,0,25,0,5	; of Isildur
+	db 8,0,144,0,0,8,0,2,255,255,0,0,10,0
+	dw egn_96
+	db 0,0,0,10,10,20,4,23	; of Fingolfin
 	db 0,1,56,2,0,0,0,0,152,58,0,0,1,0
-	dw egn_97	; of Elvenkind
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_98	; named Soulkeeper
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_99	; of Dor-Lomin
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_100	; of Morgoth
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_101	; of Beleg Cuthalion
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_102	; named Dal-i-thalion
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_103	; named Paurhach
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_104	; named Paurnimmen
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_105	; named Pauraegen
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_106	; named Cammithrim
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_107	; named Cambeleg
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_108	; named Holhenneth
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_109	; named Paurnen
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_110	; named Aeglin
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_111	; named Camlost
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_112	; named Nimloth
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_113	; named Nar-i-vagil
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_114	; of Beruthiel
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_115	; of Gorlim
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_116	; named Narthanc
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_117	; named Nimthanc
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_118	; named Dethanc
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_119	; named Gilettar
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_120	; of Rilia
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_121	; named Belangil
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_122	; of Balli Stonehand
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_123	; named Lotharang
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_124	; named Firestar
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_125	; named Eriril
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_126	; named Cubragol
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_127	; of Bard
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_128	; named Colluin
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_129	; named Holcolleth
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_130	; named Totila
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_131	; of Pain
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_132	; named Elvagil
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_133	; named Aglarang
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_134	; of Rohan
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_135	; of the Eorlingas
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_136	; named Barukkheled
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_137	; of Wrath
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_138	; named Haradekket
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_139	; named Mundwine
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_140	; named Gondricam
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_141	; named Zarcuthra
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_142	; named Careth Asdriag
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_143	; named Forasgil
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_144	; named Crisdurian
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_145	; named Colannon
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_146	; named Hithlomir
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_147	; named Thalkettoth
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_148	; of Arvedui
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_149	; of Thranduil
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_150	; of Thengel
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_151	; named Hammerhand
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_152	; of Celefarn
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_153	; of Thror
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_154	; of Maedhros
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_155	; of Olorin
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_156	; named Anguirel
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_157	; of Thorin
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_158	; of Celeborn
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_159	; of Orome
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_160	; of Eonwe
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_161	; of Gondor
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_162	; of Theoden
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_163	; of Thingol
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_164	; of Thorongil
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_165	; of Luthien
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_166	; of Tuor
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_167	; of Ulmo
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_168	; named Osondir
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_169	; named Turmil
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_170	; of Caspanion
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_171	; named Til-i-arc
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_172	; named Deathwreaker
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_173	; named Avavir
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_174	; named Taratol
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_175	; named Razorback
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	dw egn_176	; named Bladeturner
+	dw egn_97
+	db 0,0,0,0,0,0,0,0	; of Elvenkind
+	db 0,0,48,0,8,8,76,3,255,255,0,0,8,0
+	dw egn_98
+	db 0,0,0,0,0,20,0,4	; named Soulkeeper
+	db 25,0,56,3,32,4,130,2,255,255,0,0,8,0
+	dw egn_99
+	db 0,0,0,0,0,20,4,20	; of Dor-Lomin
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dw egn_100
+	db 0,0,0,0,0,0,0,0	; of Morgoth
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dw egn_101
+	db 0,0,0,0,0,0,0,0	; of Beleg Cuthalion
+	db 8,0,208,0,0,8,0,2,64,156,0,0,9,0
+	dw egn_102
+	db 0,0,0,0,0,15,5,20	; named Dal-i-thalion
+	db 0,0,8,0,0,8,0,2,152,58,0,0,8,0
+	dw egn_103
+	db 0,0,0,0,0,15,0,4	; named Paurhach
+	db 0,0,32,0,0,8,0,2,200,50,0,0,8,0
+	dw egn_104
+	db 0,0,0,0,0,15,0,4	; named Paurnimmen
+	db 0,0,0,2,0,8,0,2,248,42,0,0,8,0
+	dw egn_105
+	db 0,0,0,0,0,15,0,4	; named Pauraegen
+	db 0,0,64,0,0,12,2,2,48,117,0,0,8,0
+	dw egn_106
+	db 0,0,0,0,0,10,5,20	; named Cammithrim
+	db 17,0,128,0,0,0,0,2,160,140,0,0,10,0
+	dw egn_107
+	db 0,0,0,8,8,15,2,23	; named Cambeleg
+	db 70,0,16,1,0,8,128,2,255,255,0,0,9,0
+	dw egn_108
+	db 0,0,0,0,0,10,2,20	; named Holhenneth
+	db 0,0,16,0,0,8,0,2,224,46,0,0,8,0
+	dw egn_109
+	db 0,0,0,0,0,15,0,4	; named Paurnen
+	db 192,0,0,2,16,20,0,2,200,175,0,0,24,0
+	dw egn_110
+	db 0,0,0,12,16,0,0,3	; named Aeglin
+	db 9,2,0,128,0,0,0,2,0,0,0,0,11,0
+	dw egn_111
+	db 0,0,0,245,244,0,251,19	; named Camlost
+	db 0,1,35,0,0,0,0,2,48,117,0,0,24,0
+	dw egn_112
+	db 0,0,0,11,13,0,3,19	; named Nimloth
+	db 2,64,12,0,0,0,0,2,255,255,0,0,25,0
+	dw egn_113
+	db 0,0,0,10,20,0,3,19	; named Nar-i-vagil
+	db 25,0,144,129,32,0,0,2,16,39,0,0,9,0
+	dw egn_114
+	db 0,0,0,0,0,20,131,20	; of Beruthiel
+	db 70,2,0,129,0,0,0,2,0,0,0,0,9,0
+	dw egn_115
+	db 0,0,0,0,0,10,131,20	; of Gorlim
+	db 0,0,12,0,0,8,0,2,224,46,0,0,24,0
+	dw egn_116
+	db 0,0,0,4,6,0,0,3	; named Narthanc
+	db 0,0,34,0,0,8,0,2,248,42,0,0,24,0
+	dw egn_117
+	db 0,0,0,4,6,0,0,3	; named Nimthanc
+	db 0,0,0,2,0,24,0,2,200,50,0,0,24,0
+	dw egn_118
+	db 0,0,0,4,6,0,0,3	; named Dethanc
+	db 128,72,0,0,0,0,0,0,16,39,0,0,24,0
+	dw egn_119
+	db 0,0,0,3,7,0,0,3	; named Gilettar
+	db 0,0,0,0,0,8,16,2,152,58,0,0,8,2
+	dw egn_120
+	db 4,0,0,4,3,0,0,3	; of Rilia
+	db 136,8,34,1,0,8,0,2,64,156,0,0,24,3
+	dw egn_121
+	db 2,0,0,6,9,0,2,19	; named Belangil
+	db 17,9,184,7,19,0,128,2,255,255,0,0,24,3
+	dw egn_122
+	db 6,0,0,8,11,5,3,31	; of Balli Stonehand
+	db 9,0,0,0,18,8,0,2,8,82,0,0,24,0
+	dw egn_123
+	db 0,0,0,4,3,0,1,19	; named Lotharang
+	db 0,0,12,0,0,8,0,2,184,136,0,0,24,0
+	dw egn_124
+	db 0,0,0,5,7,2,0,15	; named Firestar
+	db 6,128,0,1,0,12,2,2,32,78,0,0,24,0
+	dw egn_125
+	db 0,0,0,3,5,0,4,19	; named Eriril
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dw egn_126
+	db 0,0,0,0,0,0,0,0	; named Cubragol
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dw egn_127
+	db 0,0,0,0,0,0,0,0	; of Bard
+	db 0,0,56,2,0,8,0,2,16,39,0,0,8,0
+	dw egn_128
+	db 0,0,0,0,0,15,0,4	; named Colluin
+	db 6,1,16,0,0,8,0,2,200,50,0,0,9,0
+	dw egn_129
+	db 0,0,0,0,0,4,2,20	; named Holcolleth
+	db 0,129,12,0,0,136,0,2,216,214,0,0,25,0
+	dw egn_130
+	db 9,0,0,6,8,0,2,19	; named Totila
+	db 0,0,0,0,0,0,0,2,80,195,0,0,8,10
+	dw egn_131
+	db 6,0,0,0,30,0,0,3	; of Pain
+	db 40,1,0,5,18,0,0,2,48,117,0,0,8,0
+	dw egn_132
+	db 0,0,0,2,7,0,2,19	; named Elvagil
+	db 8,0,64,0,0,0,0,2,64,156,0,0,24,6
+	dw egn_133
+	db 8,50,0,0,0,0,5,19	; named Aglarang
+	db 9,0,56,2,0,128,1,2,48,117,0,0,8,0
+	dw egn_134
+	db 0,0,0,0,0,15,2,21	; of Rohan
+	db 8,128,0,1,18,0,0,2,216,214,0,0,8,0
+	dw egn_135
+	db 12,104,1,3,21,0,2,19	; of the Eorlingas
+	db 16,128,0,1,22,0,0,2,80,195,0,0,8,0
+	dw egn_136
+	db 0,0,0,13,19,0,3,19	; named Barukkheled
+	db 9,128,1,1,0,0,6,2,255,255,0,0,8,3
+	dw egn_137
+	db 9,44,1,16,18,0,2,19	; of Wrath
+	db 8,192,1,1,0,0,0,2,32,78,0,0,8,0
+	dw egn_138
+	db 0,0,0,9,11,0,2,19	; named Haradekket
+	db 0,128,56,2,0,0,0,2,48,117,0,0,8,0
+	dw egn_139
+	db 0,0,0,12,17,0,0,3	; named Mundwine
+	db 8,9,56,7,0,0,0,2,96,109,0,0,9,0
+	dw egn_140
+	db 0,0,0,10,11,0,3,19	; named Gondricam
+	db 33,194,141,72,23,0,8,2,255,255,0,0,24,6
+	dw egn_141
+	db 4,0,0,19,21,0,4,19	; named Zarcuthra
+	db 0,96,0,0,22,0,0,2,32,78,0,0,8,0
+	dw egn_142
+	db 0,0,0,6,8,0,0,3	; named Careth Asdriag
+	db 0,64,34,0,0,4,2,2,152,58,0,0,8,0
+	dw egn_143
+	db 0,0,0,12,19,0,0,3	; named Forasgil
+	db 0,160,1,1,22,0,0,2,255,255,0,0,8,0
+	dw egn_144
+	db 0,0,0,18,19,0,0,3	; named Crisdurian
+	db 0,1,16,0,0,8,0,2,248,42,0,0,9,0
+	dw egn_145
+	db 0,0,0,0,0,15,3,20	; named Colannon
+	db 0,1,56,2,0,0,0,2,200,175,0,0,9,0
+	dw egn_146
+	db 0,0,0,0,0,20,4,20	; named Hithlomir
+	db 8,0,16,0,0,0,0,2,168,97,0,0,8,0
+	dw egn_147
+	db 0,0,0,0,0,25,3,20	; named Thalkettoth
+	db 33,0,56,2,0,0,0,2,0,125,0,0,8,0
+	dw egn_148
+	db 0,0,0,0,0,15,2,20	; of Arvedui
+	db 6,0,16,0,32,0,128,2,80,195,0,0,8,0
+	dw egn_149
+	db 0,0,0,0,0,10,2,20	; of Thranduil
+	db 36,0,16,0,0,0,0,2,240,85,0,0,8,0
+	dw egn_150
+	db 0,0,0,0,0,12,3,20	; of Thengel
+	db 25,0,16,0,0,0,0,2,200,175,0,0,8,0
+	dw egn_151
+	db 0,0,0,0,0,20,3,20	; named Hammerhand
+	db 0,0,56,2,0,0,0,2,224,46,0,0,8,0
+	dw egn_152
+	db 0,0,0,0,0,20,0,4	; of Celefarn
+	db 17,0,16,0,0,0,0,2,224,46,0,0,8,0
+	dw egn_153
+	db 0,0,0,0,0,20,3,20	; of Thror
+	db 10,0,128,1,6,0,0,2,32,78,0,0,24,2
+	dw egn_154
+	db 6,0,0,12,15,0,3,19	; of Maedhros
+	db 38,128,12,1,26,8,0,3,255,255,0,0,24,2
+	dw egn_155
+	db 10,0,0,10,13,0,4,19	; of Olorin
+	db 17,128,128,3,1,20,2,2,64,156,0,0,24,0
+	dw egn_156
+	db 0,0,0,8,12,0,2,19	; named Anguirel
+	db 81,0,144,0,0,1,9,2,96,234,0,0,8,0
+	dw egn_157
+	db 0,0,0,0,0,25,4,21	; of Thorin
+	db 33,0,56,2,0,8,20,2,255,255,0,0,8,0
+	dw egn_158
+	db 0,0,0,0,0,25,4,20	; of Celeborn
+	db 66,0,12,69,4,12,2,2,96,234,0,0,24,0
+	dw egn_159
+	db 0,0,0,15,15,0,4,19	; of Orome
+	db 63,128,131,1,144,8,0,2,255,255,0,0,24,0
+	dw egn_160
+	db 0,0,0,15,18,8,2,31	; of Eonwe
+	db 21,8,24,1,0,12,130,2,255,255,0,0,25,0
+	dw egn_161
+	db 0,0,0,0,0,15,3,20	; of Gondor
+	db 212,32,0,0,32,8,0,2,64,156,0,0,24,0
+	dw egn_162
+	db 0,0,0,8,10,0,3,19	; of Theoden
+	db 40,0,184,0,0,8,0,2,184,136,0,0,24,0
+	dw egn_163
+	db 0,0,0,0,0,18,3,20	; of Thingol
+	db 0,0,144,1,0,0,0,2,64,31,0,0,24,0
+	dw egn_164
+	db 0,0,0,0,0,10,0,4	; of Thorongil
+	db 38,0,56,0,0,8,0,2,200,175,0,0,24,0
+	dw egn_165
+	db 0,0,0,0,0,20,2,20	; of Luthien
+	db 0,1,144,1,0,0,0,2,184,136,0,0,25,0
+	dw egn_166
+	db 0,0,0,0,0,12,4,20	; of Tuor
+	db 136,104,128,1,8,9,0,3,255,255,0,0,24,4
+	dw egn_167
+	db 10,0,0,15,19,0,4,19	; of Ulmo
+	db 32,0,13,5,4,0,1,2,240,85,0,0,24,0
+	dw egn_168
+	db 0,0,0,6,9,0,3,19	; named Osondir
+	db 4,8,34,64,16,12,2,2,48,117,0,0,24,0
+	dw egn_169
+	db 0,0,0,10,6,8,4,31	; named Turmil
+	db 22,0,16,16,0,136,0,2,64,156,0,0,8,0
+	dw egn_170
+	db 0,0,0,0,0,20,3,20	; of Caspanion
+	db 130,0,110,0,7,0,0,2,0,125,0,0,24,0
+	dw egn_171
+	db 0,0,0,10,12,10,2,31	; named Til-i-arc
+	db 1,226,4,32,64,0,28,2,255,255,0,0,24,0
+	dw egn_172
+	db 12,0,0,18,18,0,6,19	; named Deathwreaker
+	db 40,0,174,1,0,12,2,2,80,70,0,0,24,0
+	dw egn_173
+	db 0,0,0,8,8,10,3,31	; named Avavir
+	db 0,0,0,10,0,24,4,2,32,78,0,0,24,0
+	dw egn_174
+	db 7,200,0,12,12,0,0,3	; named Taratol
+	db 6,3,184,19,0,14,2,2,255,255,0,0,8,0
+	dw egn_175
+	db 0,144,1,253,0,25,254,21	; named Razorback
+	db 72,8,56,18,8,128,255,3,255,255,0,0,8,0
+	dw egn_176
+	db 0,244,1,252,0,35,253,21	; named Bladeturner
 	db 0,0,120,2,8,0,0,0,16,39,0,0,0,0
-	dw egn_177	; of the Magi
+	dw egn_177
+	db 0,0,0,0,0,0,0,0	; of the Magi
 	db 0,0,4,0,0,0,0,0,0,0,0,0,0,2
-	dw egn_178	; of Fire
+	dw egn_178
+	db 0,0,0,0,0,0,0,0	; of Fire
 egn_1:	db "of Resistance",0
 egn_2:	db "of Resist Acid",0
 egn_3:	db "of Resist Fire",0

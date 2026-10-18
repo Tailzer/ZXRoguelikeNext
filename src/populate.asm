@@ -681,6 +681,8 @@ place_object:
 	ret nc
 	ld (ix+I_Y),d
 	ld (ix+I_X),e
+	OVCALL PAGE_MISC, try_special, PAGE_LEVEL	; a Ring of Power?
+	ret c
 	call get_obj_num
 	ld a,(dun_level)					; magic_treasure at this depth
 	OVCALL PAGE_MISC, new_item, PAGE_LEVEL

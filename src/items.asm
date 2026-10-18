@@ -61,6 +61,12 @@ item_flags:
 	or a
 	ret z
 	call ego_addr						; (E_FLAGS, E_FLAGS2 come first)
+	bit EO_OWN_FLAGS,(iy+E_OPTS)		; (an artifact may replace the kind's)
+	jr z,.add
+	ld hl,0
+	ld (it_flags),hl
+	ld (it_flags+2),hl
+.add:
 	push iy
 	pop hl
 	ld de,it_flags
@@ -74,23 +80,28 @@ item_flags:
 	djnz .or
 	jp item_kind_addr
 
-/* item_dice - IX = item -> A = its number of damage dice: the kind's, or
-	its ego's (a whip of fire may have 2). Leaves IY on the kind. Clobbers
-	DE, HL */
+/* item_dice - IX = item -> A = its number of damage dice, B = their sides:
+	the kind's, or its ego's or artifact's (a whip of fire may have 2).
+	Leaves IY on the kind. Clobbers C, DE, HL */
 item_dice:
+	ld bc,0
 	ld a,(ix+I_NAME2)
 	or a
 	jr z,.kind
 	call ego_addr
-	ld a,(iy+E_DICE)
-	push af
-	call item_kind_addr
-	pop af
-	or a
-	ret nz
+	ld b,(iy+E_DICE)
+	ld c,(iy+E_SIDES)
 .kind:
 	call item_kind_addr
+	ld a,c
+	or a
+	jr nz,$+5
+	ld c,(iy+K_SIDES)
+	ld a,b
+	or a
+	jr nz,$+5
 	ld a,(iy+K_DICE)
+	ld b,c
 	ret
 
 it_flags:		ds 8

@@ -316,8 +316,14 @@ value_check:
 .blessed:
 	ld a,(ix+I_NAME2)
 	or a
-	ld a,3								; an ego (9c-3 sorts excellent from
-	jr nz,.yes							; special)
+	jr z,.plain
+	call ego_addr						; an ego: excellent; an artifact:
+	bit EO_ARTIFACT,(iy+E_OPTS)			; special
+	ld a,3
+	jr z,.yes
+	inc a
+	jr .yes
+.plain:
 	ld a,(ix+I_TOHIT)
 	or (ix+I_TODAM)
 	or (ix+I_TOAC)
