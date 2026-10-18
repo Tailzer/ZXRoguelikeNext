@@ -29,31 +29,6 @@ txt_good_hit:	db "It was a good hit!",0
 txt_excellent_hit: db "It was an excellent hit!",0
 txt_superb_hit:	db "It was a superb hit!",0
 txt_great_hit:	db "It was a *GREAT* hit!",0
-; monster attack descriptions 1-18 (make_attack)
-txt_hits:		db "hits you.",0
-txt_bites:		db "bites you.",0
-txt_claws:		db "claws you.",0
-txt_stings:		db "stings you.",0
-txt_touches:	db "touches you.",0
-txt_kicks:		db "kicks you.",0
-txt_gazes:		db "gazes at you.",0
-txt_breathes:	db "breathes on you.",0
-txt_spits:		db "spits on you.",0
-txt_wails:		db "makes a horrible wail.",0
-txt_embraces:	db "embraces you.",0
-txt_crawls:		db "crawls on you.",0
-txt_spores:		db "releases a cloud of spores.",0
-txt_begs:		db "begs you for money.",0
-txt_slimed:		db "slimes you.",0
-txt_crushes:	db "crushes you.",0
-txt_tramples:	db "tramples you.",0
-txt_drools:		db "drools on you.",0
-txt_insults:	db "insults you!",0
-txt_butts:		db "butts you.",0
-txt_charges:	db "charges you.",0
-txt_engulfs:	db "engulfs you.",0
-txt_mumbles:	db "mumbles.",0
-txt_attacks:	db "attacks you.",0
 txt_you_destroyed: db "You have destroyed ",0
 ; status line
 txt_lev:		db "Lv ",0

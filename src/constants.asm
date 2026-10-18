@@ -24,6 +24,7 @@ EGO_PAGE			equ 63				; ego names and flags (data/egos.asm)
 ACT_PAGE			equ 65				; what activating does (data/activate.asm)
 SPELL_PAGE			equ 66				; each class's spells, their names
 MSPELL_PAGE			equ 67				; each monster race's spells (data/mspells.asm)
+MTEXT_PAGE			equ 68				; what monster spells and blows say (src/mcast_text.asm)
 RACE_PAGE			equ 44				; 5 pages of races (data/races.asm)
 KIND_PAGE			equ 60				; item kinds, 128 per page (data/kinds.asm)
 FLAVOUR_PAGE		equ 64				; flavour names and colours, titles, normal_table
@@ -248,6 +249,7 @@ MS_SIZE				equ 12
 MS_BITS				equ 80
 MS_FLAGS			equ 10
 RS_SMART			equ 0				; INTELLIGENT: casts to escape when hurt
+RS_DESTRUCT			equ 1				; DESTRUCT: its heavy blows shake the cave
 CS_FREQ				equ $0F				; 1 in this many turns it casts
 MAX_SPELL_DIS		equ 18				; the furthest a spell is cast from
 ; what summon_by (level overlay) brings
@@ -628,6 +630,7 @@ TV_ARROW			equ 12
 TV_BOW				equ 20
 TV_HAFTED			equ 21
 TV_POLEARM			equ 22
+TV_SWORD			equ 23
 TV_BOOTS			equ 30
 TV_GLOVES			equ 31
 TV_CLOAK			equ 32

@@ -9,7 +9,6 @@
 	(calc_bonuses in inventory.asm).
  */
 
-CLA_MISC_ADJ		equ 3				; ...[CLA_MISC_HIT]
 BTH_PLUS_ADJ		equ 3
 MAX_PLAYER_LEVEL	equ 50
 REGEN_HPBASE		equ 1442			; PLAYER_REGEN_HPBASE
@@ -588,15 +587,16 @@ check_level_up:
 	jr .levels
 
 /* mon_attack - monster IX (race IY) attacks the player with each of its
-	blows (make_attack in CREATURE.C) */
+	blows (make_attack in CREATURE.C; what each blow does is in the monster
+	spell overlay, mmelee.asm) */
 mon_attack:
-	ld a,(ix+M_RACE)
-	ld (killer_race),a
-	ld a,(ix+M_RACE_HI)
-	ld (killer_race+1),a
 	xor a
 	ld (attack_num),a
 .blow:
+	ld a,(ix+M_RACE)					; (an earthquake may have changed it)
+	ld (killer_race),a
+	ld a,(ix+M_RACE_HI)
+	ld (killer_race+1),a
 	ld a,(p_dead)
 	or a
 	ret nz
@@ -628,19 +628,6 @@ mon_attack:
 	ld (atk_sides),a
 	ld hl,attack_num
 	inc (hl)
-	; to hit: power + level * 3 against the player's AC
-	ld a,(atk_type)
-	ld hl,attack_power-1
-	add hl,a
-	ld a,(hl)
-	ld l,a
-	rla
-	sbc a,a
-	ld h,a								; sign extend
-	ld d,(iy+R_LEVEL)
-	ld e,CLA_MISC_ADJ
-	mul d,e
-	add hl,de
 	ld hl,(p_protevil)					; protection from evil may repel it
 	ld a,h
 	or l
@@ -665,87 +652,19 @@ mon_attack:
 	ld hl,txt_repelled
 	call msg_add
 	call msg_end
-	jp .blow
+	jr .blow
 .unprotected:
-	ld a,(atk_type)						; (test_hit needs the power again)
-	ld hl,attack_power-1
-	add hl,a
-	ld a,(hl)
-	ld l,a
-	rla
-	sbc a,a
-	ld h,a
-	ld d,(iy+R_LEVEL)
-	ld e,CLA_MISC_ADJ
-	mul d,e
-	add hl,de
-	ld a,(p_ac)
-	call test_hit
-	jp nc,.missed
-	call msg_begin						; "The Jackal bites you."
-	ld a,1
-	ld (name_cap),a
-	call mon_name_to_msg
-	ld hl,txt_space
-	call msg_add
-	ld a,(atk_desc)
-	ld hl,txt_attacks					; anything unknown just "attacks you."
-	cp NUM_ATTACK_DESCS+1
-	jr nc,.say_it
-	dec a
-	add a,a
-	ld hl,attack_descs
-	add hl,a
-	ld a,(hl)
-	inc hl
-	ld h,(hl)
-	ld l,a
-.say_it:
-	call msg_add
-	call msg_end
+	FARCALL PAGE_MCAST, melee_hits
+	jr nc,.missed
+	FARCALL PAGE_MCAST, melee_blow		; said and done -> carry if it left
+	push af
+	call mon_race
 	ld hl,(p_protevil)					; touching glowing hands confuses
 	ld a,h								; it too (unless repelling evil)
 	or l
 	call z,confuse_touch
-	ld a,(atk_dice)
-	ld b,a
-	ld a,(atk_sides)
-	ld c,a
-	call damroll
-	ld (atk_damage),hl
-	ld a,(atk_type)						; stealing and eating attacks don't
-	ld hl,no_damage_types				; hurt (their effects come later)
-	ld bc,NUM_NO_DAMAGE
-	cpir
-	jp z,.blow
-	ld a,(atk_type)
-	ld hl,(atk_damage)
-	cp 1
-	jr nz,.hurt
-	; normal attacks: armour absorbs (min(ac,150)*3/4 * dam) / 200
-	push hl
-	ld a,(p_ac)
-	cp 150
-	jr c,$+4
-	ld a,150
-	ld e,a
-	ld d,3
-	mul d,e
-	srl d
-	rr e
-	srl d
-	rr e
-	ld d,l
-	mul d,e
-	ex de,hl
-	ld c,200
-	call div16_8
-	ex de,hl
-	pop hl
-	or a
-	sbc hl,de
-.hurt:
-	call take_hit						; confusion etc. come later
+	pop af
+	ret c
 	jp .blow
 .missed:
 	ld a,(atk_desc)						; only hits/bites/claws/kicks say so
@@ -828,23 +747,6 @@ div24_8:
 	djnz .loop
 	ret
 
-; to-hit power of each attack type 1-25 (make_attack's test_hit calls);
-; 12/13 (stealing) and 20 (aggravate) are special cases for later
-attack_power:
-	db 60,-3,10,10,10,0,10,10,0,2,2,5,2,5,0,0,2,2,5,20,20,5,5,15,2
-
-attack_descs:
-	dw txt_hits, txt_bites, txt_claws, txt_stings, txt_touches, txt_kicks
-	dw txt_gazes, txt_breathes, txt_spits, txt_wails, txt_embraces
-	dw txt_crawls, txt_spores, txt_begs, txt_slimed, txt_crushes
-	dw txt_tramples, txt_drools, txt_insults, txt_butts, txt_charges
-	dw txt_engulfs, txt_mumbles
-NUM_ATTACK_DESCS	equ 23
-
-; blow types that do no damage: steal gold/object, aggravate, eat food,
-; eat light, drain charges
-no_damage_types:	db 12,13,20,22,23,24
-NUM_NO_DAMAGE		equ $-no_damage_types
 
 ; player
 p_lev:			db 1

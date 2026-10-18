@@ -209,9 +209,10 @@ def resists(r):
 
 
 def mspell_record(r):
-    """12 bytes: spells, spells2 (dwords), spells3 (low word), RS_ flags"""
+    """12 bytes: spells, spells2 (dwords), spells3 (low word), RS_ flags (smart, destruct)"""
     assert r["s3"] < 0x10000, r["name"]
-    flags = 1 if r["cdefense"] & value("INTELLIGENT") else 0
+    flags = (1 if r["cdefense"] & value("INTELLIGENT") else 0) \
+        | (2 if r["cdefense"] & value("DESTRUCT") else 0)      # RS_DESTRUCT: big blows shake the cave
     return (struct.pack("<IIH", r["s1"], r["s2"], r["s3"]) + bytes([flags, 0]))
 
 

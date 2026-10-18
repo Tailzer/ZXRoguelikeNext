@@ -43,6 +43,8 @@
 		breaths, bolts and balls, teleports and summons
 	Milestone 9d-3b: The rest of the monster spells - the exotic breaths,
 		nether, nexus, time, gravity, forgetting and the bigger summons
+	Milestone 9d-4: Monster blows - stat drains, poison, paralysis,
+		theft, elements, criticals and the cave-shaking blows
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -304,6 +306,7 @@ spell_end:
 	MMU 2, PAGE_MCAST, $4000
 	include "src/mcast.asm"
 	include "src/mexotic.asm"
+	include "src/mmelee.asm"
 mcast_end:
 	ASSERT mcast_end <= $6000, "Monster spell overlay is over 8K"
 
@@ -347,9 +350,13 @@ spells_end:
 
 	MMU 1 n, MSPELL_PAGE, DATA_WINDOW	; monster spells, 12 bytes a race
 	include "data/mspells.asm"
-	include "src/mexotic_text.asm"
 mspells_end:
 	ASSERT $$mspells_end == MSPELL_PAGE, "Monster spells run past their page"
+
+	MMU 1 n, MTEXT_PAGE, DATA_WINDOW	; what monster spells and blows say
+	include "src/mcast_text.asm"
+mtext_end:
+	ASSERT $$mtext_end == MTEXT_PAGE, "Monster texts run past their page"
 
 	SAVENEX OPEN "build/roguelike.nex", start, stack_top
 	SAVENEX CORE 3,0,0

@@ -195,21 +195,21 @@ mc_handlers:
 
 mc_blink:
 	ld hl,mz_blinks
-	call mc_say
+	call mx_say
 	ld a,5
 	jp mc_tport
 mc_teleport:
 	ld hl,mz_teleports
-	call mc_say
+	call mx_say
 	ld a,MAX_SIGHT
 	jp mc_tport
 mc_tele_to:
 	ld hl,mz_commands
-	call mc_say
+	call mx_say
 	jp tele_to
 mc_tele_away:							; 45
 	ld hl,mz_teleports_you
-	call mc_say
+	call mx_say
 	push ix
 	ld hl,100
 	OVCALL PAGE_SCROLL, teleport, PAGE_MCAST
@@ -232,22 +232,22 @@ mc_critical:							; 29
 /* wound - HL = what it does, B/C = damage dice, unless the player saves */
 wound:
 	push bc
-	call mc_say
+	call mx_say
 	call player_saves
 	pop bc
 	ld hl,mcm_resist_spell
-	jp c,msg_print
+	jp c,mx_print
 	call damroll
 	jp take_hit
 
 mc_die:									; 43
 	ld hl,mz_scream_die
-	call mc_say
+	call mx_say
 	call player_saves
 	ld hl,mcm_laugh
-	jp c,msg_print
+	jp c,mx_print
 	ld hl,mcm_bleed
-	call msg_print
+	call mx_print
 	ld bc,15*256+15
 	call damroll
 	call take_hit
@@ -260,12 +260,12 @@ mc_die:									; 43
 
 mc_stare:								; 44
 	ld hl,mz_stares
-	call mc_say
+	call mx_say
 	call player_saves
 	ld hl,mcm_resist_effects
-	jp c,msg_print
+	jp c,mx_print
 	ld hl,mcm_mind_blasted
-	call msg_print
+	call mx_print
 	call confuse_unless
 	ld bc,8*256+8
 	call damroll
@@ -273,12 +273,12 @@ mc_stare:								; 44
 
 mc_glow_red:							; 55
 	ld hl,mz_glow_red
-	call mc_say
+	call mx_say
 	call player_saves
 	ld hl,mcm_avert
-	jp c,msg_print
+	jp c,mx_print
 	ld hl,mcm_mind_blasted
-	call msg_print
+	call mx_print
 	ld bc,12*256+15
 	call damroll
 	call take_hit
@@ -297,14 +297,14 @@ mc_glow_red:							; 55
 
 mc_hold:
 	ld hl,mz_gazes
-	call mc_say
+	call mx_say
 	ld a,(p_eflags+2)
 	bit EF2_FREE_ACT,a
 	ld hl,mcm_unaffected
-	jp nz,msg_print
+	jp nz,mx_print
 	call player_saves
 	ld hl,mcm_stare_back
-	jp c,msg_print
+	jp c,mx_print
 /* paralyse - paralysed 2 more turns, or 1d5 + 4 */
 paralyse:
 	ld hl,p_paralysed
@@ -325,14 +325,14 @@ paralyse:
 
 mc_blind:
 	ld hl,mz_burning
-	call mc_say
+	call mx_say
 	call player_saves
 	jr c,.clears
 	call blind_resist
 	jr z,blind_more
 .clears:
 	ld hl,mcm_vision_clears
-	jp msg_print
+	jp mx_print
 /* blind_more - blind 6 more turns, or 12 + 1d3 */
 blind_more:
 	ld hl,(p_blind)
@@ -363,14 +363,14 @@ blind_resist:
 
 mc_confuse:
 	ld hl,mz_mesmerising
-	call mc_say
+	call mx_say
 	call player_saves
 	jr c,.disbelieve
 	call confuse_resist
 	jr z,confuse_more
 .disbelieve:
 	ld hl,mcm_disbelieve
-	jp msg_print
+	jp mx_print
 /* confuse_unless - confused, unless the player resists confusion or chaos */
 confuse_unless:
 	call confuse_resist
@@ -390,23 +390,23 @@ confuse_resist:
 
 mc_fear:
 	ld hl,mz_fearful
-	call mc_say
+	call mx_say
 	call player_saves
 	ld hl,mcm_not_frightened
-	jp c,msg_print
+	jp c,mx_print
 	ld hl,p_afraid
 	jr more_or_new
 
 mc_slow:
 	ld hl,mz_drains_power
-	call mc_say
+	call mx_say
 	ld a,(p_eflags+2)
 	bit EF2_FREE_ACT,a
 	ld hl,mcm_unaffected
-	jp nz,msg_print
+	jp nz,mx_print
 	call player_saves
 	ld hl,mcm_body_resists
-	jp c,msg_print
+	jp c,mx_print
 /* slow_more - slowed 2 more turns, or 1d5 + 3 */
 slow_more:
 	ld hl,p_slow
@@ -440,11 +440,11 @@ mc_drain_mana:
 	or l
 	ret z
 	ld hl,mz_psychic
-	call mc_say
+	call mx_say
 	ld a,(ix+M_ML)
 	or a
 	ld hl,mz_appears_healthier
-	call nz,mc_say
+	call nz,mx_say
 	ld a,(mc_level)						; r1 = 1d(level) / 2 + 1
 	or a
 	jr z,.one
@@ -474,7 +474,7 @@ mc_drain_mana:
 
 mc_heal:								; 46
 	ld hl,mz_concentrates
-	call mc_say
+	call mx_say
 	ld l,(ix+M_HP)
 	ld h,(ix+M_HP+1)
 	ld e,(ix+M_MAXHP)
@@ -485,7 +485,7 @@ mc_heal:								; 46
 	pop hl
 	jr c,.heal
 	ld hl,mz_as_healthy
-	jp mc_say
+	jp mx_say
 .heal:
 	push de
 	ld a,(mc_level)						; hp += level * 6, up to maxhp
@@ -506,11 +506,11 @@ mc_heal:								; 46
 	ld hl,mz_looks_healthier
 	jr c,$+5
 	ld hl,mz_really_healthy
-	jp mc_say
+	jp mx_say
 
 mc_haste:								; 47
 	ld hl,mz_casts_spell
-	call mc_say
+	call mx_say
 	ld a,(mc_rspeed)					; cspeed <= speed - 10 + py speed
 	sub 10
 	ld hl,p_speed
@@ -526,7 +526,7 @@ mc_haste:								; 47
 	ret nc
 	inc (ix+M_SPEED)
 	ld hl,mz_faster
-	jp mc_say
+	jp mx_say
 
 ; ---------------------------------------------------------------- breaths
 
@@ -536,7 +536,7 @@ mc_br_light:
 	jr breathe
 mc_br_gas:
 	ld hl,mz_br_gas
-	call mc_say
+	call mx_say
 	ld de,800
 	ld a,GF_POISON_GAS
 	jr breathe_capped
@@ -554,7 +554,7 @@ mc_br_fire:
 /* breathe - HL = what it does, A = element: hp / 3 of it, up to 1600 */
 breathe:
 	push af
-	call mc_say
+	call mx_say
 	pop af
 	ld de,1600
 breathe_capped:
@@ -600,7 +600,7 @@ mc_acid_ball:
 ball_spell:
 	push af
 	push de
-	call mc_say
+	call mx_say
 	pop de
 	push de
 	ld a,(mc_level)
@@ -617,7 +617,7 @@ ball_spell:
 	jp mon_ball
 mc_stink:								; 56
 	ld hl,mz_stinking
-	call mc_say
+	call mx_say
 	ld bc,12*256+2
 	call damroll
 	ld a,GF_POISON_GAS
@@ -661,7 +661,7 @@ mc_light_bolt:							; 39
 bolt_third:
 	push af
 	push bc
-	call mc_say
+	call mx_say
 	pop bc
 	call damroll
 	ld a,(mc_level)
@@ -672,7 +672,7 @@ bolt_third:
 	jp mon_bolt
 mc_mana_bolt:							; 32: 1d(level * 7 / 2) + 50
 	ld hl,mz_mana_bolt
-	call mc_say
+	call mx_say
 	ld a,(mc_level)
 	ld e,a
 	ld d,7
@@ -687,14 +687,14 @@ mc_mana_bolt:							; 32: 1d(level * 7 / 2) + 50
 	jp mon_bolt
 mc_missiles:							; 48: 6d7
 	ld hl,mz_missiles
-	call mc_say
+	call mx_say
 	ld bc,6*256+7
 	call damroll
 	ld a,GF_MAGIC_MISSILE
 	jp mon_bolt
 mc_plasma:								; 49: 10 + 8d7 + level
 	ld hl,mz_plasma
-	call mc_say
+	call mx_say
 	ld bc,8*256+7
 	call damroll
 	ld a,(mc_level)
@@ -704,7 +704,7 @@ mc_plasma:								; 49: 10 + 8d7 + level
 	jp mon_bolt
 mc_ice_bolt:							; 52: 6d6 + level of frost; then
 	ld hl,mz_ice_bolt					; 8d10, stunned and cut
-	call mc_say
+	call mx_say
 	ld bc,6*256+6
 	call damroll
 	ld a,(mc_level)
@@ -727,7 +727,7 @@ mc_ice_bolt:							; 52: 6d6 + level of frost; then
 	ret
 mc_water_bolt:							; 58: 10d10 + level; stunned
 	ld hl,mz_water_bolt
-	call mc_say
+	call mx_say
 	ld bc,10*256+10
 	call damroll
 	ld a,(mc_level)
@@ -795,7 +795,7 @@ mc_summon_ancientd:						; 80
 	y and x, which the summon_ functions move) */
 summon:
 	push bc
-	call mc_say
+	call mx_say
 	pop bc
 	ld a,(player_y)
 	ld (mc_sy),a
@@ -875,7 +875,7 @@ wis_adj:	db 8,0, 15,1, 18,2, 68,3, 88,4, 108,5, 118,6, 119,7, 129,8, 139,9
 
 ; ---------------------------------------------------------------- saying it
 
-/* mc_say - HL = text: "The Orc <text>", "Grip, Farmer Maggot's Dog
+/* mx_say - HL = text: "The Orc <text>", "Grip, Farmer Maggot's Dog
 	<text>" or "It <text>" when the player can't see it */
 mc_say:
 	push hl
@@ -1364,7 +1364,7 @@ el_fire:
 	call inven_damage
 	ret z
 	ld hl,mcm_smoke
-	jp msg_print
+	jp mx_print
 
 /* el_cold - HL = damage of cold (cold_dam) */
 el_cold:
@@ -1385,7 +1385,7 @@ el_cold:
 	call inven_damage
 	ret z
 	ld hl,mcm_shatters
-	jp msg_print
+	jp mx_print
 
 /* el_light - HL = damage of lightning (light_dam) */
 el_light:
@@ -1435,7 +1435,7 @@ el_acid:
 	call inven_damage
 	ret z
 	ld hl,mcm_acrid
-	jp msg_print
+	jp mx_print
 
 /* el_poison - HL = damage of poison gas: poisoned too, unless resisting
 	(poison_gas) */
@@ -1695,6 +1695,10 @@ set_acid_destroy:
 	db TV_ARROW,TV_BOW,TV_HAFTED,TV_POLEARM,TV_BOOTS,TV_GLOVES,TV_CLOAK,TV_HELM
 	db TV_SHIELD,TV_HARD_ARMOR,TV_SOFT_ARMOR,0
 	db TV_SCROLL1,TV_SCROLL2,TV_FOOD,TV_STAFF,0
+set_corrodes:
+	db 2,TR1_RES_ACID, 1,TR2_IM_ACID, 0
+	db TV_SWORD,TV_HELM,TV_SHIELD,TV_HARD_ARMOR,0
+	db TV_WAND,0
 set_lightning:
 	db 3,TR1_RES_LIGHT, 1,TR2_IM_LIGHT, 0
 	db TV_RING,0
@@ -1702,77 +1706,9 @@ set_lightning:
 
 ; ---------------------------------------------------------------- what they say
 
-mz_blinks:			db "blinks away.",0
-mz_teleports:		db "teleports away.",0
-mz_commands:		db "commands you to return!",0
-mz_teleports_you:	db "teleports you away.",0
-mz_curses:			db "points at you and curses.",0
-mz_curses_horribly: db "points at you and curses horribly.",0
-mz_incanting:		db "points at you, incanting terribly!",0
-mz_scream_die:		db "points at you, screaming the word DIE!",0
-mz_stares:			db "stares at you.",0
-mz_glow_red:		db "concentrates and its eyes glow red.",0
-mz_gazes:			db "gazes deep into your eyes!",0
-mz_burning:		db "casts a spell, burning your eyes!",0
-mz_mesmerising:	db "creates a mesmerising illusion.",0
-mz_fearful:		db "casts a fearful illusion.",0
-mz_drains_power:	db "drains power from your muscles!",0
-mz_psychic:		db "draws psychic energy from you!",0
-mz_appears_healthier: db "appears healthier.",0
-mz_concentrates:	db "concentrates on its wounds.",0
-mz_as_healthy:		db "looks as healthy as can be.",0
-mz_really_healthy:	db "looks REALLY healthy!",0
-mz_looks_healthier: db "looks healthier.",0
-mz_casts_spell:	db "casts a spell.",0
-mz_faster:			db "starts moving faster.",0
-mz_br_lightning:	db "breathes lightning.",0
-mz_br_gas:			db "breathes gas.",0
-mz_br_acid:		db "breathes acid.",0
-mz_br_frost:		db "breathes frost.",0
-mz_br_fire:		db "breathes fire.",0
-mz_fire_bolt:		db "casts a Fire bolt.",0
-mz_frost_bolt:		db "casts a Frost bolt.",0
-mz_acid_bolt:		db "casts a Acid bolt.",0
-mz_mmissile:		db "casts a Magic missile.",0
-mz_mana_bolt:		db "casts a Mana bolt.",0
-mz_light_bolt:		db "casts a Lightning bolt.",0
-mz_missiles:		db "fires missiles at you.",0
-mz_plasma:			db "casts a Plasma bolt.",0
-mz_ice_bolt:		db "casts an Ice bolt.",0
-mz_water_bolt:		db "casts a Water bolt.",0
-mz_fire_ball:		db "casts a Fire ball.",0
-mz_frost_ball:		db "casts a Frost ball.",0
-mz_light_ball:		db "casts a Lightning ball.",0
-mz_acid_ball:		db "casts an Acid ball.",0
-mz_stinking:		db "casts a Stinking cloud.",0
-mz_summons_help:	db "magically summons help!",0
-mz_beyond_grave:	db "magically summons help from beyond the grave!",0
-mz_hellish:		db "summons a hellish adversary!",0
-mz_a_dragon:		db "magically summons a Dragon!",0
-mz_summons_monsters: db "magically summons monsters!",0
-mz_an_angel:		db "summons an Angel.",0
-mz_spiders:		db "magically summons Spiders.",0
-mz_hounds:			db "magically summons Hounds.",0
-mz_the_dead:		db "summons the DEAD!",0
-mz_ancient_dragons: db "summons Ancient Dragons.",0
 mz_your:			db "Your ",0
 mz_resists_damage:	db " resists damage!",0
 mz_is_damaged:		db " is damaged!",0
-mcm_resist_spell:	db "You resist the effects of the spell.",0
-mcm_resist_effects:	db "You resist the effects.",0
-mcm_laugh:			db "You laugh at the feeble spell.",0
-mcm_bleed:			db "You start to bleed!",0
-mcm_mind_blasted:	db "Your mind is blasted by psionic energy.",0
-mcm_avert:			db "You avert your gaze!",0
-mcm_unaffected:		db "You are unaffected.",0
-mcm_stare_back:		db "You stare back unafraid!",0
-mcm_vision_clears:	db "You blink and your vision clears.",0
-mcm_disbelieve:		db "You disbelieve the feeble spell.",0
-mcm_not_frightened:	db "You refuse to be frightened.",0
-mcm_body_resists:	db "Your body resists the spell.",0
-mcm_smoke:			db "There is smoke coming from your pack!",0
-mcm_shatters:		db "Something shatters inside your pack!",0
-mcm_acrid:			db "There is an acrid smell coming from your pack!",0
 
 ; ---------------------------------------------------------------- workspace
 

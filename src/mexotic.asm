@@ -103,6 +103,7 @@ mc_br_disenchant:						; 37
 	ld a,(p_eflags2+2)
 	and TR2_RES_DISENCHANT
 	jp nz,hp_ball
+	ld hl,dis_slots
 	call disenchant
 	ld b,6
 	ld de,500
@@ -114,14 +115,16 @@ mc_br_disenchant:						; 37
 	set PU_BONUS,(hl)
 	ld hl,mcm_static
 	jp mx_print
-/* disenchant - a random piece of armour loses 1d2 of each of its pluses
-	(none below 0) -> mc_count = 1 if any did */
+/* disenchant - HL = 7 equipment slots: one of them, at random, loses
+	1d2 of each of its pluses (none below 0) -> mc_count = 1 if any did */
 disenchant:
 	xor a
 	ld (mc_count),a
+	push hl
 	ld a,7
 	call randint
-	ld hl,dis_slots-1
+	pop hl
+	dec hl
 	add hl,a
 	ld e,(hl)
 	ld d,ITEM_SIZE
@@ -402,7 +405,7 @@ mc_br_nexus:							; 64
 	call player_saves
 	jp nc,tele_level
 	ld hl,mcm_resist_effects
-	jp msg_print
+	jp mx_print
 .scramble:
 	call player_saves
 	jr nc,.go
@@ -410,7 +413,7 @@ mc_br_nexus:							; 64
 	call randint
 	cp 1
 	ld hl,mcm_resist_effects
-	jp z,msg_print
+	jp z,mx_print
 .go:
 	ld hl,mcm_scramble
 	call mx_print
@@ -610,7 +613,7 @@ drain_exp:
 
 mc_traps:								; 42: no traps yet, so only words
 	ld hl,mz_casts_spell
-	jp mc_say
+	jp mx_say
 mc_shadow:								; 53
 	ld hl,mz_shadow
 	call mx_say
@@ -798,6 +801,10 @@ chaos_all:
 	an open square beside them and theirs fills with rock, or, with nowhere
 	to go, crushed for 250 (br_wall in CREATURE.C) */
 br_wall:
+	ld hl,250
+/* br_wall_n - the same, HL = the damage if there's nowhere to go */
+br_wall_n:
+	ld (mc_trapdam),hl
 	ld a,(player_y)						; the first free square round about
 	dec a
 	ld d,a
@@ -841,7 +848,7 @@ br_wall:
 	jr nz,.escape
 	ld hl,mcm_trapped
 	call mx_print
-	ld hl,250
+	ld hl,(mc_trapdam)
 	jp take_hit
 .escape:
 	ld a,3
@@ -958,7 +965,6 @@ resists_chaos:
 
 mc_summon_mighty:						; 73: 10 ringwraiths, then 7 greater
 	ld hl,mz_mighty_undead				; undead, carrying on from them
-	call mx_text
 	ld bc,10*256+SUM_WRAITH
 	call summon
 	ld b,7
@@ -966,17 +972,14 @@ mc_summon_mighty:						; 73: 10 ringwraiths, then 7 greater
 	jp summon_more
 mc_summon_reptiles:						; 76
 	ld hl,mz_reptiles
-	call mx_text
 	ld bc,8*256+SUM_REPTILE
 	jp summon
 mc_summon_ants:							; 77
 	ld hl,mz_ants
-	call mx_text
 	ld bc,7*256+SUM_ANT
 	jp summon
 mc_summon_uniques:						; 78: 5 uniques, 4 jabberwocks
 	ld hl,mz_special
-	call mx_text
 	ld bc,5*256+SUM_UNIQUE
 	call summon
 	ld b,4
@@ -984,7 +987,7 @@ mc_summon_uniques:						; 78: 5 uniques, 4 jabberwocks
 	jp summon_more
 
 /* mx_say, mx_print - mc_say and msg_print for HL = a message kept in the
-	monster spell page (src/mexotic_text.asm), copied out first */
+	monster text page (src/mcast_text.asm), copied out first */
 mx_say:
 	call mx_text
 	jp mc_say
@@ -992,7 +995,7 @@ mx_print:
 	call mx_text
 	jp msg_print
 mx_text:
-	nextreg NR_MMU1,MSPELL_PAGE
+	nextreg NR_MMU1,MTEXT_PAGE
 	ld de,mx_buf
 .copy:
 	ld a,(hl)
@@ -1006,3 +1009,4 @@ mx_text:
 
 mx_buf:				ds 48
 mc_base:			dw 0
+mc_trapdam:			dw 0
