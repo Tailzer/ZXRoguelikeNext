@@ -19,6 +19,10 @@ REGEN_HPBASE		equ 1442			; PLAYER_REGEN_HPBASE
 player_init:
 	xor a
 	ld (p_speed),a
+	ld (p_eq_speed),a					; nothing worn yet
+	ld hl,p_stat_mod
+	ld b,6
+	call .zero
 	ld (p_status),a						; (before calc_hitpoints looks)
 	ld (p_status+1),a
 	ld (p_update),a
@@ -57,7 +61,7 @@ player_init:
 	ld de,p_stat_max
 	ld bc,6
 	ldir
-	FARCALL PAGE_MAGIC, magic_init		; this game's potion colours
+	FARCALL PAGE_MISC, magic_init		; this game's flavours
 	FARCALL PAGE_ITEMS, starting_kit	; also works out the bonuses
 	ret
 .zero:

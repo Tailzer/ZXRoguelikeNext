@@ -149,7 +149,7 @@ monsters_see_all:
 
 /* update_mon - IX = monster. Visible unless blind, if within MAX_SIGHT,
 	on screen, in line of sight, not invisible (unless the player sees
-	invisible: high-elves, or detect invisible), and either on a lit square
+	invisible: high-elves, rings, or detect invisible), and either on a lit square
 	or within infravision (unless it's cold-blooded).
 	Clobbers everything but IX */
 update_mon:
@@ -159,9 +159,9 @@ update_mon:
 	call mon_race
 	bit RF_INVISIBLE,(iy+R_FLAGS)
 	jr z,.seeable
-	ld a,(p_race)
-	cp RACE_HIGH_ELF
-	jr z,.seeable
+	ld a,(p_eflags+3)					; (high-elves, or a ring)
+	bit EF3_SEE_INVIS,a
+	jr nz,.seeable
 	ld a,(p_status+1)
 	bit PY2_DET_INV,a
 	jr z,.hidden
@@ -263,6 +263,9 @@ mon_turn:
 	ld a,(ix+M_SLEEP)
 	or (ix+M_SLEEP+1)
 	jr z,.act
+	ld a,(p_eflags+1)					; aggravation wakes it at once
+	bit EF1_AGGRAVATE,a
+	jr nz,.wake
 	call rand16							; does it notice the player?
 	ld a,h
 	and 3

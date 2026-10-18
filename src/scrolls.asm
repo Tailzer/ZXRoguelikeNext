@@ -970,7 +970,7 @@ sc_food:
 	call item_free_slot
 	ret nc
 	ld hl,KIND_SLIME_MOLD
-	call new_plain
+	OVCALL PAGE_MISC, new_plain, PAGE_SCROLL
 	ld a,(player_y)
 	ld (ix+I_Y),a
 	ld a,(player_x)

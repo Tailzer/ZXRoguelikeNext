@@ -832,7 +832,11 @@ draw_sheet:
 	call title_string
 	ld de,(SHEET_ROW+3)*256+COL2
 	call print_text
-	ld hl,p_stat						; STR..CHR
+	ld hl,p_stat_use					; STR..CHR as used (use_stat), or
+	ld a,(sheet_full)					; as rolled
+	or a
+	jr nz,$+5
+	ld hl,p_stat
 	ld de,SHEET_ROW*256+COL3
 	ld b,6
 .stat:

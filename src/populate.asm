@@ -683,7 +683,8 @@ place_object:
 	ld (ix+I_X),e
 	call get_obj_num
 	ld a,(dun_level)					; magic_treasure at this depth
-	jp new_item
+	OVCALL PAGE_MISC, new_item, PAGE_LEVEL
+	ret
 
 /* get_obj_num - HL = a kind for this depth (get_obj_num in MISC2.C):
 	1 in OBJ_GREAT looks much deeper; half the time it picks one dungeon

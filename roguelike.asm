@@ -27,6 +27,8 @@
 		RODS.C): charges, bolts, balls and beams; 9-bit item kinds
 	Milestone 9c-1: Pluses - magic_treasure's to-hit, to-dam and AC, curses,
 		enchant and curse scrolls, item feelings
+	Milestone 9c-2: Rings and amulets - flavours, neck and ring slots,
+		stat, speed and other bonuses, sustains, resistances
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -108,9 +110,9 @@ dispatch:
 	cp CMD_UP
 	jp z,.up
 	cp CMD_STAY
-	jr z,.stay
+	jp z,.stay
 	cp CMD_CHARACTER
-	jr z,.character
+	jp z,.character
 	cp CMD_INVEN
 	jr nc,.item_command
 	call try_move
@@ -134,6 +136,9 @@ dispatch:
 	ld a,b
 	call z,regenhp
 	FARCALL PAGE_MAGIC, timed_tick
+	ld a,(p_eflags+1)					; a ring of teleportation
+	bit EF1_TELEPORT,a
+	call nz,random_teleport
 	ld a,(p_new_level)					; word of recall
 	or a
 	jp z,main_loop
@@ -217,7 +222,6 @@ memory_init:
 	include "src/items.asm"
 	include "src/pack.asm"
 	include "src/status.asm"
-	include "src/magic_items.asm"
 	include "src/view.asm"
 	include "src/player.asm"
 	include "src/messages.asm"
@@ -238,6 +242,8 @@ level_end:
 
 	MMU 2, PAGE_MISC, $4000
 	include "src/startup.asm"
+	include "src/magic_items.asm"
+	include "src/magic_init.asm"
 misc_end:
 	ASSERT misc_end <= $6000, "Misc overlay is over 8K"
 

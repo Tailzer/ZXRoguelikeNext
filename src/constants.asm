@@ -27,7 +27,9 @@ object_ident		equ KNOWLEDGE		;  what the player knows, 64 per object_offset
 flavour_map			equ object_ident+8*64	;  colour shown for each potion
 wood_map			equ flavour_map+57	;  wood for each staff
 metal_map			equ wood_map+32		;  metal for each wand and rod
-KNOWLEDGE_END		equ metal_map+32
+rock_map			equ metal_map+32	;  stone for each ring
+amulet_map			equ rock_map+39		;  material for each amulet
+KNOWLEDGE_END		equ amulet_map+16
 	ASSERT KNOWLEDGE_END <= $8000
 IM2_JUMP			equ $BDBD			; jp im2_handler
 
@@ -36,6 +38,17 @@ IM2_JUMP			equ $BDBD			; jp im2_handler
 	MACRO FARCALL ov_page, ov_routine
 		nextreg NR_MMU2, ov_page
 		call ov_routine
+	ENDM
+; OVCALL page, routine, back - call a routine in another overlay from an
+; overlay (page back), through overlay_call. Clobbers BC; A, HL, DE, IX, IY
+; and flags pass through
+	MACRO OVCALL ov_page, ov_routine, ov_back
+		push hl
+		ld hl,ov_routine
+		ld (xc_target),hl
+		pop hl
+		ld bc,ov_page*256+ov_back
+		call overlay_call
 	ENDM
 
 ; ---- Next registers ----
@@ -234,8 +247,8 @@ ITEM_MAX			equ 64
 PACK				equ ITEM_LIST+ITEM_MAX*ITEM_SIZE	; PACK_MAX carried items
 PACK_MAX			equ 12				; slots a-l
 EQUIP				equ PACK+PACK_MAX*ITEM_SIZE	; EQ_SLOTS worn/wielded items
-EQ_SLOTS			equ 7				; slots in use (shown by 'e')
-EQ_MAX				equ 12				; room kept for rings, amulet, light...
+EQ_SLOTS			equ 10				; slots in use (shown by 'e')
+EQ_MAX				equ 12				; room kept for a light and a spare
 EQ_WEAPON			equ 0
 EQ_BODY				equ 1
 EQ_SHIELD			equ 2
@@ -243,6 +256,9 @@ EQ_HELM				equ 3
 EQ_CLOAK			equ 4
 EQ_GLOVES			equ 5
 EQ_BOOTS			equ 6
+EQ_NECK				equ 7
+EQ_RIGHT			equ 8				; rings: right hand first
+EQ_LEFT				equ 9
 ITEM_SIZE			equ 14
 ITEM_EMPTY			equ $FF				; I_KIND_HI of a free slot
 KIND_GOLD			equ $FE				; I_KIND_HI of a pile of treasure
@@ -307,6 +323,8 @@ MC_BOOTS			equ 5
 MC_HELM				equ 6
 MC_CLOAK			equ 7
 MC_CROWN			equ 8
+MC_RING				equ 9
+MC_AMULET			equ 10
 OBJ_TOWN_LEVEL		equ 5				; what level store goods are made at
 ; ego names (SN_ in CONSTANT.H) set so far
 SN_IRRITATION		equ 40
@@ -326,6 +344,8 @@ IC_HELM				equ 10
 IC_CLOAK			equ 11
 IC_GLOVES			equ 12
 IC_BOOTS			equ 13
+IC_AMULET			equ 14				; (slot 7, the neck)
+IC_RING				equ 15				; (slots 8 and 9)
 FILTER_CHARGED		equ $FE				; choose_pack filter: wand or staff
 TREAS_ROOM_ALLOC	equ 9				; mean objects in rooms
 TREAS_ANY_ALLOC		equ 3				; mean objects anywhere
@@ -435,6 +455,21 @@ PY2_TIM_INFRA		equ 2
 ; p_update bits: recalculations overlays leave to the main loop
 PU_BONUS			equ 0				; stat bonuses, calc_bonuses
 PU_HP				equ 1				; calc_hitpoints
+; the C's item flags (TREASURE.C), as bits of each byte of p_eflags
+EF0_SEARCH			equ 6				; byte 0 (bits 0-5: the stats)
+EF0_SLOW_DIGEST		equ 7
+EF1_AGGRAVATE		equ 1				; byte 1
+EF1_TELEPORT		equ 2
+EF1_SPEED			equ 4
+EF2_RES_FIRE		equ 3				; byte 2
+EF2_RES_ACID		equ 4
+EF2_RES_COLD		equ 5
+EF2_SUST_STAT		equ 6
+EF2_FREE_ACT		equ 7
+EF3_SEE_INVIS		equ 0				; byte 3
+EF3_FFALL			equ 2
+EF3_POISON			equ 4
+EF3_CURSED			equ 7
 ; races with intrinsics (calc_bonuses)
 RACE_HOBBIT			equ 3				; sustain DEX
 RACE_GNOME			equ 4				; free action
@@ -459,6 +494,10 @@ TV_POTION2			equ 76
 TV_STAFF			equ 55
 TV_WAND				equ 65
 TV_ROD				equ 66
+TV_AMULET			equ 40
+TV_RING				equ 45
+OFS_AMULET			equ 0
+OFS_RING			equ 1
 OFS_STAFF			equ 2				; object_offset() for staffs
 OFS_WAND			equ 3
 OFS_SCROLL			equ 4

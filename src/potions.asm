@@ -2,7 +2,7 @@
 	References: POTIONS.C quaff, MISC2.C inc_stat/dec_stat/res_stat,
 	DUNGEON.C ruin_stat, SPELLS.C hp_player, the cures, lose_str etc, lose_exp,
 	restore_level/self_knowledge/identify_pack, WIZARD.C wizard_light,
-	MISC2.C cut_player/stun_player, DESC.C magic_init.
+	MISC2.C cut_player/stun_player.
 	A potion's flags say what it does: each set bit is one effect, numbered
 	from 1 (33 for TV_POTION2), run lowest bit first as the C's bit_pos does.
  */
@@ -11,146 +11,6 @@
 magic_action:
 	dec b
 	jp z,quaff_potion
-	ret
-
-/* magic_init - this game's potion colours: all but the first three
-	(slime mold, apple juice, water) are shuffled (magic_init in DESC.C) */
-magic_init:
-	ld hl,flavour_map
-	xor a
-.ident:
-	ld (hl),a
-	inc hl
-	inc a
-	cp MAX_FLAVOURS
-	jr c,.ident
-	ld a,3
-.shuffle:
-	ld (mi_i),a
-	ld a,MAX_FLAVOURS-3					; j = randint(MAX_COLORS - 3) + 2
-	call randint
-	add a,2
-	ld hl,flavour_map
-	add hl,a
-	ex de,hl							; DE = &map[j]
-	ld a,(mi_i)
-	ld hl,flavour_map
-	add hl,a							; HL = &map[i]
-	ld a,(de)
-	ld c,(hl)
-	ld (hl),a
-	ld a,c
-	ld (de),a
-	ld a,(mi_i)
-	inc a
-	cp MAX_FLAVOURS
-	jr c,.shuffle
-	ld hl,wood_map						; woods and metals: all shuffled
-	call .shuffle32
-	ld hl,metal_map
-	call .shuffle32
-	; scroll titles: 2 or 3 words of 1 or 2 syllables each, cut at 9
-	nextreg NR_MMU1,FLAVOUR_PAGE
-	ld hl,scroll_titles
-	ld (mi_dst),hl
-	ld a,MAX_TITLES
-.title:
-	ld (mi_i),a
-	ld hl,mi_buf						; a fresh buffer
-	ld b,MI_BUF_SIZE
-.wipe:
-	ld (hl),0
-	inc hl
-	djnz .wipe
-	ld hl,mi_buf
-	ld (mi_ptr),hl
-	ld a,2
-	call randint
-	inc a
-	ld (mi_words),a
-.word:
-	ld a,2
-	call randint
-.syllable:
-	push af
-	ld a,NUM_SYLLABLES
-	call randint
-	dec a
-	add a,a
-	ld hl,syllables
-	add hl,a
-	ld a,(hl)
-	inc hl
-	ld h,(hl)
-	ld l,a
-	ld de,(mi_ptr)
-.copy:
-	ld a,(hl)
-	or a
-	jr z,.copied
-	ld (de),a
-	inc hl
-	inc de
-	jr .copy
-.copied:
-	ld (mi_ptr),de
-	pop af
-	dec a
-	jr nz,.syllable
-	ld hl,mi_words
-	dec (hl)
-	jr z,.cut
-	ld hl,(mi_ptr)						; a space between words
-	ld (hl),' '
-	inc hl
-	ld (mi_ptr),hl
-	jr .word
-.cut:
-	ld a,(mi_buf+8)						; end at 8 if that's a space, else 9
-	cp ' '
-	ld hl,mi_buf+8
-	jr z,$+3
-	inc hl
-	ld (hl),0
-	ld hl,mi_buf
-	ld de,(mi_dst)
-	ld bc,10
-	ldir
-	ld (mi_dst),de
-	ld a,(mi_i)
-	dec a
-	jr nz,.title
-	ret
-.shuffle32:								; HL = 32 entries: in order, then
-	ld (mi_dst),hl						; each swapped with a random one
-	xor a
-.order:
-	ld (hl),a
-	inc hl
-	inc a
-	cp 32
-	jr c,.order
-	xor a
-.swap:
-	ld (mi_i),a
-	ld a,32
-	call randint
-	dec a
-	ld hl,(mi_dst)
-	add hl,a
-	ex de,hl							; DE = &map[j]
-	ld a,(mi_i)
-	ld hl,(mi_dst)
-	add hl,a							; HL = &map[i]
-	ld a,(de)
-	ld c,(hl)
-	ld (hl),a
-	ld a,c
-	ld (de),a
-	ld a,(mi_i)
-	inc a
-	cp 32
-	jr c,.swap
 	ret
 
 ; ---------------------------------------------------------------- quaff
@@ -337,25 +197,17 @@ lose_stat:
 	resists, with a message either way */
 lose_stat_msg:
 	ld (ls_stat),a
-	ld b,RACE_HALF_TROLL				; which race sustains it, if any
-	cp A_STR
-	jr z,.sustain
-	ld b,RACE_HOBBIT
-	cp A_DEX
-	jr z,.sustain
-	ld b,RACE_DUNADAN
-	cp A_CON
-	jr z,.sustain
-	ld b,$FF
-.sustain:
-	ld a,(ls_stat)
+	ld b,a
 	add a,a
 	add a,a
 	ld hl,lose_msgs
 	add hl,a							; HL -> (lost, sustained) messages
-	ld a,(p_race)
-	cp b
-	jr z,.sustained
+	ld a,(p_sustain)					; (race or ring: calc_bonuses)
+	inc b
+.bit:
+	rrca
+	djnz .bit
+	jr c,.sustained
 	push hl
 	ld a,(ls_stat)
 	call dec_stat
@@ -555,9 +407,9 @@ pe_experience:
 
 ; bad things
 pe_sleep:
-	ld a,(p_race)
-	cp RACE_GNOME						; free action
-	ret z
+	ld a,(p_eflags+2)					; free action (gnomes have it)
+	bit EF2_FREE_ACT,a
+	ret nz
 	ld hl,msg_fall_asleep
 	call msg_print
 	ld a,4
@@ -588,6 +440,9 @@ pe_poison:
 	ld hl,p_poisoned
 	ld de,msg_very_sick
 	call say_if_zero
+	ld a,(p_eflags+3)					; resisted: just the message
+	bit EF3_POISON,a
+	ret nz
 	ld hl,p_poisoned
 	ld bc,10*256+15
 	jp add_rand
@@ -1353,38 +1208,48 @@ self_knowledge:
 	ld a,(ix+2)
 	cp $FF
 	jr z,.done
-	ld l,(ix+0)							; a counter running?
+	ld c,0								; C = 1 if its counter is running
+	ld l,(ix+0)
 	ld h,(ix+1)
 	ld a,h
 	or l
-	jr z,.race
+	jr z,.flag
 	call get_w
-	jr nz,.show
-.race:
+	jr z,.flag
+	inc c
+.flag:
+	call sk_flag						; carry if its flag is set
+	bit 6,(ix+3)
+	jr z,.either
+	jr nc,.next							; both: counter and flag, and then
+	ld a,c								; not the next line
+	or a
+	jr z,.next
+	call .show
+	ld de,SK_SIZE
+	add ix,de
+	jr .next
+.either:
+	jr c,.shown
+	ld a,c
+	or a
+	jr nz,.shown
 	ld a,(ix+2)							; or a race's gift
 	cp $FE
 	jr z,.infra
 	ld b,a
 	ld a,(p_race)
 	cp b
-	jr z,.show
+	jr z,.shown
 	jr .next
 .infra:
 	ld a,(p_infra)
 	or a
 	jr z,.next
-.show:
-	ld l,(ix+3)
-	ld h,(ix+4)
-	ld a,(sk_row)
-	ld d,a
-	inc a
-	ld (sk_row),a
-	ld e,15
-	ld c,ATTR_WHITE
-	call print_at
+.shown:
+	call .show
 .next:
-	ld de,5
+	ld de,SK_SIZE
 	add ix,de
 	jr .each
 .done:
@@ -1396,83 +1261,108 @@ self_knowledge:
 	ld c,ATTR_GREY
 	call print_at
 	jp wait_fresh_key
+.show:
+	ld a,(sk_row)
+	cp VIEW_TOP+VIEW_H-2				; (no more than fits)
+	ret nc
+	ld l,(ix+4)
+	ld h,(ix+5)
+	ld d,a
+	inc a
+	ld (sk_row),a
+	ld e,15
+	ld c,ATTR_WHITE
+	jp print_at
 
-; counter (0 = none), race ($FD = none, $FE = has infravision), text
+/* sk_flag - IX = knowledge entry -> carry if its flag is set: 0-31 a bit
+	of p_eflags, 32-37 a sustained stat, bit 7 none */
+sk_flag:
+	ld a,(ix+3)
+	bit 7,a
+	jr nz,.no
+	and $3F
+	cp 32
+	jr nc,.sustain
+	ld b,a
+	srl a
+	srl a
+	srl a
+	ld hl,p_eflags
+	add hl,a
+	ld a,b
+	and 7
+	ld b,a
+	ld a,(hl)
+.rot:
+	inc b
+.bit:
+	rrca
+	djnz .bit
+	ret
+.sustain:
+	sub 32
+	ld b,a
+	ld a,(p_sustain)
+	jr .rot
+.no:
+	or a
+	ret
+
+; counter (0 = none), race ($FD = none, $FE = has infravision), flag (SK_),
+; text: shown if the counter is running, the race has it or the flag is set;
+; SK_BOTH: only if counter and flag both are, and then not the next line
+SK_SIZE			equ 6
+SK_NONE			equ $80
+SK_BOTH			equ $40
+SK_SUST			equ 32
+	MACRO SK counter, race, flag, text
+		dw counter
+		db race, flag
+		dw text
+	ENDM
 knowledge:
-	dw p_blind
-	db $FD
-	dw txt_sk_blind
-	dw p_confused
-	db $FD
-	dw txt_sk_confused
-	dw p_afraid
-	db $FD
-	dw txt_sk_afraid
-	dw p_cut
-	db $FD
-	dw txt_sk_cut
-	dw p_stun
-	db $FD
-	dw txt_sk_stun
-	dw p_poisoned
-	db $FD
-	dw txt_sk_poisoned
-	dw p_blessed
-	db $FD
-	dw txt_sk_blessed
-	dw p_hero
-	db $FD
-	dw txt_sk_hero
-	dw p_shero
-	db $FD
-	dw txt_sk_shero
-	dw p_protevil
-	db $FD
-	dw txt_sk_protevil
-	dw p_confuse_mon
-	db $FD
-	dw txt_sk_glowing
-	dw p_word_recall
-	db $FD
-	dw txt_sk_recall
-	dw p_tim_infra
-	db $FE
-	dw txt_sk_infra
-	dw p_detect_inv
-	db RACE_HIGH_ELF
-	dw txt_sk_see_inv
-	dw 0
-	db RACE_HIGH_ELF
-	dw txt_sk_ffall
-	dw 0
-	db RACE_GNOME
-	dw txt_sk_free_act
-	dw 0
-	db RACE_DWARF
-	dw txt_sk_res_blind
-	dw p_resist_heat
-	db $FD
-	dw txt_sk_res_fire
-	dw p_resist_cold
-	db $FD
-	dw txt_sk_res_cold
-	dw 0
-	db 2								; elves
-	dw txt_sk_res_light
-	dw 0
-	db 6								; half-orcs
-	dw txt_sk_res_dark
-	dw 0
-	db RACE_HALF_TROLL
-	dw txt_sk_sus_str
-	dw 0
-	db RACE_DUNADAN
-	dw txt_sk_sus_con
-	dw 0
-	db RACE_HOBBIT
-	dw txt_sk_sus_dex
-	dw 0
-	db $FF
+	SK p_blind, $FD, SK_NONE, txt_sk_blind
+	SK p_confused, $FD, SK_NONE, txt_sk_confused
+	SK p_afraid, $FD, SK_NONE, txt_sk_afraid
+	SK p_cut, $FD, SK_NONE, txt_sk_cut
+	SK p_stun, $FD, SK_NONE, txt_sk_stun
+	SK p_poisoned, $FD, SK_NONE, txt_sk_poisoned
+	SK 0, $FD, 9, txt_sk_aggravate
+	SK 0, $FD, 10, txt_sk_teleport
+	SK p_blessed, $FD, SK_NONE, txt_sk_blessed
+	SK p_hero, $FD, SK_NONE, txt_sk_hero
+	SK p_shero, $FD, SK_NONE, txt_sk_shero
+	SK p_protevil, $FD, SK_NONE, txt_sk_protevil
+	SK p_confuse_mon, $FD, SK_NONE, txt_sk_glowing
+	SK p_word_recall, $FD, SK_NONE, txt_sk_recall
+	SK 0, $FD, 6, txt_sk_search
+	SK p_tim_infra, $FE, SK_NONE, txt_sk_infra
+	SK p_detect_inv, $FD, 24, txt_sk_see_inv
+	SK 0, $FD, 26, txt_sk_ffall
+	SK 0, $FD, 23, txt_sk_free_act
+	SK 0, $FD, 7, txt_sk_digest
+	SK 0, RACE_DWARF, SK_NONE, txt_sk_res_blind
+	SK p_resist_heat, $FD, SK_BOTH|19, txt_sk_fire2
+	SK p_resist_heat, $FD, 19, txt_sk_res_fire
+	SK p_resist_cold, $FD, SK_BOTH|21, txt_sk_cold2
+	SK p_resist_cold, $FD, 21, txt_sk_res_cold
+	SK 0, $FD, 20, txt_sk_res_acid
+	SK 0, $FD, 28, txt_sk_res_poison
+	SK 0, 2, SK_NONE, txt_sk_res_light		; elves
+	SK 0, 6, SK_NONE, txt_sk_res_dark		; half-orcs
+	SK 0, $FD, 0, txt_sk_str
+	SK 0, $FD, 1, txt_sk_int
+	SK 0, $FD, 2, txt_sk_wis
+	SK 0, $FD, 3, txt_sk_dex
+	SK 0, $FD, 4, txt_sk_con
+	SK 0, $FD, 5, txt_sk_chr
+	SK 0, $FD, SK_SUST+A_STR, txt_sk_sus_str
+	SK 0, $FD, SK_SUST+A_INT, txt_sk_sus_int
+	SK 0, $FD, SK_SUST+A_WIS, txt_sk_sus_wis
+	SK 0, $FD, SK_SUST+A_CON, txt_sk_sus_con
+	SK 0, $FD, SK_SUST+A_DEX, txt_sk_sus_dex
+	SK 0, $FD, SK_SUST+A_CHR, txt_sk_sus_chr
+	db 0,0,$FF
 
 ; ---------------------------------------------------------------- words
 
@@ -1560,15 +1450,26 @@ txt_sk_res_dark:	db "You are resistant to darkness.",0
 txt_sk_sus_str:		db "You will not become weaker.",0
 txt_sk_sus_con:		db "You will not become out of shape.",0
 txt_sk_sus_dex:		db "You will not become clumsy.",0
+txt_sk_sus_int:		db "You will not become dumber.",0
+txt_sk_sus_wis:		db "You will not become less wise.",0
+txt_sk_sus_chr:		db "You will not become less popular.",0
+txt_sk_aggravate:	db "You aggravate monsters.",0
+txt_sk_teleport:	db "Your position is very uncertain.",0
+txt_sk_search:		db "You are perceptive.",0
+txt_sk_digest:		db "Your appetite is small.",0
+txt_sk_fire2:		db "You resist fire exceptionally well.",0
+txt_sk_cold2:		db "You resist cold exceptionally well.",0
+txt_sk_res_acid:	db "You are resistant to acid.",0
+txt_sk_res_poison:	db "You are resistant to poison.",0
+txt_sk_str:			db "You have magical strength.",0
+txt_sk_int:			db "You have magically enhanced intelligence.",0
+txt_sk_wis:			db "You are magically wise.",0
+txt_sk_dex:			db "You are magically agile.",0
+txt_sk_con:			db "You are magically tough.",0
+txt_sk_chr:			db "You are magically popular.",0
 
 ; ---------------------------------------------------------------- variables
 
-mi_i:			db 0
-mi_dst:			dw 0
-mi_ptr:			dw 0
-mi_words:		db 0
-MI_BUF_SIZE		equ 32
-mi_buf:			ds MI_BUF_SIZE
 q_food:			dw 0
 q_base:			db 0
 q_flags:		dd 0

@@ -1,6 +1,6 @@
 /* effects.asm - timed effects wearing off, once a turn  [overlay: PAGE_MAGIC]
-	Reference: DUNGEON.C dungeon() (the block after food and regeneration),
-	MORIA1.C change_speed.
+	Reference: DUNGEON.C dungeon() (the block after food and regeneration).
+	(change_speed is resident, in status.asm.)
 	Effects with a PY_ status bit announce themselves the turn they start;
 	all of them count down and say so when they end.
  */
@@ -366,6 +366,8 @@ unfelt:
 arms:
 	call item_kind_addr
 	ld a,(iy+K_CLASS)
+	cp IC_AMULET						; (not rings and amulets)
+	jr nc,.no
 	cp IC_WEAPON
 	jr c,.no
 	or 1
@@ -639,28 +641,6 @@ dec_w:
 	or e
 	ret
 
-/* change_speed - A = change: the player's speed, and with it every
-	monster's speed relative to the player (MORIA1.C) */
-change_speed:
-	ld (cs_num),a
-	ld hl,p_speed
-	add a,(hl)
-	ld (hl),a
-	ld ix,MON_LIST
-	ld b,MON_MAX
-	ld de,MON_SIZE
-.each:
-	ld a,(ix+M_RACE_HI)
-	cp MON_EMPTY
-	jr z,.next
-	ld a,(cs_num)
-	add a,(ix+M_SPEED)
-	ld (ix+M_SPEED),a
-.next:
-	add ix,de
-	djnz .each
-	ret
-
 /* afraid_tick - heroes can't stay afraid */
 afraid_tick:
 	ld hl,p_afraid
@@ -804,7 +784,13 @@ poison_tick:
 	set PY_POISONED,a
 	ld (p_status),a
 	call dec_w
-	jr nz,.hurt
+	jr z,.cured
+	ld a,(p_eflags+3)					; resisting it ends it
+	bit EF3_POISON,a
+	jr z,.hurt
+	ld hl,0
+	ld (p_poisoned),hl
+.cured:
 	ld hl,p_status
 	res PY_POISONED,(hl)
 	ld hl,msg_feel_better
@@ -899,7 +885,6 @@ msg_prayer_over:	db "The prayer has expired.",0
 msg_no_res_heat:	db "You no longer feel safe from flame.",0
 msg_no_res_cold:	db "You no longer feel safe from cold.",0
 
-cs_num:			db 0
 rt_slot:		db 0
 fl_i:			db 0
 fl_good:		db 0

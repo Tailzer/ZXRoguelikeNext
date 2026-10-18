@@ -3,7 +3,6 @@
 	(data/kinds.asm in KIND_PAGE, data/tables.asm here). Names use the C's
 	conventions: '~' marks where a plural 's' goes.
 	Potions show their flavour's colour (TC_COLOR's tccolors).
-	Not yet: magical pluses (magic_treasure).
  */
 
 /* kind_addr - HL = kind -> IY = kind record, paged into DATA_WINDOW
@@ -40,10 +39,13 @@ kind_name:
 	ret
 
 /* kind_charges - IY = kind -> A = charges for a new one: 1d(range) + base
-	for wands and staffs (magic_treasure), 0 for anything else.
+	for wands and staffs (magic_treasure), the kind's number for rings and
+	amulets (a stat to sustain, or -5), 0 for anything else.
 	Clobbers DE, HL */
 kind_charges:
 	ld a,(iy+K_CLASS)
+	cp IC_AMULET
+	jr nc,.p1
 	cp IC_WAND
 	jr z,.charged
 	cp IC_STAFF
@@ -54,6 +56,9 @@ kind_charges:
 	ld a,(iy+K_P1)
 	call randint
 	add a,(iy+K_P1+1)
+	ret
+.p1:
+	ld a,(iy+K_P1)
 	ret
 
 /* init_charges - IX = a new item, IY = its kind: its charges, or a rod
@@ -296,6 +301,10 @@ hunger_tick:
 .digest:
 	ld hl,(p_food)
 	ld de,-FOOD_DIGESTED
+	ld a,(p_eflags)						; slow digestion: one less
+	bit EF0_SLOW_DIGEST,a
+	jr z,$+3
+	inc de
 	add hl,de
 	ld (p_food),hl
 	bit 7,h

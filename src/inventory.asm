@@ -4,7 +4,8 @@
 	magic overlay (potions.asm).
 	The pack holds PACK_MAX records (a-l), kept packed together; food and
 	potions of the same kind stack. Equipment has one slot per class:
-	weapon, body armour, shield, helm, cloak, gloves, boots.
+	weapon, body armour, shield, helm, cloak, gloves, boots, amulet; and
+	two for rings, right hand first.
  */
 
 /* starting_kit - empty pack and equipment, then the class's kit from
@@ -55,14 +56,17 @@ starting_kit:
 	jp calc_bonuses
 .make:
 	ld hl,(kit_kind)
-	call new_plain
+	OVCALL PAGE_MISC, new_plain, PAGE_ITEMS
 	ld (ix+I_MARKED),1
 	ld (ix+I_IDENT),1<<ID_STORE_BIT|1<<ID_KNOWN2_BIT	; (store_bought)
 	ret
 
-/* calc_bonuses - armour class, to-hit/dam and the weapon's numbers from
-	what is worn and wielded, and blows from attack_blows() */
+/* calc_bonuses - what everything worn does (py_bonuses and calc_bonuses
+	in MORIA1.C): its flags, stat and speed bonuses and sustains, then
+	armour class, to-hit/dam and the weapon's numbers, and blows from
+	attack_blows() */
 calc_bonuses:
+	call equip_flags
 	call stat_bonuses
 	xor a
 	ld (p_ac),a
@@ -186,7 +190,7 @@ calc_bonuses:
 	ld h,(iy+K_WEIGHT+1)
 	ld (w_weight),hl
 	; attack_blows: too heavy if weight > STR*15 (to-hit drops by the excess)
-	ld a,(p_stat+A_STR)
+	ld a,(p_stat_use+A_STR)
 	ld e,a
 	ld d,15
 	mul d,e
@@ -207,7 +211,7 @@ calc_bonuses:
 	sbc hl,de
 	jr c,$+5							; 50 or more: the weight itself
 	ld de,50							; DE = divisor
-	ld a,(p_stat+A_STR)
+	ld a,(p_stat_use+A_STR)
 	ld l,a
 	ld h,0
 	ld b,h
@@ -249,13 +253,146 @@ calc_bonuses:
 	ld (p_blows),a
 	ret
 
+/* equip_flags - p_eflags (the race's gifts and the flags of everything
+	worn), p_sustain, the stat bonuses (p_stat_mod) and speed (p_eq_speed,
+	with every monster's speed changed to match) */
+equip_flags:
+	ld hl,p_eflags						; (p_eflags, p_sustain, p_stat_mod)
+	ld b,4+1+6
+	xor a
+.clear:
+	ld (hl),a
+	inc hl
+	djnz .clear
+	ld (ef_speed),a
+	ld a,(p_race)						; race intrinsics
+	ld hl,race_gifts
+.race:
+	cp (hl)
+	inc hl
+	jr z,.gift
+	inc hl
+	inc hl
+	inc hl
+	inc hl
+	inc hl
+	bit 7,(hl)
+	jr z,.race
+	jr .worn
+.gift:
+	ld de,p_eflags
+	ld b,5
+.or:
+	ld a,(de)
+	or (hl)
+	ld (de),a
+	inc hl
+	inc de
+	djnz .or
+.worn:
+	ld ix,EQUIP
+	ld b,EQ_SLOTS
+.slot:
+	push bc
+	ld a,(ix+I_KIND_HI)
+	cp ITEM_EMPTY
+	jr z,.next
+	call item_kind_addr
+	ld hl,p_eflags						; its flags (cursed or not)
+	ld a,(iy+K_FLAGS)
+	or (hl)
+	ld (hl),a
+	inc hl
+	ld a,(iy+K_FLAGS+1)
+	or (hl)
+	ld (hl),a
+	inc hl
+	ld a,(iy+K_FLAGS+2)
+	or (hl)
+	ld (hl),a
+	inc hl
+	ld a,(iy+K_FLAGS+3)
+	or (hl)
+	ld (hl),a
+	ld a,(iy+K_FLAGS)					; its number to each stat it names
+	and $3F
+	ld c,a
+	ld hl,p_stat_mod
+	ld b,6
+.stat:
+	rr c
+	jr nc,.stat_next
+	ld a,(ix+I_PVAL)
+	add a,(hl)
+	ld (hl),a
+.stat_next:
+	inc hl
+	djnz .stat
+	bit EF1_SPEED,(iy+K_FLAGS+1)		; and to speed
+	jr z,.sustain
+	ld a,(ef_speed)
+	add a,(ix+I_PVAL)
+	ld (ef_speed),a
+.sustain:
+	bit EF2_SUST_STAT,(iy+K_FLAGS+2)	; a sustain: its number is the stat
+	jr z,.next							; (1 STR, 2 INT, 3 WIS, 4 CON, 5 DEX,
+	ld a,(ix+I_PVAL)					;  6 CHR)
+	dec a
+	cp 6
+	jr nc,.next
+	ld hl,sustain_bits
+	add hl,a
+	ld a,(p_sustain)
+	or (hl)
+	ld (p_sustain),a
+.next:
+	ld de,ITEM_SIZE
+	add ix,de
+	pop bc
+	djnz .slot
+	ld de,KIND_RING_SPEED				; two Rings of Speed (+1 on the right)
+	ld hl,(EQUIP+EQ_RIGHT*ITEM_SIZE+I_KIND)	; only count once (py_bonuses)
+	or a
+	sbc hl,de
+	jr nz,.speed
+	ld hl,(EQUIP+EQ_LEFT*ITEM_SIZE+I_KIND)
+	or a
+	sbc hl,de
+	jr nz,.speed
+	ld a,(EQUIP+EQ_RIGHT*ITEM_SIZE+I_PVAL)
+	dec a
+	jr nz,.speed
+	ld hl,ef_speed
+	dec (hl)
+.speed:									; speed changes by the difference
+	ld a,(p_eq_speed)
+	ld b,a
+	ld a,(ef_speed)
+	ld (p_eq_speed),a
+	sub b
+	ret z
+	neg									; (faster is lower)
+	jp change_speed
+
+; race, then its gifts as p_eflags (4 bytes) and p_sustain
+race_gifts:
+	db RACE_HIGH_ELF, 0,0,0,1<<EF3_SEE_INVIS|1<<EF3_FFALL, 0
+	db RACE_GNOME, 0,0,1<<EF2_FREE_ACT,0, 0
+	db RACE_HOBBIT, 0,0,0,0, 1<<A_DEX
+	db RACE_HALF_TROLL, 0,0,0,0, 1<<A_STR
+	db RACE_DUNADAN, 0,0,0,0, 1<<A_CON
+	db $FF
+; the C's sustain numbers 1-6 as p_sustain bits
+sustain_bits:	db 1<<A_STR, 1<<A_INT, 1<<A_WIS, 1<<A_CON, 1<<A_DEX, 1<<A_CHR
+ef_speed:		db 0
+
 /* the adj_weight thresholds for str_index 0-9 (anything more is 10) */
 str_index_limits:	db 2,3,4,6,8,10,13,15,18,20
 kit_kind:			dw 0
 
 ; ---------------------------------------------------------------- lists
 
-/* show_equip - list the four equipment slots */
+/* show_equip - list the equipment slots */
 show_equip:
 	xor a
 	ld (list_slot),a
@@ -329,6 +466,9 @@ cmd_wield:
 	ld (cmd_slot),a
 	call item_kind_addr
 	ld a,(iy+K_CLASS)
+	cp IC_RING
+	call z,ring_hand					; (A = the slot)
+	ret nc
 	sub IC_WEAPON
 	ld (cmd_equip),a
 	ld e,a
@@ -388,6 +528,42 @@ cmd_wield:
 	set ID_DAMD_BIT,(ix+I_IDENT)
 	ld hl,msg_deathly_cold
 	jp msg_print
+
+/* ring_hand - a ring goes on the right hand if it's free, else the left;
+	with both full, ask which (MORIA1.C). -> A = IC_WEAPON + the slot, carry;
+	no carry if no hand was chosen. Keeps IX */
+ring_hand:
+	ld a,(EQUIP+EQ_RIGHT*ITEM_SIZE+I_KIND_HI)
+	cp ITEM_EMPTY
+	ld a,IC_WEAPON+EQ_RIGHT
+	scf
+	ret z
+	ld a,(EQUIP+EQ_LEFT*ITEM_SIZE+I_KIND_HI)
+	cp ITEM_EMPTY
+	ld a,IC_WEAPON+EQ_LEFT
+	scf
+	ret z
+	push ix
+	ld hl,txt_which_hand
+	call prompt
+	call read_ascii
+	push af
+	call msg_clear
+	pop af
+	pop ix
+	or $20								; (L and R as l and r)
+	ld b,a
+	cp 'l'
+	ld a,IC_WEAPON+EQ_LEFT
+	scf
+	ret z
+	ld a,b
+	cp 'r'
+	ld a,IC_WEAPON+EQ_RIGHT
+	scf
+	ret z
+	or a								; anything else: never mind
+	ret
 
 /* stuck_on - HL = a cursed piece of equipment in the way: "The Dagger
 	(1d4) you are wielding appears to be cursed." and nothing happens */
@@ -751,14 +927,19 @@ msg_add_u16:
 
 
 equip_names:	dw txt_eq_weapon, txt_eq_body, txt_eq_shield, txt_eq_helm
-				dw txt_eq_cloak, txt_eq_gloves, txt_eq_boots
-txt_eq_weapon:	db "Wielding    : ",0
-txt_eq_body:	db "On body     : ",0
-txt_eq_shield:	db "On arm      : ",0
-txt_eq_helm:	db "On head     : ",0
-txt_eq_cloak:	db "About body  : ",0
-txt_eq_gloves:	db "On hands    : ",0
-txt_eq_boots:	db "On feet     : ",0
+				dw txt_eq_cloak, txt_eq_gloves, txt_eq_boots, txt_eq_neck
+				dw txt_eq_right, txt_eq_left
+txt_eq_weapon:	db "Wielding     : ",0
+txt_eq_body:	db "On body      : ",0
+txt_eq_shield:	db "On arm       : ",0
+txt_eq_helm:	db "On head      : ",0
+txt_eq_cloak:	db "About body   : ",0
+txt_eq_gloves:	db "On hands     : ",0
+txt_eq_boots:	db "On feet      : ",0
+txt_eq_neck:	db "Around neck  : ",0
+txt_eq_right:	db "On right hand: ",0
+txt_eq_left:	db "On left hand : ",0
+txt_which_hand:	db "Put ring on which hand (l/r/L/R)?",0
 txt_nothing:	db "(nothing)",0
 txt_any_key:	db "-- press a key --",0
 txt_wear_which:	db "Wear or wield which item? (letter, or space)",0

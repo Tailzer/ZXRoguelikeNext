@@ -237,8 +237,9 @@ CLASSES = {"TV_FOOD": 1, "TV_POTION1": 2, "TV_POTION2": 2,
            "TV_WAND": 4, "TV_STAFF": 5, "TV_ROD": 6,
            "TV_SWORD": 7, "TV_HAFTED": 7, "TV_POLEARM": 7,
            "TV_SOFT_ARMOR": 8, "TV_HARD_ARMOR": 8, "TV_SHIELD": 9, "TV_HELM": 10,
-           "TV_CLOAK": 11, "TV_GLOVES": 12, "TV_BOOTS": 13}
-DEVICE_NOUN = {4: "Wand", 5: "Staff", 6: "Rod"}
+           "TV_CLOAK": 11, "TV_GLOVES": 12, "TV_BOOTS": 13,
+           "TV_AMULET": 14, "TV_RING": 15}
+DEVICE_NOUN = {4: "Wand", 5: "Staff", 6: "Rod", 14: "Amulet", 15: "Ring"}
 # scroll effects that wait for later milestones: glyphs, traps, acquirement
 SCROLL_LATER = {"TV_SCROLL1": 0x00002000 | 0x00200000,
                 "TV_SCROLL2": 0x00000400 | 0x00000800}
@@ -280,6 +281,8 @@ def display_name(o, cls):
         name = "& Potion~ of " + name
     elif cls == 3:
         name = "& Scroll~ of " + name
+    elif cls in (14, 15):                            # (they never stack)
+        name = f"& {DEVICE_NOUN[cls]} of " + name
     elif cls in DEVICE_NOUN:
         name = f"& {DEVICE_NOUN[cls]}~ of " + name
     return name
@@ -330,6 +333,8 @@ def kind_record(o, cls):
             rec[4] = lev
     elif o["tval_name"] == "TV_ROD":
         rec[12:14] = bytes([0, 0])
+    elif cls in (14, 15):                            # p1: a stat, or -5 if cursed
+        rec[12:14] = bytes([o["p1"] & 255, 255 if o["p1"] < 0 else 0])
     rec[24] = o["toac"] & 255                        # base magical AC
     rec[25] = magic_class(o)                         # how magic_treasure treats it
     rec[KIND_NAME_OFS:] = db_name(name, KIND_SIZE - KIND_NAME_OFS)
@@ -338,14 +343,16 @@ def kind_record(o, cls):
 
 def magic_class(o):
     """MC_ class for magic_treasure: 1 body armour/shields, 2 dragon armour,
-    3 weapons, 4 gloves, 5 boots, 6 helms, 7 cloaks, 0 anything else"""
+    3 weapons, 4 gloves, 5 boots, 6 helms, 7 cloaks, 9 rings, 10 amulets,
+    0 anything else"""
     t = o["tval_name"]
     if t in ("TV_SHIELD", "TV_HARD_ARMOR", "TV_SOFT_ARMOR"):
         return 2 if "Dragon Scale" in o["name"] else 1
     if t == "TV_HELM" and 6 <= o["subval"] <= 8:
         return 8                                     # crowns: more often magical
     return {"TV_HAFTED": 3, "TV_POLEARM": 3, "TV_SWORD": 3, "TV_GLOVES": 4,
-            "TV_BOOTS": 5, "TV_HELM": 6, "TV_CLOAK": 7}.get(t, 0)
+            "TV_BOOTS": 5, "TV_HELM": 6, "TV_CLOAK": 7, "TV_RING": 9,
+            "TV_AMULET": 10}.get(t, 0)
 
 
 def main():
@@ -404,6 +411,7 @@ def main():
              f"KIND_CLW\t\tequ {kind_named('Cure Light', 2)}",
              f"KIND_BROADSWORD\tequ {kind_named('Broadsword', 7)}",
              f"KIND_CHAIN_MAIL\tequ {[i for i, (o, c) in enumerate(kinds) if o['name'] == 'Chain Mail'][0]}",
+             f"KIND_RING_SPEED\tequ {kind_named('Speed', 15)}",
              ""]
     lines = [note, "; m_level[]: how many races have level <= n (n = 0-99)", "mon_level_table:"]
     for i in range(0, len(m_level), 10):
@@ -476,10 +484,11 @@ def flavour_tables(note):
               "normal_table:"]
     for i in range(0, len(nt), 16):
         lines.append("\tdw " + ",".join(str(x) for x in nt[i:i + 16]))
-    for what, arr, tc in (("wood", "woods[", "tcwoods["), ("metal", "metals[", "tcmetals[")):
+    for what, arr, tc in (("wood", "woods[", "tcwoods["), ("metal", "metals[", "tcmetals["),
+                          ("rock", "rocks[", "tcrocks["), ("amulet", "amulets[", "tcamulets[")):
         nm = [x.strip('"') for x in c_array(src, arr)]
         cols = [value(x) for x in c_array(src, tc)]
-        lines += ["", f"NUM_{what.upper()}S\t\tequ {len(nm)}\t\t\t; staff woods / wand and rod metals",
+        lines += ["", f"NUM_{what.upper()}S\t\tequ {len(nm)}\t\t\t; flavours for staffs, wands and rods, rings, amulets",
                   f"{what}_names:"]
         for i in range(0, len(nm), 8):
             lines.append("\tdw " + ",".join(f"{what}_{j}" for j in range(i, min(i + 8, len(nm)))))

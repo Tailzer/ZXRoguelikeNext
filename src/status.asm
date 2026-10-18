@@ -64,6 +64,56 @@ device_xcall:
 	ex (sp),hl
 	ret
 
+/* overlay_call - B = an overlay, xc_target = a routine in it, C = the
+	overlay to page back afterwards (OVCALL): one overlay borrowing another's
+	routine. A, HL, DE, IX, IY and flags pass through */
+overlay_call:
+	push af
+	ld a,b
+	nextreg NR_MMU2,a
+	pop af
+	push bc
+	call device_xcall.go
+	pop bc
+	push af
+	ld a,c
+	nextreg NR_MMU2,a
+	pop af
+	ret
+
+/* random_teleport - a ring or amulet of teleportation: 1 in 100 each turn,
+	teleport(40) (DUNGEON.C) */
+random_teleport:
+	ld a,100
+	call randint
+	dec a
+	ret nz
+	ld hl,40
+	FARCALL PAGE_SCROLL, teleport
+	ret
+
+/* change_speed - A = change: the player's speed, and with it every
+	monster's speed relative to the player (MORIA1.C) */
+change_speed:
+	ld (cs_num),a
+	ld hl,p_speed
+	add a,(hl)
+	ld (hl),a
+	ld ix,MON_LIST
+	ld b,MON_MAX
+	ld de,MON_SIZE
+.each:
+	ld a,(ix+M_RACE_HI)
+	cp MON_EMPTY
+	jr z,.next
+	ld a,(cs_num)
+	add a,(ix+M_SPEED)
+	ld (ix+M_SPEED),a
+.next:
+	add ix,de
+	djnz .each
+	ret
+
 /* level_call - HL = a routine in the level overlay, called from the scroll
 	overlay, which is paged back in afterwards (flags come back) */
 level_call:
@@ -74,37 +124,105 @@ level_call:
 .go:
 	jp (hl)
 
-/* stat_bonuses - to-hit, to-dam, to-ac, hit points per level and the
-	blows column from the current stats (MISC2.C's *_adj functions) */
+/* stat_bonuses - the stats in use (the current ones as equipment
+	modifies them: set_use_stat), then to-hit, to-dam, to-ac, hit points
+	per level and the blows column from them (MISC2.C's *_adj functions) */
 stat_bonuses:
-	ld a,(p_stat+A_DEX)
+	ld b,0
+.use:
+	ld hl,p_stat_mod					; modify_stat(cur, mod)
+	ld a,b
+	add hl,a
+	ld a,(hl)
+	ld hl,p_stat
+	push af
+	ld a,b
+	add hl,a
+	pop af
+	ld c,(hl)
+	push bc
+	or a
+	jr z,.store
+	ld b,a
+	bit 7,a
+	jr nz,.down
+.up:									; up: one point to 18, then 10
+	ld a,c
+	cp 18
+	jr nc,.up10
+	inc c
+	jr .up_next
+.up10:
+	add a,10
+	jr nc,$+4
+	ld a,255
+	ld c,a
+.up_next:
+	djnz .up
+	jr .store
+.down:									; down: 10 at a time to 18/10,
+	ld a,b								; then 18, then one point to 3
+	neg
+	ld b,a
+.down_one:
+	ld a,c
+	cp 28
+	jr c,.to18
+	sub 10
+	ld c,a
+	jr .down_next
+.to18:
+	cp 19
+	jr c,.to3
+	ld c,18
+	jr .down_next
+.to3:
+	cp 4
+	jr c,.down_next
+	dec c
+.down_next:
+	djnz .down_one
+.store:
+	ld a,c
+	pop bc
+	ld hl,p_stat_use
+	push af
+	ld a,b
+	add hl,a
+	pop af
+	ld (hl),a
+	inc b
+	ld a,b
+	cp 6
+	jr c,.use
+	ld a,(p_stat_use+A_DEX)
 	ld hl,dex_tohit
 	call threshold
 	ld b,a
-	ld a,(p_stat+A_STR)
+	ld a,(p_stat_use+A_STR)
 	ld hl,str_tohit
 	push bc
 	call threshold
 	pop bc
 	add a,b
 	ld (p_stat_tohit),a
-	ld a,(p_stat+A_STR)
+	ld a,(p_stat_use+A_STR)
 	ld hl,str_todam
 	call threshold
 	ld (p_stat_todam),a
-	ld a,(p_stat+A_DEX)
+	ld a,(p_stat_use+A_DEX)
 	ld hl,dex_toac
 	call threshold
 	ld (p_stat_toac),a
-	ld a,(p_stat+A_CON)
+	ld a,(p_stat_use+A_CON)
 	ld hl,con_hp
 	call threshold
 	ld (p_con_adj),a
-	ld a,(p_stat+A_DEX)
+	ld a,(p_stat_use+A_DEX)
 	ld hl,dex_blows
 	call threshold
 	ld (p_dex_index),a
-	ld a,(p_stat+A_INT)
+	ld a,(p_stat_use+A_INT)
 	ld hl,int_adj
 	call threshold
 	ld (p_int_adj),a
@@ -293,7 +411,8 @@ update_max_exp:
 ; ---------------------------------------------------------------- flavours
 
 /* flavour_class - IY = kind -> carry and A = its object_offset() if the
-	kind has a flavour (potions, scrolls, staffs, wands, rods).
+	kind has a flavour (potions, scrolls, staffs, wands, rods, rings,
+	amulets).
 	Changes only A */
 flavour_class:
 	ld a,(iy+K_TVAL)
@@ -311,7 +430,19 @@ flavour_class:
 	jr z,.wand
 	cp TV_ROD
 	jr z,.rod
+	cp TV_RING
+	jr z,.ring
+	cp TV_AMULET
+	jr z,.amulet
 	or a
+	ret
+.ring:
+	ld a,OFS_RING
+	scf
+	ret
+.amulet:
+	ld a,OFS_AMULET
+	scf
 	ret
 .staff:
 	ld a,OFS_STAFF
@@ -387,6 +518,16 @@ flavour_tables:
 	ld de,wood_names
 	ld bc,wood_attrs
 	cp OFS_STAFF
+	ret z
+	ld hl,rock_map
+	ld de,rock_names
+	ld bc,rock_attrs
+	cp OFS_RING
+	ret z
+	ld hl,amulet_map
+	ld de,amulet_names
+	ld bc,amulet_attrs
+	cp OFS_AMULET
 	ret z
 	ld hl,metal_map						; wands and rods: metals
 	ld de,metal_names
@@ -589,6 +730,15 @@ p_stat_max:		ds 6				; what restoring brings stats back to
 p_max_exp:		dd 0
 p_max_dlv:		db 0				; deepest level, for word of recall
 p_speed:		db 0				; signed: below 0 is fast (the C's speed)
+p_eq_speed:		db 0				; signed: how much faster equipment makes you
+p_eflags:		dd 0				; the C's flags of everything worn (EF_ bits),
+									; with race gifts (see invisible, ffall, free action)
+p_sustain:		db 0				; bit per A_ stat: sustained by race or ring
+p_stat_mod:		ds 6				; signed: what equipment adds to each stat
+p_stat_use:		ds 6				; the stats in use (the C's use_stat)
+cs_num:			db 0
+new_rec:		ds ITEM_SIZE		; an item an overlay is having made in the misc
+									; overlay (OVCALL new_item): outside the window
 p_status:		dw 0				; PY_ and PY2_ bits
 p_update:		db 0				; PU_ bits
 p_new_level:	db 0				; set when word of recall fires

@@ -166,8 +166,8 @@ store_create:
 	jr z,.failed						; nothing the game has yet
 	ld a,OBJ_TOWN_LEVEL
 .chosen:
-	ld ix,cs_item						; make one: HL = kind, A = level
-	call new_item
+	ld ix,new_rec						; make one: HL = kind, A = level
+	OVCALL PAGE_MISC, new_item, PAGE_STORE
 	bit ID_CURSED_BIT,(ix+I_IDENT)		; must be good (cursed: cost 0),
 	jr nz,.failed						; worth something, and less than the
 	call item_kind_addr					; owner can afford
@@ -597,16 +597,21 @@ item_cost:
 	pop hl
 	jr c,.known
 	ld hl,20							; not known: a flat 20 for potions
-	ld a,(iy+K_CLASS)					; and scrolls, 50 wands, 70 staffs
+	ld a,(iy+K_CLASS)					; and scrolls, 50 wands, 70 staffs,
+	cp IC_AMULET						; 45 rings and amulets
+	jr c,$+5
+	ld hl,45
 	cp IC_WAND
 	jr nz,$+5
 	ld hl,50
 	cp IC_STAFF
-	jr nz,.offer
+	jp nz,.offer
 	ld hl,70
-	jr .offer
+	jp .offer
 .known:
 	ld a,(iy+K_CLASS)
+	cp IC_AMULET
+	jr nc,.jewel
 	cp IC_WEAPON
 	jr nc,.arms
 	call .offer
@@ -666,6 +671,66 @@ item_cost:
 .worthless:
 	ld hl,0
 	ret
+.jewel:									; rings and amulets: the cost
+	bit ID_KNOWN2_BIT,(ix+I_IDENT)		; magic_treasure gave it: what
+	ret z								; its number or pluses add, or
+	call .offer							; nothing if cursed
+	bit ID_CURSED_BIT,(ix+I_IDENT)
+	jr nz,.worthless
+	ld a,(iy+K_CLASS)
+	ld b,a
+	ld a,(iy+K_FLAVOUR)
+	ld c,a
+	ld de,jewel_values
+.find:
+	ld a,(de)
+	cp $FF
+	ret z
+	cp b
+	jr nz,.skip
+	inc de
+	ld a,(de)
+	dec de
+	cp c
+	jr z,.found
+.skip:
+	inc de
+	inc de
+	inc de
+	inc de
+	jr .find
+.found:
+	inc de
+	inc de
+	ld a,(de)							; the field
+	ld c,a
+	inc de
+	ld a,(de)							; and what each point adds
+	ld b,a
+	ld a,c
+	cp $FF
+	jr z,.slaying
+	push hl
+	push ix
+	pop hl
+	add hl,a
+	ld a,(hl)
+	pop hl
+	jr .times
+.slaying:
+	ld a,(ix+I_TOHIT)
+	add a,(ix+I_TODAM)
+.times:
+	bit 7,a
+	jr nz,.worthless
+	ld e,a
+	ld d,b
+	mul d,e
+	add hl,de
+	ret nc
+	ld hl,$FFFF
+	ret
+
 .offer:
 	ld a,c
 	or a
@@ -689,6 +754,17 @@ item_cost:
 .cut:
 	call pct
 	jp at_least_1
+
+; class, subval, field ($FF: to-hit + to-dam), gold per point
+jewel_values:
+	db IC_RING,0,I_PVAL,100, IC_RING,1,I_PVAL,100		; STR, DEX
+	db IC_RING,2,I_PVAL,100, IC_RING,3,I_PVAL,100		; CON, INT
+	db IC_RING,5,I_PVAL,30								; searching
+	db IC_RING,19,I_TODAM,100, IC_RING,20,I_TOHIT,100	; damage, accuracy
+	db IC_RING,21,I_TOAC,100, IC_RING,30,$FF,100		; protection, slaying
+	db IC_AMULET,0,I_PVAL,100, IC_AMULET,1,I_PVAL,100	; WIS, CHR
+	db IC_AMULET,2,I_PVAL,20, IC_AMULET,8,I_PVAL,20	; searching, the Magi
+	db $FF
 
 /* buy_price - (cur_store) IX = item, C = discount -> HL = what you pay:
 	value * race adjustment * final markup (x2 black market) * charisma */
@@ -826,7 +902,7 @@ buys_magic:		db 40,45,55,65,70,71,75,76,90,66,0
 /* enter_store - A = store: browse, buy and sell until space or Enter */
 enter_store:
 	ld (cur_store),a
-	ld a,(p_stat+A_CHR)					; chr_adj()
+	ld a,(p_stat_use+A_CHR)				; chr_adj()
 	ld hl,chr_table
 .chr:
 	cp (hl)
@@ -1392,7 +1468,6 @@ deal_slot:		db 0
 deal_item:		ds ITEM_SIZE
 show_item:		ds ITEM_SIZE
 ic_pval:		db 0
-cs_item:		ds ITEM_SIZE		; an item store_create is making
 max_buy:		dw 0
 maint_store:	db 0
 cs_store:		db 0

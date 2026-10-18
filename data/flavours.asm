@@ -280,7 +280,7 @@ normal_table:
 	dw 32753,32754,32755,32756,32757,32757,32758,32758,32759,32760,32760,32761,32761,32761,32762,32762
 	dw 32763,32763,32763,32764,32764,32764,32764,32765,32765,32765,32765,32766,32766,32766,32766,32766
 
-NUM_WOODS		equ 32			; staff woods / wand and rod metals
+NUM_WOODS		equ 32			; flavours for staffs, wands and rods, rings, amulets
 wood_names:
 	dw wood_0,wood_1,wood_2,wood_3,wood_4,wood_5,wood_6,wood_7
 	dw wood_8,wood_9,wood_10,wood_11,wood_12,wood_13,wood_14,wood_15
@@ -321,7 +321,7 @@ wood_29:	db "Runed",0
 wood_30:	db "Golden",0
 wood_31:	db "Ashen",0
 
-NUM_METALS		equ 32			; staff woods / wand and rod metals
+NUM_METALS		equ 32			; flavours for staffs, wands and rods, rings, amulets
 metal_names:
 	dw metal_0,metal_1,metal_2,metal_3,metal_4,metal_5,metal_6,metal_7
 	dw metal_8,metal_9,metal_10,metal_11,metal_12,metal_13,metal_14,metal_15
@@ -361,3 +361,75 @@ metal_28:	db "Bronze",0
 metal_29:	db "Brass",0
 metal_30:	db "Platinum",0
 metal_31:	db "Lead",0
+
+NUM_ROCKS		equ 39			; flavours for staffs, wands and rods, rings, amulets
+rock_names:
+	dw rock_0,rock_1,rock_2,rock_3,rock_4,rock_5,rock_6,rock_7
+	dw rock_8,rock_9,rock_10,rock_11,rock_12,rock_13,rock_14,rock_15
+	dw rock_16,rock_17,rock_18,rock_19,rock_20,rock_21,rock_22,rock_23
+	dw rock_24,rock_25,rock_26,rock_27,rock_28,rock_29,rock_30,rock_31
+	dw rock_32,rock_33,rock_34,rock_35,rock_36,rock_37,rock_38
+rock_attrs:
+	db 36,42,38,50,46,40,62,40,44,62,36,60,48,46,52,44,50,36,58,54,56,48,62,62,62,56,40,50,44,60,38,50,62,44,60,48,62,36,54
+rock_0:	db "Alexandrite",0
+rock_1:	db "Amethyst",0
+rock_2:	db "Aquamarine",0
+rock_3:	db "Azurite",0
+rock_4:	db "Beryl",0
+rock_5:	db "Bloodstone",0
+rock_6:	db "Calcite",0
+rock_7:	db "Carnelian",0
+rock_8:	db "Corundum",0
+rock_9:	db "Diamond",0
+rock_10:	db "Emerald",0
+rock_11:	db "Fluorite",0
+rock_12:	db "Garnet",0
+rock_13:	db "Granite",0
+rock_14:	db "Jade",0
+rock_15:	db "Jasper",0
+rock_16:	db "Lapis Lazuli",0
+rock_17:	db "Malachite",0
+rock_18:	db "Marble",0
+rock_19:	db "Moonstone",0
+rock_20:	db "Onyx",0
+rock_21:	db "Opal",0
+rock_22:	db "Pearl",0
+rock_23:	db "Quartz",0
+rock_24:	db "Quartzite",0
+rock_25:	db "Rhodonite",0
+rock_26:	db "Ruby",0
+rock_27:	db "Sapphire",0
+rock_28:	db "Tiger Eye",0
+rock_29:	db "Topaz",0
+rock_30:	db "Turquoise",0
+rock_31:	db "Zircon",0
+rock_32:	db "Platinum",0
+rock_33:	db "Bronze",0
+rock_34:	db "Gold",0
+rock_35:	db "Obsidian",0
+rock_36:	db "Silver",0
+rock_37:	db "Tortoise Shell",0
+rock_38:	db "Mithril",0
+
+NUM_AMULETS		equ 16			; flavours for staffs, wands and rods, rings, amulets
+amulet_names:
+	dw amulet_0,amulet_1,amulet_2,amulet_3,amulet_4,amulet_5,amulet_6,amulet_7
+	dw amulet_8,amulet_9,amulet_10,amulet_11,amulet_12,amulet_13,amulet_14,amulet_15
+amulet_attrs:
+	db 60,44,62,42,62,48,62,60,44,46,36,60,50,54,62,44
+amulet_0:	db "Amber",0
+amulet_1:	db "Driftwood",0
+amulet_2:	db "Coral",0
+amulet_3:	db "Agate",0
+amulet_4:	db "Ivory",0
+amulet_5:	db "Obsidian",0
+amulet_6:	db "Bone",0
+amulet_7:	db "Brass",0
+amulet_8:	db "Bronze",0
+amulet_9:	db "Pewter",0
+amulet_10:	db "Tortoise Shell",0
+amulet_11:	db "Golden",0
+amulet_12:	db "Azure",0
+amulet_13:	db "Crystal",0
+amulet_14:	db "Silver",0
+amulet_15:	db "Copper",0

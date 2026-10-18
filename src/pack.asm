@@ -5,7 +5,8 @@
 
 /* objdes_msg - add the description of item IX to the message being built:
 	"a Dagger (1d4)", "2 Rations of Food", "Chain Mail [14]", and for
-	flavours not yet known "a Cloudy Potion {tried}" (objdes in DESC.C) */
+	flavours not yet known "a Cloudy Potion {tried}", "a Ruby Ring";
+	"a Ring of Strength (+2)" (objdes in DESC.C) */
 objdes_msg:
 	call item_kind_addr
 	call item_known
@@ -32,7 +33,7 @@ objdes_msg:
 .no_article:
 	ld b,0
 	call .name
-	jr .suffix
+	jp .suffix
 .unknown_one:							; "& %s Potion~" always has one
 	call flavour_class
 	cp OFS_SCROLL
@@ -79,6 +80,12 @@ objdes_msg:
 	jr z,.noun
 	ld hl,txt_wand_
 	cp OFS_WAND
+	jr z,.noun
+	ld hl,txt_ring_
+	cp OFS_RING
+	jr z,.noun
+	ld hl,txt_amulet_
+	cp OFS_AMULET
 	jr z,.noun
 	ld hl,txt_rod_
 .noun:
@@ -155,10 +162,10 @@ objdes_msg:
 	cp IC_HELM
 	jr z,.ac_base
 	bit ID_KNOWN2_BIT,(ix+I_IDENT)		; " [+3]" if only magical
-	jr z,.notes
+	jr z,.p1
 	ld a,(ix+I_TOAC)
 	or a
-	jr z,.notes
+	jr z,.p1
 	ld hl,txt_open_sq
 	call msg_add
 	ld a,(ix+I_TOAC)
@@ -177,6 +184,24 @@ objdes_msg:
 	call .signed
 .ac_done:
 	ld hl,txt_close_sq
+	call msg_add
+.p1:									; rings and amulets: " (+2)" once
+	ld a,(iy+K_CLASS)					; known, unless 0 or a sustain
+	cp IC_AMULET						; (ID_NOSHOW_P1)
+	jr c,.notes
+	bit ID_KNOWN2_BIT,(ix+I_IDENT)
+	jr z,.notes
+	bit EF2_SUST_STAT,(iy+K_FLAGS+2)
+	jr nz,.notes
+	ld a,(ix+I_PVAL)
+	or a
+	jr z,.notes
+	push af
+	ld hl,txt_open_br
+	call msg_add
+	pop af
+	call .signed
+	ld hl,txt_close_br
 	call msg_add
 .notes:									; {tried blessed empty cursed good}
 	xor a
@@ -695,6 +720,8 @@ txt_brace:		db "}",0
 txt_staff_:		db " Staff",0
 txt_wand_:		db " Wand",0
 txt_rod_:		db " Rod",0
+txt_ring_:		db " Ring",0
+txt_amulet_:	db " Amulet",0
 txt_charges_:	db " charges)",0
 txt_you_have_r:	db "You have ",0
 txt_slot_r:		db " (a).",0

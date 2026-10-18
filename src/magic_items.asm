@@ -1,8 +1,9 @@
-/* magic_items.asm - new items and their magical pluses  [resident]
+/* magic_items.asm - new items and their magical pluses  [overlay: PAGE_MISC]
 	References: MISC1.C magic_treasure/m_bonus/randnor/magik, MISC2.C
-	place_object. Used by level generation and the stores alike.
+	place_object. Used by level generation, the stores, the starting kit
+	and Create Food alike: other overlays reach it with OVCALL.
 	Not yet: ego items and artifacts (the C's special cases are made plain
-	pluses for now), rings and amulets.
+	pluses for now).
  */
 
 OBJ_BASE_MAGIC		equ 15
@@ -21,7 +22,8 @@ new_item:
 	jr magic_treasure
 
 /* new_plain - IX = record, HL = kind: one of it, just as it comes (base
-	pluses and charges, no magic). Leaves IY on the kind */
+	pluses, charges or a ring's number, cursed if the kind always is, no
+	magic). Leaves IY on the kind */
 new_plain:
 	ld (ix+I_KIND),l
 	ld (ix+I_KIND_HI),h
@@ -38,10 +40,17 @@ new_plain:
 	ld (ix+I_TODAM),a
 	ld a,(iy+K_TOAC)
 	ld (ix+I_TOAC),a
-	jp init_charges
+	call init_charges
+	ld a,(iy+K_CLASS)					; Teleportation, Weakness, Woe, Doom...
+	cp IC_AMULET
+	ret c
+	bit EF3_CURSED,(iy+K_FLAGS+3)
+	ret z
+	set ID_CURSED_BIT,(ix+I_IDENT)
+	ret
 
 /* magic_treasure - IX = item, IY = its kind, A = level: magical pluses,
-	or curses (magic_treasure in MISC1.C, without the egos) */
+	or curses (magic_treasure in MISC1.C, without the egos and artifacts) */
 magic_treasure:
 	ld (mt_level),a
 	add a,OBJ_BASE_MAGIC				; chance = 15 + level, at most 70
@@ -76,6 +85,10 @@ magic_treasure:
 	ld (mt_chance),a
 	ld a,MC_HELM
 .class:
+	cp MC_RING
+	jp z,.ring
+	cp MC_AMULET
+	jp z,.amulet
 	cp MC_DRAGON
 	jr z,.dragon
 	cp MC_WEAPON
@@ -199,6 +212,139 @@ magic_treasure:
 	neg
 	add a,(ix+I_TOAC)
 	ld (ix+I_TOAC),a
+	ret
+.ring:									; by subval (K_FLAVOUR)
+	ld a,(iy+K_FLAVOUR)
+	cp 4
+	jr c,.stat							; strength, dexterity...
+	jr z,.speed
+	cp 5
+	jp z,.searching
+	ld e,I_TODAM
+	cp 19
+	jp z,.field							; damage
+	ld e,I_TOHIT
+	cp 20
+	jp z,.field							; accuracy
+	ld e,I_TOAC
+	cp 21
+	jp z,.field							; protection
+	cp 30
+	ret nz
+	set ID_SHOWHD_BIT,(ix+I_IDENT)		; slaying: m_bonus(1,25)*2 + 1d3
+	ld hl,I_TODAM						; each
+	call .slay
+	ld hl,I_TOHIT
+	call .slay
+	call .is_cursed
+	ret nc
+	ld a,(ix+I_TODAM)
+	neg
+	ld (ix+I_TODAM),a
+	ld a,(ix+I_TOHIT)
+	neg
+	ld (ix+I_TOHIT),a
+	ret
+.slay:
+	push ix
+	pop de
+	add hl,de
+	push hl
+	ld bc,1*256+25
+	call m_bonus
+	add a,a
+	pop hl
+	add a,(hl)
+	ld (hl),a
+	push hl
+	ld a,3
+	call randint
+	pop hl
+	add a,(hl)
+	ld (hl),a
+	ret
+.stat:									; cursed: -m_bonus(1,20),
+	call .is_cursed						; else m_bonus(1,10)
+	ld bc,1*256+10
+	jr nc,.plus_p1
+	ld bc,1*256+20
+	call m_bonus
+	neg
+	jr .set_p1
+.plus_p1:
+	call m_bonus
+.set_p1:
+	ld (ix+I_PVAL),a
+	ret
+.speed:									; cursed: -1d3, else +1 (+2 one
+	call .is_cursed						; time in 888)
+	jr nc,.fast
+	ld a,3
+	call randint
+	neg
+	jr .set_p1
+.fast:
+	ld hl,888
+	call randint16
+	dec hl
+	ld a,h
+	or l
+	ld a,1
+	jr nz,.set_p1
+	inc a
+	jr .set_p1
+.searching:								; 5 * m_bonus(1,20), maybe cursed
+	ld bc,1*256+20
+.five_times:
+	call m_bonus
+	ld e,a
+	ld d,5
+	mul d,e
+	ld (ix+I_PVAL),e
+	call .is_cursed
+	ret nc
+	ld a,(ix+I_PVAL)
+	neg
+	jr .set_p1
+.field:									; E = the plus: m_bonus(1,20) +
+	push ix								; 3 + 1d10, all negated if cursed
+	pop hl
+	ld d,0
+	add hl,de
+	push hl
+	ld bc,1*256+20
+	call m_bonus
+	pop hl
+	add a,(hl)
+	ld (hl),a
+	push hl
+	ld a,10
+	call randint
+	add a,3
+	pop hl
+	add a,(hl)
+	ld (hl),a
+	push hl
+	call .is_cursed
+	pop hl
+	ret nc
+	ld a,(hl)
+	neg
+	ld (hl),a
+	ret
+.amulet:
+	ld a,(iy+K_FLAVOUR)
+	cp 2
+	jr c,.stat							; wisdom, charisma
+	ld bc,1*256+25
+	jr z,.five_times					; searching: 5 * m_bonus(1,25)
+	cp 8
+	ret nz
+	call m_bonus						; the Magi: the same, never cursed
+	ld e,a
+	ld d,5
+	mul d,e
+	ld (ix+I_PVAL),e
 	ret
 .magical:								; magik(chance) -> carry
 	ld a,(mt_chance)
