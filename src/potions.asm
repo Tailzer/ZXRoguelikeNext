@@ -291,7 +291,7 @@ cut_healed:
 	jr z,$+5
 	ld hl,0
 	ld (p_cut),hl
-	jr wounds_heal
+	jp wounds_heal
 cure_cut:
 	ld hl,(p_cut)
 	call positive

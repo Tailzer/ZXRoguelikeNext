@@ -21,7 +21,7 @@ Walk into a closed door to open it, or into a monster to attack it; walking onto
 
 `C` (Caps Shift+C) shows the character sheet.
 
-Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `z` aim a wand, `Z` (Caps Shift+Z) use a staff, `a` activate a rod, `A` (Caps Shift+A) activate an artifact, `m` cast a spell, `P` (Caps Shift+P) browse a book, `G` (Caps Shift+G) learn new spells, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels. Directions: `1`-`9` or `hjklyubn`.
+Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `z` aim a wand, `Z` (Caps Shift+Z) use a staff, `a` activate a rod, `A` (Caps Shift+A) activate an artifact, `m` cast a spell, `p` recite a prayer, `P` (Caps Shift+P) browse a book, `G` (Caps Shift+G) learn new spells, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels. Directions: `1`-`9` or `hjklyubn`.
 
 ## Milestones
 
@@ -140,7 +140,12 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - the spells live in a data page (66) and their code in a new overlay (55); they borrow the device overlay's bolts and balls through `do_effect`, and scroll and potion effects through `OVCALL`
      - to make room: `player_init` moved to the misc overlay, the dead uniques and the message buffer to high RAM with the spell state
      - not yet: priests' prayers (9d-2), no light needed to read (there are no light sources), Hellfire and Meteor Swarm hit as magic missiles (as in the C without colour)
-   - 9d-2: prayers; 9d-3: monster spells and breath; 9d-4: monster melee side effects
+   - 9d-2: prayers *(done)* — `PRAYER.C` pray, `MISC2.C` gain_spells (prayers at random), `SPELLS.C` turn_undead/banish_creature/bless/detect_inv2
+     - priests and paladins learn from the Holy Books they carry, with WIS's stat_adj in place of INT's; `G` gives them a prayer at random ("You have learned the prayer of Remove Fear."); `p` recites one, `P` browses
+     - the C's words for them: "You can't see to read your prayer!", "Use which Holy Book?", "Recite which prayer?", "You lost your concentration!", "You faint from fatigue!", and "Pray hard enough and your prayers may be answered." for anyone else
+     - all 58 prayers: detect evil, the cures (3d3 to 16d4, cuts as the C has them), bless, chant and prayer, remove fear, light, find doors, slow and neutralize poison, scare (confusion), portal, sanctuary, satisfy hunger, remove curse, resist heat and cold, orb of draining, sense invisible, protection from evil, earthquake, sense surroundings, turn undead ("runs frantically!"), dispel undead and evil (3 or 4 x level), heal and healing, holy word, detect monsters, detection, perception, probing, clairvoyance, restoration, remembrance, banishment, word of destruction, annihilation, unbarring ways, recharging, dispel curse, enchant weapon and armour, elemental brand, blink, teleport, teleport away, teleport level, word of recall, alter reality
+     - not yet: glyph of warding (nothing can be placed on the floor yet), find traps (no traps)
+   - 9d-3: monster spells and breath; 9d-4: monster melee side effects
 10. Saving to SD card
 
 ## Memory map
@@ -178,12 +183,12 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 | 51 `PAGE_STORE` | `store.asm`, `data/stores.asm` | the stores: stock, prices, buying and selling |
 | 52 `PAGE_MAGIC` | `potions.asm`, `effects.asm` | quaffing, stat changes, timed effects (every turn), the colour and title shuffle |
 | 53 `PAGE_SCROLL` | `scrolls.asm` | reading scrolls (summons go through `level_call` to the level overlay) |
-| 55 `PAGE_SPELL` | `spells.asm` | spells: learning, mana, browsing, casting and the mage spells |
+| 55 `PAGE_SPELL` | `spells.asm` | spells and prayers: learning, mana, browsing, casting |
 | 54 `PAGE_DEVICE` | `devices.asm` | wands, staffs, rods and artifact activation: bolts, balls, beams (borrows scroll and potion effects through `device_xcall`) |
 
 Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 60-62 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page); the flavours (`data/flavours.asm`: potion colours, woods, metals, stones, amulets, the title syllables, the buffer this game's scroll titles are written into, normal_table) have their own page. 63 `EGO_PAGE` = `data/egos.asm` (ego and artifact names, flags and numbers, 24 bytes each); 64 `FLAVOUR_PAGE` = `data/flavours.asm`; 65 `ACT_PAGE` = `data/activate.asm`; 66 `SPELL_PAGE` = `data/spells.asm`. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
 
-Resident code ends around `$AEA1` after milestone 9d-1 (about 350 bytes left; `player_init` moved to the misc overlay, `magic_items.asm` moved to the misc overlay, the knowledge tables to `$7C00` and the experience table into the creation overlay to make room) (`status.asm` holds the stat tables, timed-effect counters, what the player knows, the colour order and the after-use identify logic; `pack.asm` the item lists and chooser), the monster list starting at `$B000`. The creation overlay is at 7.7K of 8K, the magic overlay 6.7K, the items overlay 7.1K, the store overlay 7.1K, the scroll overlay 3.7K, the device overlay 7.7K, the spell overlay 4.3K, the misc overlay 3.4K.
+Resident code ends around `$AEA1` after milestone 9d-1 (about 350 bytes left; `player_init` moved to the misc overlay, `magic_items.asm` moved to the misc overlay, the knowledge tables to `$7C00` and the experience table into the creation overlay to make room) (`status.asm` holds the stat tables, timed-effect counters, what the player knows, the colour order and the after-use identify logic; `pack.asm` the item lists and chooser), the monster list starting at `$B000`. The creation overlay is at 7.7K of 8K, the magic overlay 6.7K, the items overlay 7.1K, the store overlay 7.1K, the scroll overlay 4.0K, the device overlay 8.0K (full), the spell overlay 5.6K, the misc overlay 3.4K.
 
 Overlays that change stats or bonuses set `p_update`; `draw_view` (main loop only) runs `update_stuff`, which pages the items overlay to recalculate. Item commands that need the magic overlay leave `pending_magic` for `pending_actions` in the main loop.
 

@@ -625,6 +625,7 @@ CMD_ACTIVATE		equ 17				; A: activate an artifact
 CMD_CAST			equ 18				; m: cast a spell
 CMD_BROWSE			equ 19				; P: browse a book
 CMD_STUDY			equ 20				; G: learn new spells
+CMD_PRAY			equ 21				; p: recite a prayer
 ; key modifiers in key_table
 KM_ANY				equ 0
 KM_SYMBOL			equ 1

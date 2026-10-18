@@ -927,6 +927,9 @@ cmd_browse:
 cmd_study:
 	OVCALL PAGE_SPELL, sp_study, PAGE_ITEMS
 	ret
+cmd_pray:
+	OVCALL PAGE_SPELL, sp_pray, PAGE_ITEMS
+	ret
 
 /* cmd_eat - 'E': eat some food (EAT.C, add_food in MISC1.C) */
 cmd_eat:

@@ -37,6 +37,8 @@
 		recharging
 	Milestone 9d-1: Mage spells - books, learning, mana, browsing and
 		casting, all 59 mage spells
+	Milestone 9d-2: Prayers - priests and paladins learn and recite the
+		58 prayers
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -201,7 +203,7 @@ item_commands:							; in CMD_INVEN order
 	dw cmd_quaff, cmd_eat, cmd_drop, cmd_pickup
 	dw 0, cmd_read						; (CMD_CHARACTER is handled above)
 	dw cmd_aim, cmd_use, cmd_zap, cmd_activate
-	dw cmd_cast, cmd_browse, cmd_study
+	dw cmd_cast, cmd_browse, cmd_study, cmd_pray
 player_died:
 	FARCALL PAGE_CREATE, player_died_screen
 	jp enter_dungeon

@@ -826,8 +826,8 @@ sp_ready:
 	ld hl,(p_blind)
 	ld a,h
 	or l
-	ld hl,msg_cant_see_book
-	jr nz,.no
+	ld hl,t_cant_see
+	jr nz,.say
 	ld hl,(p_confused)
 	ld a,h
 	or l
@@ -835,24 +835,64 @@ sp_ready:
 	jr nz,.no
 	scf
 	ret
+.say:
+	call sp_text
 .no:
 	call msg_print
 	or a
 	ret
 
+/* sp_text - HL = (mage text, priest text) -> HL = the class's */
+sp_text:
+	ld a,(p_spell)
+	cp SP_MAGE
+	jr z,$+4
+	inc hl
+	inc hl
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	ret
+sp_say:									; ...and print it
+	call sp_text
+	jp msg_print
+
+/* sp_book_class - -> A = IC_MAGIC_BOOK or IC_PRAYER_BOOK */
+sp_book_class:
+	ld a,(p_spell)
+	cp SP_MAGE
+	ld a,IC_MAGIC_BOOK
+	ret z
+	ld a,IC_PRAYER_BOOK
+	ret
+
 /* sp_book - "Use which spell-book?" -> carry, IX = the book; or a message */
 sp_book:
-	ld a,IC_MAGIC_BOOK
+	call sp_book_class
 	call pack_has_class
-	ld hl,msg_no_books
-	jp nc,msg_print_nc
-	ld hl,txt_which_book
-	ld a,IC_MAGIC_BOOK
+	ld hl,t_no_books
+	jr nc,.none
+	ld hl,t_which_book
+	call sp_text
+	push hl
+	call sp_book_class
+	pop hl
 	jp choose_pack
-msg_print_nc:
-	call msg_print
+.none:
+	call sp_say
 	or a
 	ret
+
+/* sp_pray - 'p': recite a prayer (pray in PRAYER.C) */
+sp_pray:
+	call sp_ready
+	ret nc
+	ld a,(p_spell)
+	cp SP_PRIEST
+	ld hl,msg_pray_hard
+	jp nz,msg_print
+	jr sp_use
 
 /* sp_cast - 'm': cast a spell (cast in MAGIC.C) */
 sp_cast:
@@ -862,16 +902,18 @@ sp_cast:
 	cp SP_MAGE
 	ld hl,msg_cant_cast
 	jp nz,msg_print
+sp_use:
 	call sp_book
 	ret nc
 	ld a,1
 	ld (sp_known),a
 	ld (sp_letters),a
 	call book_spells
-	ld hl,msg_dont_know
-	jp z,msg_print
+	ld hl,t_dont_know
+	jp z,sp_say
 	call print_spells
-	ld hl,txt_cast_which
+	ld hl,t_cast_which
+	call sp_text
 	call prompt
 	call read_ascii
 	push af
@@ -891,8 +933,8 @@ sp_cast:
 	jr z,.cast
 	inc hl
 	djnz .known
-	ld hl,msg_dont_know_that
-	jp msg_print
+	ld hl,t_dont_know_that
+	jp sp_say
 .cast:
 	ld a,(sp_spell)						; short of mana: are you sure?
 	call spell_rec
@@ -939,9 +981,13 @@ sp_cast:
 	cp b
 	jr z,.failed
 	jr c,.failed
-	ld a,(sp_spell)						; the spell itself
-	inc a
+	ld a,(p_spell)						; the spell itself
+	cp SP_MAGE
 	ld hl,mage_spells-2
+	jr z,$+5
+	ld hl,prayers-2
+	ld a,(sp_spell)
+	inc a
 	call sp_jump
 	ld a,(sp_spell)						; first time: experience
 	ld hl,s_worked
@@ -964,8 +1010,8 @@ sp_cast:
 	call check_level_up
 	jr .mana
 .failed:
-	ld hl,msg_spell_failed
-	call msg_print
+	ld hl,t_failed
+	call sp_say
 .mana:									; pay for it, or faint
 	ld a,(sp_spell)
 	call spell_rec
@@ -984,8 +1030,8 @@ sp_cast:
 	ld a,e
 	sub b
 	push af
-	ld hl,msg_faint_effort
-	call msg_print
+	ld hl,t_faint
+	call sp_say
 	pop af
 	ld e,a								; paralysed 1d(5 x shortfall)
 	ld d,5
@@ -1028,9 +1074,9 @@ sp_browse:
 	call sp_ready
 	ret nc
 	ld a,(p_spell)
-	cp SP_MAGE
+	or a
 	ld hl,msg_cant_read
-	jp nz,msg_print
+	jp z,msg_print
 	call sp_book
 	ret nc
 	xor a
@@ -1054,13 +1100,13 @@ sp_study:
 	call sp_ready
 	ret nc
 	ld a,(p_spell)
-	cp SP_MAGE
+	or a
 	ld hl,msg_cant_cast
-	jp nz,msg_print
+	jp z,msg_print
 	ld a,(s_new)
 	or a
-	ld hl,msg_cant_learn
-	jp z,msg_print
+	ld hl,t_cant_learn
+	jp z,sp_say
 	ld hl,sp_bits						; every spell in the books carried
 	ld b,8
 .clear:
@@ -1075,8 +1121,8 @@ sp_study:
 	cp ITEM_EMPTY
 	jr z,.next_book
 	call item_kind_addr
-	ld a,(iy+K_CLASS)
-	cp IC_MAGIC_BOOK
+	call sp_book_class
+	cp (iy+K_CLASS)
 	jr nz,.next_book
 	ld hl,sp_bits
 	ld de,K_FLAGS
@@ -1130,7 +1176,22 @@ sp_study:
 .choose:
 	ld a,(s_new)
 	or a
-	jr z,.finish
+	jp z,.finish
+	ld a,(p_spell)						; priests: one at random
+	cp SP_MAGE
+	jr z,.pick
+	ld a,(sp_count)
+	call randint
+	dec a
+	push af
+	ld hl,sp_list
+	add hl,a
+	ld a,(hl)
+	ld hl,txt_learned_prayer
+	call spell_msg
+	pop af
+	jr .learn
+.pick:
 	xor a
 	ld (sp_letters),a
 	ld (sp_notes),a
@@ -1146,6 +1207,7 @@ sp_study:
 	ld hl,sp_count
 	cp (hl)
 	jr nc,.finish
+.learn:
 	ld hl,sp_list						; learn it
 	add hl,a
 	ld (sp_at),hl
@@ -1185,7 +1247,7 @@ sp_study:
 	dec (hl)
 	ld a,1
 	ld (turn_taken),a
-	jr .choose
+	jp .choose
 .finish:
 	ld a,(sp_short)
 	ld hl,s_new
@@ -1722,6 +1784,238 @@ on_screen:								; IX = floor item -> carry if in view
 	cp VIEW_W
 	ret
 
+; ---------------------------------------------------------------- prayers
+
+/* the prayers: PRIEST prayers 1-58 (PRAYER.C) */
+prayers:
+	dw ms_det_evil, pr_cure_light, pr_bless, pr_fear, ms_light			; 1-5
+	dw no_spell, ms_doors, pr_slow_poison, ms_confuse, pr_portal		; 6-10
+	dw pr_cure_serious, pr_chant, ms_sleep2, ms_food, pr_uncurse		; 11-15
+	dw pr_res_heat_cold, ms_cure_poison, pr_orb, pr_cure_critical, pr_sense_inv	; 16-20
+	dw pr_prot_evil, ms_quake, pr_map, pr_cure_mortal, pr_turn_undead	; 21-25
+	dw pr_prayer, pr_dispel_undead3, pr_heal, pr_dispel_evil3, no_spell	; 26-30
+	dw pr_holy_word, ms_det_mons, pr_detection, ms_identify, pr_probing	; 31-35
+	dw pr_clairvoyance, pr_cure_critical, pr_cure_mortal, pr_healing, pr_restoration	; 36-40
+	dw pr_remembrance, pr_dispel_undead4, pr_dispel_evil4, pr_banish, ms_destruction	; 41-45
+	dw pr_annihilate, ms_td, pr_recharge, pr_dispel_curse, pr_enchant_weapon	; 46-50
+	dw pr_enchant_armour, pr_brand, ms_phase, pr_teleport, ms_tele_other	; 51-55
+	dw ms_tele_level, ms_recall, pr_alter, no_spell, no_spell			; 56-60
+	dw no_spell, no_spell, no_spell
+
+pr_cure_light:							; 3d3, cuts 10 better
+	ld bc,3*256+3
+	call heal_dice
+	ld hl,(p_cut)
+	call cut_positive
+	ret z
+	ld de,-10
+	jr cut_less
+pr_cure_serious:						; 4d4, cuts halved less 20
+	ld bc,4*256+4
+	call heal_dice
+	ld hl,(p_cut)
+	call cut_positive
+	ret z
+	sra h
+	rr l
+	ld de,-20
+cut_less:
+	add hl,de
+	jr c,$+5
+	ld hl,0
+	ld (p_cut),hl
+	jp pr_wounds_heal
+pr_cure_critical:						; 8d4, no more cuts
+	ld bc,8*256+4
+	jr cure_cuts
+pr_cure_mortal:							; 16d4
+	ld bc,16*256+4
+cure_cuts:
+	call heal_dice
+	ld hl,(p_cut)
+	call cut_positive
+	ret z
+	ld hl,0
+	ld (p_cut),hl
+pr_wounds_heal:							; (the C's own words)
+	ld hl,msg_you_wounds_heal
+	jp msg_print
+heal_dice:								; heal B dice of C
+	call damroll
+heal_hl:
+	OVCALL PAGE_MAGIC, hp_player, PAGE_SPELL
+	ret
+cut_positive:							; HL = cut -> NZ if above 0
+	bit 7,h
+	jr nz,.no
+	ld a,h
+	or l
+	ret
+.no:
+	xor a
+	ret
+pr_heal:								; 200, and stun and cuts gone
+	ld hl,200
+	jr heal_all
+pr_healing:
+	ld hl,2000
+heal_all:
+	call heal_hl
+cure_stun_cut:
+	OVCALL PAGE_MAGIC, cure_stun, PAGE_SPELL
+	ld hl,(p_cut)
+	call cut_positive
+	ret z
+	ld hl,0
+	ld (p_cut),hl
+	ld hl,msg_feel_better_s
+	jp msg_print
+pr_holy_word:							; dispel evil 4 x lev, fear and
+	call pr_dispel_evil4				; poison gone, 1000, stun and cuts
+	call pr_fear
+	OVCALL PAGE_MAGIC, cure_poison, PAGE_SPELL
+	ld hl,1000
+	jr heal_all
+pr_fear:
+	OVCALL PAGE_MAGIC, remove_fear, PAGE_SPELL
+	ret
+pr_slow_poison:
+	OVCALL PAGE_MAGIC, slow_poison, PAGE_SPELL
+	ret
+pr_bless:								; blessed 12 + 1d12
+	ld bc,12*256+12
+	jr blessed
+pr_chant:
+	ld bc,24*256+24
+	jr blessed
+pr_prayer:
+	ld bc,48*256+48
+blessed:
+	ld hl,p_blessed
+	jp add_rand
+pr_sense_inv:							; detect invisible 24 + 1d24
+	ld hl,p_detect_inv
+	ld bc,24*256+24
+	jp add_rand
+pr_res_heat_cold:						; 10 + 1d10 each
+	ld hl,p_resist_heat
+	ld bc,10*256+10
+	call add_rand
+	ld hl,p_resist_cold
+	ld bc,10*256+10
+	jp add_rand
+pr_portal:								; teleport(lev * 3)
+	ld a,(p_lev)
+	ld e,a
+	ld d,3
+	jr pr_tele
+pr_teleport:							; teleport(lev * 8)
+	ld a,(p_lev)
+	ld e,a
+	ld d,8
+pr_tele:
+	mul d,e
+	ex de,hl
+	jp sp_teleport
+pr_uncurse:
+	OVCALL PAGE_SCROLL, sc_remove_curse, PAGE_SPELL
+	ret
+pr_dispel_curse:
+	OVCALL PAGE_SCROLL, sc_star_remove, PAGE_SPELL
+	ret
+pr_prot_evil:
+	OVCALL PAGE_SCROLL, sc_protevil, PAGE_SPELL
+	ret
+pr_map:
+	OVCALL PAGE_SCROLL, sc_map, PAGE_SPELL
+	ret
+pr_recharge:
+	ld a,15
+	jp sp_recharge
+pr_enchant_weapon:
+	OVCALL PAGE_SCROLL, pr_enchant_weapon_s, PAGE_SPELL
+	ret
+pr_enchant_armour:
+	OVCALL PAGE_SCROLL, sc_enchant_ac, PAGE_SPELL
+	ret
+pr_brand:
+	OVCALL PAGE_SCROLL, pr_brand_s, PAGE_SPELL
+	ret
+pr_clairvoyance:
+	OVCALL PAGE_MAGIC, wizard_light, PAGE_SPELL
+	ret
+pr_remembrance:
+	OVCALL PAGE_MAGIC, restore_level, PAGE_SPELL
+	ret
+pr_restoration:							; each stat, with its message
+	OVCALL PAGE_MAGIC, pe_res_str, PAGE_SPELL
+	OVCALL PAGE_MAGIC, pe_res_int, PAGE_SPELL
+	OVCALL PAGE_MAGIC, pe_res_wis, PAGE_SPELL
+	OVCALL PAGE_MAGIC, pe_res_dex, PAGE_SPELL
+	OVCALL PAGE_MAGIC, pe_res_con, PAGE_SPELL
+	OVCALL PAGE_MAGIC, pe_res_chr, PAGE_SPELL
+	ret
+pr_alter:								; alter reality: a new level here
+	ld a,3
+	ld (p_new_level),a
+	ret
+pr_orb:									; orb of draining: 3d6 + lev
+	ld hl,txt_black_sphere
+	call own_name
+	ld bc,3*256+6
+	call damroll
+	ld a,(p_lev)
+	add hl,a
+	xor a
+	jp sp_ball
+pr_annihilate:							; drain life 200
+	ld hl,200
+	ld (sp_entry+4),hl
+	ld a,AE_DRAIN
+	jp sp_effect
+pr_turn_undead:
+	ld a,AE_TURN_UNDEAD
+	jp sp_effect
+pr_banish:
+	ld a,AE_BANISH
+	jp sp_effect
+pr_detection:
+	ld a,AE_DETECT_ALL
+	jp sp_effect
+pr_probing:
+	ld a,AE_PROBE_ALL
+	jp sp_effect
+pr_dispel_undead3:						; dispel undead 3 x lev
+	ld b,1<<RF_UNDEAD
+	ld c,3
+	jr pr_dispel
+pr_dispel_undead4:
+	ld b,1<<RF_UNDEAD
+	ld c,4
+	jr pr_dispel
+pr_dispel_evil3:
+	ld b,1<<RF_EVIL
+	ld c,3
+	jr pr_dispel
+pr_dispel_evil4:
+	ld b,1<<RF_EVIL
+	ld c,4
+pr_dispel:								; B = the monsters, C x lev damage
+	ld a,b
+	ld (sp_entry+3),a
+	ld a,(p_lev)
+	ld e,a
+	ld d,c
+	mul d,e
+	ld a,d								; (at most 255)
+	or a
+	ld a,e
+	jr z,$+4
+	ld a,255
+	ld (sp_entry+4),a
+	ld a,AE_DISPEL
+	jp sp_effect
+
 ; ---------------------------------------------------------------- text
 
 txt_forgotten:		db "You have forgotten the ",0
@@ -1730,7 +2024,27 @@ txt_spell_of:		db "spell of ",0
 txt_prayer_of:		db "prayer of ",0
 msg_can_learn:		db "You can learn some new spells now.",0
 msg_can_learn_p:	db "You can learn some new prayers now.",0
+t_cant_see:			dw msg_cant_see_book, msg_cant_see_prayer
+t_no_books:			dw msg_no_books, msg_no_holy_books
+t_which_book:		dw txt_which_book, txt_which_holy
+t_dont_know:		dw msg_dont_know, msg_dont_know_p
+t_cast_which:		dw txt_cast_which, txt_recite_which
+t_dont_know_that:	dw msg_dont_know_that, msg_dont_know_that_p
+t_failed:			dw msg_spell_failed, msg_lost_concentration
+t_faint:			dw msg_faint_effort, msg_faint_fatigue
+t_cant_learn:		dw msg_cant_learn, msg_cant_learn_p
 msg_cant_see_book:	db "You can't see to read your spell book!",0
+msg_cant_see_prayer: db "You can't see to read your prayer!",0
+msg_no_holy_books:	db "You are not carrying any Holy Books!",0
+txt_which_holy:		db "Use which Holy Book? (letter, or space)",0
+msg_dont_know_p:	db "You don't know any prayers in that book.",0
+txt_recite_which:	db "Recite which prayer? (letter, or space)",0
+msg_dont_know_that_p: db "You don't know that prayer.",0
+msg_lost_concentration: db "You lost your concentration!",0
+msg_faint_fatigue:	db "You faint from fatigue!",0
+msg_cant_learn_p:	db "You can't learn any new prayers!",0
+msg_pray_hard:		db "Pray hard enough and your prayers may be answered.",0
+txt_learned_prayer:	db "You have learned the ",0
 msg_too_confused_sp: db "You are too confused.",0
 msg_no_books:		db "But you are not carrying any spell-books!",0
 txt_which_book:		db "Use which spell-book? (letter, or space)",0
@@ -1753,6 +2067,9 @@ txt_forgotten_n:	db " forgotten",0
 txt_unknown_n:		db " unknown",0
 txt_untried_n:		db " untried",0
 msg_wounds_heal_s:	db "Your wounds heal.",0
+msg_you_wounds_heal: db "You wounds heal.",0
+msg_feel_better_s:	db "You feel better.",0
+txt_black_sphere:	db "Black Sphere",0
 msg_air_charged_s:	db "The air about you becomes charged.",0
 msg_mystic_shield:	db "A mystic shield forms around your body!",0
 msg_resists_spell:	db "The object resists the spell.",0

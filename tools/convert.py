@@ -819,7 +819,8 @@ AE = ["BOLT", "BALL", "DRAIN", "MUD", "TELE_MON", "CONF_MON", "FAST", "FAST0", "
       "FEAR_POISON", "RECALL", "IDENTIFY", "PROBE", "MASS_GEN", "GENOCIDE", "TD", "TELEPORT", "RESTORE",
       "RESIST", "SLEEP", "RECHARGE", "DETECT", "DISPEL_EVIL", "PROTEVIL", "ONE_RING", "BREATH",
       # (spells use these too, through do_effect)
-      "SLEEP_ONE", "POLY", "SLOW_ONE", "LIGHT_LINE", "SLEEP_ADJ", "EARTHQUAKE", "DETECT_EVIL", "DETECT_MON"]
+      "SLEEP_ONE", "POLY", "SLOW_ONE", "LIGHT_LINE", "SLEEP_ADJ", "EARTHQUAKE", "DETECT_EVIL", "DETECT_MON",
+      "TURN_UNDEAD", "BANISH", "DISPEL", "DETECT_ALL", "PROBE_ALL"]
 
 
 def activate_tables(note, kinds):

@@ -1077,13 +1077,77 @@ sc_star_armour:							; 1d2+1 times
 	jr z,fails
 	ret
 
-/* enchants - B = which plus, C = extra: while k < 1d2 + C, enchant */
+/* pr_enchant_weapon - the prayer: up to 1d4 to-hit, 1d4 to-dam (PRAYER.C
+	case 50) */
+pr_enchant_weapon_s:
+	ld a,EQ_WEAPON
+	call equip_item
+	ret z
+	ld hl,txt_glows_brightly
+	call glows
+	xor a
+	ld (r_any),a
+	ld a,4
+	ld (r_range),a
+	ld b,I_TOHIT
+	ld c,0
+	call enchants
+	ld b,I_TODAM
+	ld c,0
+	call enchants
+	ld a,2
+	ld (r_range),a
+	ld a,(r_any)
+	or a
+	jp z,fails
+	ret
+
+/* pr_brand - the Elemental Brand prayer: a plain weapon becomes one of
+	Flame or of Frost, + 3 + 1d3 to-hit and to-dam, uncursed (case 52) */
+pr_brand_s:
+	ld a,EQ_WEAPON
+	call equip_item
+	jr z,.fails
+	ld a,(ix+I_NAME2)
+	or a
+	jr nz,.fails
+	ld a,2
+	call randint
+	dec a
+	ld hl,txt_fiery_shield
+	ld b,SN_FT
+	jr z,.hot
+	ld hl,txt_icy_blue
+	ld b,SN_FB
+.hot:
+	ld (ix+I_NAME2),b
+	call glows
+	ld a,3
+	call randint
+	add a,3
+	add a,(ix+I_TOHIT)
+	ld (ix+I_TOHIT),a
+	ld a,3
+	call randint
+	add a,3
+	add a,(ix+I_TODAM)
+	ld (ix+I_TODAM),a
+	res ID_CURSED_BIT,(ix+I_IDENT)
+	ld hl,p_update
+	set PU_BONUS,(hl)
+	ret
+.fails:
+	ld hl,msg_branding_fails
+	jp msg_print
+
+/* enchants - B = which plus, C = extra: while k < 1d(r_range, 2) + C,
+	enchant */
 enchants:
 	xor a
 	ld (r_k),a
 .loop:
 	push bc
-	ld a,2
+	ld a,(r_range)
 	call randint
 	pop bc
 	add a,c
@@ -1357,6 +1421,10 @@ uncurse_all:
 ; ---------------------------------------------------------------- 25
 
 rc_num:			db 60
+r_range:		db 2
+txt_fiery_shield: db " is covered in a fiery shield!",0
+txt_icy_blue:	db " glows deep, icy blue!",0
+msg_branding_fails: db "The Branding fails.",0
 uc_spare:		db 0				; 1: remove_curse, which spares some
 msg_one_ring:	db "The One Ring resists all attempts to remove it!",0
 

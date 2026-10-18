@@ -473,6 +473,7 @@ act_effects:
 	dw ae_ball														; 27 (a breath)
 	dw ae_sleep_one, ae_poly, ae_slow_one, ae_light_line, ae_sleep_adj	; 28-32
 	dw earthquake, detect_evil, ae_detect_mon						; 33-35
+	dw ae_turn_undead, ae_banish, ae_dispel, rd_detect, probing		; 36-40
 
 /* do_effect - one of activate's effects for a spell: sp_entry (16 bytes,
 	as act_table's) and sp_name, in high RAM. -> A = 1 if it was called off
@@ -527,6 +528,49 @@ ae_detect_mon:
 	xor a
 	ld hl,msg_sense_monsters
 	jp show_monsters
+ae_turn_undead:							; turn_undead: undead in sight that
+	ld hl,.one							; fail to stand (level + 1 above
+	jp in_sight_each					; theirs, or 1 in 5) are confused
+.one:
+	call mon_race
+	bit RF_UNDEAD,(iy+R_FLAGS)
+	ret z
+	ld a,(p_lev)
+	cp (iy+R_LEVEL)
+	jr nc,.turned
+	ld a,5
+	call randint
+	dec a
+	ld hl,txt_unaffected_d
+	jr nz,.say
+.turned:
+	ld (ix+M_CONFUSED),1
+	ld hl,txt_runs_frantically
+.say:
+	ld a,(ix+M_ML)
+	or a
+	ret z
+	jp say_name
+ae_banish:								; banish_creature(EVIL, 100): the
+	ld hl,.one							; evil in sight sent far away
+	call in_sight_each
+	ld a,(d_any)
+	or a
+	ret z
+	ld hl,msg_banished
+	jp msg_print
+.one:
+	call mon_race
+	bit RF_EVIL,(iy+R_FLAGS)
+	ret z
+	ld a,1
+	ld (d_any),a
+	jp teleport_away
+ae_dispel:								; dispel_creature: element = the
+	ld a,(a_num)						; R_FLAGS mask, number = damage
+	ld b,a
+	ld a,(a_gf)
+	jp dispel
 
 /* ae_dir - a direction -> carry; none: a_cancel set */
 ae_dir:
@@ -2676,6 +2720,8 @@ txt_slower:			db " starts moving slower.",0
 txt_confused_d:		db " appears confused.",0
 txt_falls_asleep:	db " falls asleep.",0
 txt_unaffected_d:	db " is unaffected.",0
+txt_runs_frantically: db " runs frantically!",0
+msg_banished:	db "The Power of your god banishes the creatures!",0
 txt_has_:			db " has ",0
 txt_hit_points:		db " hit points.",0
 txt_wails_pain:		db " wails out in pain!",0
