@@ -7,11 +7,11 @@
 ; included in all such copies.
 
 NUM_RACES		equ 549
-NUM_KINDS		equ 270
-NUM_ALLOC		equ 290
+NUM_KINDS		equ 277
+NUM_ALLOC		equ 298
 KIND_RATION		equ 0
 KIND_SLIME_MOLD	equ 1
-KIND_CLW		equ 129
+KIND_CLW		equ 136
 KIND_BROADSWORD	equ 8
 KIND_CHAIN_MAIL	equ 61
 

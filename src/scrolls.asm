@@ -77,13 +77,15 @@ scroll_effect:
 	jp (hl)
 
 scroll_effects:
-	dw sc_none, sc_none, sc_none, sc_identify, sc_none, sc_light	; 1-6
+	dw sc_enchant_hit, sc_enchant_dam, sc_enchant_ac, sc_identify		; 1-4
+	dw sc_remove_curse, sc_light										; 5-6
 	dw sc_summon, sc_phase, sc_teleport, sc_tele_level, sc_confuse	; 7-11
 	dw sc_map, sc_none, sc_none, sc_treasure, sc_objects, sc_none	; 12-17
 	dw sc_doors, sc_mass_genocide, sc_det_inv, sc_aggravate, sc_none	; 18-22
 	dw sc_td_destroy, sc_none, sc_recharge, sc_genocide, sc_darkness	; 23-27
-	dw sc_protevil, sc_food, sc_dispel_undead, ident, sc_none		; 28-32
-	dw sc_none, sc_none, sc_none, sc_none, sc_summon_undead			; 33-37
+	dw sc_protevil, sc_food, sc_dispel_undead, sc_star_remove, sc_none	; 28-32
+	dw sc_star_weapon, sc_curse_weapon, sc_star_armour, sc_curse_armour	; 33-36
+	dw sc_summon_undead													; 37
 	dw sc_bless, sc_chant, sc_prayer, sc_recall, sc_destruction		; 38-42
 NUM_SCROLL_EFFECTS	equ ($-scroll_effects)/2
 ; 5: remove curse and 17: trap detection find nothing yet (no curses or
@@ -127,6 +129,9 @@ sc_identify_item:
 	call list_label
 	ld a,(r_slot)
 	call pack_slot
+	set ID_KNOWN2_BIT,(ix+I_IDENT)		; (known2: pluses, charges)
+	ld hl,p_update
+	set PU_BONUS,(hl)
 	call objdes_msg
 	ld hl,txt_full_stop
 	call msg_add
@@ -964,9 +969,8 @@ sc_food:
 	jp c,msg_print
 	call item_free_slot
 	ret nc
-	ld (ix+I_KIND),low KIND_SLIME_MOLD
-	ld (ix+I_KIND_HI),high KIND_SLIME_MOLD
-	ld (ix+I_NUMBER),1
+	ld hl,KIND_SLIME_MOLD
+	call new_plain
 	ld a,(player_y)
 	ld (ix+I_Y),a
 	ld a,(player_x)
@@ -975,6 +979,343 @@ sc_food:
 	ld (ix+I_IDENT),0
 	ld hl,msg_roll_beneath
 	jp msg_print
+
+; ---------------------------------------------------------------- 1-3, 33-36
+
+/* equip_item - A = EQ_ slot -> IX = what's in it, NZ if anything is */
+equip_item:
+	ld e,a
+	ld d,ITEM_SIZE
+	mul d,e
+	ld ix,EQUIP
+	add ix,de
+	ld a,(ix+I_KIND_HI)
+	cp ITEM_EMPTY
+	ret
+
+/* glows - IX = item, HL = " glows faintly!" etc: "Your Dagger ..." */
+glows:
+	push hl
+	call msg_begin
+	ld hl,txt_your
+	call msg_add
+	ld a,1
+	ld (od_bare),a
+	call objdes_msg
+	xor a
+	ld (od_bare),a
+	pop hl
+	call msg_add
+	jp msg_end
+
+sc_enchant_hit:
+	ld b,I_TOHIT
+	jr enchant_weapon
+sc_enchant_dam:
+	ld b,I_TODAM
+enchant_weapon:
+	ld a,EQ_WEAPON
+	push bc
+	call equip_item
+	pop bc
+	ret z
+	push bc
+	call ident
+	ld hl,txt_glows_faintly
+	call glows
+	pop bc
+	call enchant
+	ret c
+fails:
+	ld hl,msg_enchant_fails
+	jp msg_print
+
+sc_star_weapon:							; 1d2 to-hit, 1d2 to-dam (rolled
+	ld a,EQ_WEAPON						; afresh each time round)
+	call equip_item
+	ret z
+	call ident
+	ld hl,txt_glows_brightly
+	call glows
+	xor a
+	ld (r_any),a
+	ld b,I_TOHIT
+	ld c,0
+	call enchants
+	ld b,I_TODAM
+	ld c,0
+	call enchants
+	ld a,(r_any)
+	or a
+	jr z,fails
+	ret
+
+sc_enchant_ac:
+	call pick_armour
+	ret z
+	call ident
+	ld hl,txt_glows_faintly
+	call glows
+	ld b,I_TOAC
+	call enchant
+	ret c
+	jr fails
+
+sc_star_armour:							; 1d2+1 times
+	call pick_armour
+	ret z
+	call ident
+	ld hl,txt_glows_brightly
+	call glows
+	xor a
+	ld (r_any),a
+	ld b,I_TOAC
+	ld c,1
+	call enchants
+	ld a,(r_any)
+	or a
+	jr z,fails
+	ret
+
+/* enchants - B = which plus, C = extra: while k < 1d2 + C, enchant */
+enchants:
+	xor a
+	ld (r_k),a
+.loop:
+	push bc
+	ld a,2
+	call randint
+	pop bc
+	add a,c
+	ld e,a
+	ld a,(r_k)
+	cp e
+	ret nc
+	push bc
+	call enchant
+	jr nc,$+7
+	ld a,1
+	ld (r_any),a
+	pop bc
+	ld hl,r_k
+	inc (hl)
+	jr .loop
+
+/* enchant - IX = item, B = I_TOHIT/I_TODAM/I_TOAC: +1 unless the roll
+	fails (harder the higher it is); success lifts a curse -> carry */
+enchant:
+	push ix
+	pop hl
+	ld a,b
+	add hl,a
+	ld a,(hl)
+	ld (r_char),a
+	push hl
+	ld de,0								; chance in 1000 of failing
+	or a
+	jp m,.roll
+	jr z,.roll
+	cp 14
+	ld de,1000
+	jr nc,.roll
+	dec a
+	add a,a
+	ld hl,enchant_fails
+	add hl,a
+	ld e,(hl)
+	inc hl
+	ld d,(hl)
+.roll:
+	ld hl,1000
+	push de
+	call randint16
+	pop de
+	or a
+	sbc hl,de							; 1d1000 must beat the chance
+	pop hl
+	jr c,.failed
+	jr z,.failed
+	inc (hl)
+	res ID_CURSED_BIT,(ix+I_IDENT)
+	ld hl,p_update
+	set PU_BONUS,(hl)
+	scf
+	ret
+.failed:
+	or a
+	ret
+enchant_fails:	dw 8,40,100,200,300,400,500,700,950,990,992,995,997
+
+/* pick_armour - a random piece of armour worn, a cursed one first
+	-> IX, NZ if any (scrolls 3 and 35) */
+pick_armour:
+	ld hl,armour_slots
+	ld b,6
+	ld c,0
+	ld de,r_list
+.count:									; which are worn
+	push bc
+	push de
+	push hl
+	ld a,(hl)
+	call equip_item
+	pop hl
+	pop de
+	pop bc
+	jr z,.none
+	ld a,(hl)
+	ld (de),a
+	inc de
+	inc c
+.none:
+	inc hl
+	djnz .count
+	ld a,c
+	or a
+	ret z
+	call randint
+	dec a
+	ld hl,r_list
+	add hl,a
+	ld a,(hl)
+	ld (r_char),a
+	ld hl,cursed_order					; but a cursed one comes first
+	ld b,6
+.cursed:
+	push bc
+	push hl
+	ld a,(hl)
+	call equip_item
+	pop hl
+	pop bc
+	jr z,.next
+	bit ID_CURSED_BIT,(ix+I_IDENT)
+	jr z,.next
+	ld a,(hl)
+	ld (r_char),a
+	jr .got
+.next:
+	inc hl
+	djnz .cursed
+.got:
+	ld a,(r_char)
+	call equip_item
+	or 1								; (NZ)
+	ret
+armour_slots:	db EQ_BODY, EQ_SHIELD, EQ_CLOAK, EQ_GLOVES, EQ_HELM, EQ_BOOTS
+cursed_order:	db EQ_BODY, EQ_SHIELD, EQ_CLOAK, EQ_HELM, EQ_GLOVES, EQ_BOOTS
+
+sc_curse_weapon:
+	ld a,EQ_WEAPON
+	call equip_item
+	ret z
+	call ident
+	ld hl,txt_glows_black
+	call glows
+	call minus_two_d5
+	ld (ix+I_TOHIT),a
+	call minus_two_d5
+	ld (ix+I_TODAM),a
+cursed_now:
+	ld (ix+I_NAME2),0
+	set ID_CURSED_BIT,(ix+I_IDENT)
+	ld hl,p_update
+	set PU_BONUS,(hl)
+	ret
+
+sc_curse_armour:						; body 1 in 4, then each other
+	ld hl,curse_odds					; 1 in 3, else the first worn
+.try:
+	ld a,(hl)
+	or a
+	jr z,.first
+	inc hl
+	ld b,(hl)
+	inc hl
+	push hl
+	push af
+	ld a,b
+	call randint
+	ld c,a
+	pop af
+	push bc
+	call equip_item
+	pop bc
+	pop hl
+	jr z,.try
+	dec c
+	jr nz,.try
+	jr .curse
+.first:
+	ld hl,cursed_order
+	ld b,6
+.each:
+	push bc
+	push hl
+	ld a,(hl)
+	call equip_item
+	pop hl
+	pop bc
+	jr nz,.curse
+	inc hl
+	djnz .each
+	ret
+.curse:
+	call ident
+	ld hl,txt_glows_black
+	call glows
+	call minus_two_d5
+	ld (ix+I_TOAC),a
+	jr cursed_now
+curse_odds:		db EQ_BODY,4, EQ_SHIELD,3, EQ_CLOAK,3, EQ_HELM,3, EQ_GLOVES,3, EQ_BOOTS,3, 0
+
+/* minus_two_d5 - A = -1d5 - 1d5 */
+minus_two_d5:
+	ld a,5
+	call randint
+	ld b,a
+	push bc
+	ld a,5
+	call randint
+	pop bc
+	add a,b
+	neg
+	ret
+
+/* sc_remove_curse - every cursed thing worn is freed (remove_curse) */
+sc_remove_curse:
+	call uncurse_all
+	ret nc
+	call ident
+	ld hl,msg_watching_over
+	jp msg_print
+sc_star_remove:							; (*remove curse*: always known)
+	call ident
+uncurse_all:
+	xor a
+	ld (r_any),a
+	ld ix,EQUIP
+	ld b,EQ_MAX
+	ld de,ITEM_SIZE
+.each:
+	ld a,(ix+I_KIND_HI)
+	cp ITEM_EMPTY
+	jr z,.next
+	bit ID_CURSED_BIT,(ix+I_IDENT)
+	jr z,.next
+	res ID_CURSED_BIT,(ix+I_IDENT)
+	ld a,1
+	ld (r_any),a
+.next:
+	add ix,de
+	djnz .each
+	ld hl,p_update
+	set PU_BONUS,(hl)
+	ld a,(r_any)
+	or a
+	ret z
+	scf
+	ret
 
 ; ---------------------------------------------------------------- 25
 
@@ -1187,6 +1528,12 @@ replace_walls:	db T_GRANITE,T_MAGMA,T_QUARTZ
 ; ---------------------------------------------------------------- text
 
 msg_identify_scroll: db "This is an identify scroll.",0
+txt_your:			db "Your ",0
+txt_glows_faintly:	db " glows faintly!",0
+txt_glows_brightly:	db " glows brightly!",0
+txt_glows_black:	db " glows black, fades.",0
+msg_enchant_fails:	db "The enchantment fails.",0
+msg_watching_over:	db "You feel as if someone is watching over you.",0
 msg_recharge_scroll: db "This is a Recharge-Item scroll.",0
 msg_nothing_to_charge: db "You have nothing to recharge.",0
 txt_recharge_which:	db "Recharge which item? (letter, or space)",0
@@ -1222,6 +1569,7 @@ r_k:			db 0
 r_gold:			db 0
 r_char:			db 0
 r_seen:			db 0
+r_list:			ds 6
 r_summoner:		dw 0
 tp_dis:			dw 0
 tp_count:		dw 0

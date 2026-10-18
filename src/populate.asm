@@ -681,14 +681,9 @@ place_object:
 	ret nc
 	ld (ix+I_Y),d
 	ld (ix+I_X),e
-	ld (ix+I_NUMBER),1
-	ld (ix+I_MARKED),0
 	call get_obj_num
-	ld (ix+I_KIND),l
-	ld (ix+I_KIND_HI),h
-	ld (ix+I_IDENT),0
-	call kind_addr
-	jp init_charges
+	ld a,(dun_level)					; magic_treasure at this depth
+	jp new_item
 
 /* get_obj_num - HL = a kind for this depth (get_obj_num in MISC2.C):
 	1 in OBJ_GREAT looks much deeper; half the time it picks one dungeon

@@ -74,7 +74,17 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - the Recharging scroll (may blow the wand up); the Magic shop stocks wands and staffs
      - item kinds are now 9 bits (270 kinds, room for 510): item records are 9 bytes with a word kind, store stock 5 bytes with charges
      - not yet: traps (Trap Location finds none), mana (the Magi restore INT only), monsters escaping walls an earthquake drops on them (survivors keep their floor)
-   - 9c: rings, amulets, magical pluses (enchant/curse scrolls); 9d: spells and monster spells
+   - 9c-1: magical pluses *(built)* — `MISC1.C` magic_treasure/m_bonus/randnor, `SCROLLS.C`, `SPELLS.C` enchant/remove_curse, `DUNGEON.C` pseudo-identify, `STORE1.C` item_value
+     - weapons and armour come with pluses or curses as magic_treasure gives them (chance 15 + level, at most 70; cursed 10/13 of that again), `m_bonus` using the C's normal table; dragon scale mail always enchanted; crowns more often; the stores' goods are made at level 5 (black market 40) and nothing cursed is stocked
+     - names show pluses once known: "a Dagger (1d4) (+3,+2)", "Chain Mail (-2,+0) [32,+4]"; {cursed}, {blessed}, and {average}/{good}/{excellent}/{special} feelings
+     - cursed things won't come off ("Hmmm, it seems to be cursed.") or be replaced; putting one on: "Oops! It feels deathly cold!"; cursed armour gives no base AC
+     - scrolls: Enchant Weapon To-Hit/To-Dam, Enchant Armour, *Enchant Weapon*, *Enchant Armour*, Curse Weapon, Curse Armour, Remove Curse, *Remove Curse*; Identify (and *Enlightenment*) reveal pluses and charges
+     - feelings: now and then you sense "There's something good about what you are wielding..."; warriors, rogues and paladins learn more ("You feel the Dagger you are wielding is good...")
+     - prices: known pluses add 100 each; a known curse, or any minus, makes it worthless
+     - the home keeps what you knew about an item
+     - item records are now 14 bytes (pluses, ego, feeling); the store stock (10-byte entries) lives in the store overlay's own page
+     - not yet: ego items and artifacts (the C's special cases are plain pluses for now; cursed cloaks keep their ego number for 9c-3)
+   - 9c-2: rings and amulets; 9c-3: egos and artifacts; 9d: spells and monster spells
 10. Saving to SD card
 
 ## Memory map
@@ -86,12 +96,13 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
 | `$4000-$5FFF` | **overlay window** (MMU slot 2): an overlay page, paged in by `FARCALL` |
 | `$6000-$73FF` | tilemap, 80x32 x (char, attr) |
 | `$7400-$7BFF` | tile definitions (1-bit text mode) |
+| `$7C00-$7E7A` | what the player knows (`object_ident`, 8 x 64) and this game's flavour orders |
 | `$8000-$AFFF` | resident code and data (bank 2) |
 | `$B000-$B3FF` | monster list, 64 x 16 bytes |
-| `$B400-$B63F` | floor items, 64 x 9 bytes (kind word, number, y, x, marked, value/charges/timeout, ident) |
-| `$B640-$B6EA` | pack (12 x 9) then equipment (7 x 9) |
-| `$B6EB-$B816` | the character's hit points per level (50 words) and experience needed per level (50 dwords) |
-| `$B817-$BBF6` | store stock (8 stores x 24 x 5 bytes: kind word, number, discount, charges), owners, entry counts, door positions |
+| `$B400-$B77F` | floor items, 64 x 14 bytes (kind word, number, y, x, marked, value/charges/timeout, ident, to-hit, to-dam, to-ac, ego, feeling) |
+| `$B780-$B8CF` | pack (12 x 14) then equipment (room for 12 x 14; 7 in use) |
+| `$B8D0-$B9FB` | the character's hit points per level (50 words) and experience needed per level (50 dwords) |
+| `$B9FC-$BA1B` | store owners, entry counts, door positions (the stock itself is in the store overlay) |
 | `$BC00-$BDBF` | IM2 vector table + jump |
 | `$BEC0-$BFFF` | stack |
 | `$C000-$F30B` | dungeon map, 198x66 bytes (pages 32/33): low 4 bits terrain, bit 4 room, bit 5 lit/remembered, bit 6 player light, bit 7 monster here |
@@ -114,7 +125,7 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 
 Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 60-62 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page) followed on the last of them (`FLAVOUR_PAGE`) by `data/flavours.asm`: the potion colours, woods and metals, the title syllables and the buffer this game's scroll titles are written into. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
 
-Resident code ends around `$ADFE` after milestone 9b (only about 500 bytes left: later milestones should move code out of it) (`status.asm` holds the stat tables, timed-effect counters, what the player knows, the colour order and the after-use identify logic; `pack.asm` the item lists and chooser), the monster list starting at `$B000`. The creation overlay is at 7.6K of 8K, the magic overlay 6.4K, the scroll overlay 2.9K, the device overlay 6.3K.
+Resident code ends around `$ADC3` after milestone 9c-1 (about 570 bytes left; the knowledge tables moved to `$7C00` and the experience table into the creation overlay to make room) (`status.asm` holds the stat tables, timed-effect counters, what the player knows, the colour order and the after-use identify logic; `pack.asm` the item lists and chooser), the monster list starting at `$B000`. The creation overlay is at 7.6K of 8K, the magic overlay 6.4K, the scroll overlay 2.9K, the device overlay 6.3K.
 
 Overlays that change stats or bonuses set `p_update`; `draw_view` (main loop only) runs `update_stuff`, which pages the items overlay to recalculate. Item commands that need the magic overlay leave `pending_magic` for `pending_actions` in the main loop.
 

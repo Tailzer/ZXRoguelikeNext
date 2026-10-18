@@ -21,6 +21,9 @@ objdes_msg:
 	or a
 	jr nz,.unknown_one
 	call kind_name
+	ld a,(od_bare)						; ("The Dagger you are wielding...")
+	or a
+	jr nz,.no_article
 	ld a,(iy+K_ARTICLE)					; "Chain Mail" has no article
 	or a
 	jr z,.no_article
@@ -90,66 +93,29 @@ objdes_msg:
 	ld hl,txt_quote
 	call msg_add
 .suffix:
-	ld a,(iy+K_CLASS)					; " (5 charges)" once they're known
-	cp IC_WAND
+	ld a,(od_bare)						; just the name (objdes, pref FALSE)
+	or a
+	ret nz
+	ld a,(iy+K_CLASS)
+	cp IC_WEAPON
+	jr z,.weapon
+	jr nc,.armour
+	cp IC_WAND							; " (5 charges)" once they're known
 	jr z,.charges
 	cp IC_STAFF
-	jr nz,.notes
+	jp nz,.notes
 .charges:
 	bit ID_KNOWN2_BIT,(ix+I_IDENT)
-	jr z,.notes
+	jp z,.notes
 	ld hl,txt_open_br
 	call msg_add
 	ld a,(ix+I_PVAL)
 	call msg_add_u8
 	ld hl,txt_charges_
 	call msg_add
-.notes:									; " {tried}", " {empty}", both
-	xor a
-	ld (od_note),a
-	ld a,(od_unknown)
-	or a
-	jr z,.empty
-	call ident_addr
-	bit OD_TRIED_BIT,(hl)
-	jr z,.empty
-	ld hl,txt_tried
-	call msg_add
-	ld a,1
-	ld (od_note),a
-.empty:
-	bit ID_EMPTY_BIT,(ix+I_IDENT)
-	jr z,.close
-	bit ID_KNOWN2_BIT,(ix+I_IDENT)
-	jr nz,.close
-	ld a,(od_note)
-	or a
-	ld hl,txt_empty
-	jr z,$+5
-	ld hl,txt_empty_too
-	call msg_add
-	ld a,1
-	ld (od_note),a
-.close:
-	ld a,(od_note)
-	or a
-	jr z,.class
-	ld hl,txt_brace
-	call msg_add
-.class:
-	ld a,(iy+K_CLASS)
-	cp IC_WEAPON
-	jr z,.dice
-	cp IC_BODY
-	ret c								; food, potions
-	ld hl,txt_open_sq					; " [ac]"
-	call msg_add
-	ld a,(iy+K_AC)
-	call msg_add_u8
-	ld hl,txt_close_sq
-	jp msg_add
-.dice:
-	ld hl,txt_open_br					; " (XdY)"
+	jp .notes
+.weapon:								; " (2d5)"
+	ld hl,txt_open_br
 	call msg_add
 	ld a,(iy+K_DICE)
 	call msg_add_u8
@@ -158,7 +124,143 @@ objdes_msg:
 	ld a,(iy+K_SIDES)
 	call msg_add_u8
 	ld hl,txt_close_br
+	call msg_add
+.armour:								; once known: " (+3,+2)" (or just
+	bit ID_KNOWN2_BIT,(ix+I_IDENT)		; the one that isn't 0), then
+	jr z,.ac							; " [14,+3]" (" [14]" unknown)
+	bit ID_SHOWHD_BIT,(ix+I_IDENT)
+	jr z,.one
+	call .hit_dam
+	jr .ac
+.one:
+	ld a,(ix+I_TOHIT)
+	or a
+	jr nz,.one_plus
+	ld a,(ix+I_TODAM)
+	or a
+	jr z,.ac
+.one_plus:
+	push af
+	ld hl,txt_open_br
+	call msg_add
+	pop af
+	call .signed
+	ld hl,txt_close_br
+	call msg_add
+.ac:
+	ld a,(iy+K_AC)						; (helms always: crowns have none)
+	or a
+	jr nz,.ac_base
+	ld a,(iy+K_CLASS)
+	cp IC_HELM
+	jr z,.ac_base
+	bit ID_KNOWN2_BIT,(ix+I_IDENT)		; " [+3]" if only magical
+	jr z,.notes
+	ld a,(ix+I_TOAC)
+	or a
+	jr z,.notes
+	ld hl,txt_open_sq
+	call msg_add
+	ld a,(ix+I_TOAC)
+	call .signed
+	jr .ac_done
+.ac_base:
+	ld hl,txt_open_sq
+	call msg_add
+	ld a,(iy+K_AC)
+	call msg_add_u8
+	bit ID_KNOWN2_BIT,(ix+I_IDENT)
+	jr z,.ac_done
+	ld a,','
+	call .put_char
+	ld a,(ix+I_TOAC)
+	call .signed
+.ac_done:
+	ld hl,txt_close_sq
+	call msg_add
+.notes:									; {tried blessed empty cursed good}
+	xor a
+	ld (od_note),a
+	ld a,(od_unknown)
+	or a
+	jr z,.blessed
+	call ident_addr
+	bit OD_TRIED_BIT,(hl)
+	ld hl,txt_tried
+	call nz,.note
+.blessed:
+	bit ID_MAGIK_BIT,(ix+I_IDENT)
+	ld hl,txt_blessed
+	call nz,.note
+	bit ID_KNOWN2_BIT,(ix+I_IDENT)
+	jr nz,.cursed
+	bit ID_EMPTY_BIT,(ix+I_IDENT)
+	ld hl,txt_empty
+	call nz,.note
+.cursed:
+	bit ID_DAMD_BIT,(ix+I_IDENT)
+	ld hl,txt_cursed
+	call nz,.note
+	ld a,(ix+I_FEEL)					; how it felt, until it's known
+	or a
+	jr z,.close
+	bit ID_KNOWN2_BIT,(ix+I_IDENT)
+	jr nz,.close
+	dec a
+	add a,a
+	ld hl,feel_words
+	add hl,a
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	call .note
+.close:
+	ld a,(od_note)
+	or a
+	ret z
+	ld hl,txt_brace
 	jp msg_add
+.note:									; " {" first, " " after
+	push hl
+	ld a,(od_note)
+	or a
+	ld hl,txt_open_brace
+	jr z,$+5
+	ld hl,txt_space_
+	call msg_add
+	pop hl
+	ld a,1
+	ld (od_note),a
+	jp msg_add
+.hit_dam:								; " (+3,+2)"
+	ld hl,txt_open_br
+	call msg_add
+	ld a,(ix+I_TOHIT)
+	call .signed
+	ld a,','
+	call .put_char
+	ld a,(ix+I_TODAM)
+	call .signed
+	ld hl,txt_close_br
+	jp msg_add
+.signed:								; A = signed: "+3", "-2"
+	bit 7,a
+	push af
+	ld a,'+'
+	jr z,$+4
+	ld a,'-'
+	call .put_char
+	pop af
+	jp p,msg_add_u8
+	neg
+	jp msg_add_u8
+.put_char:									; A = one character
+	ld hl,(msg_ptr)
+	ld (hl),a
+	inc hl
+	ld (msg_ptr),hl
+	ret
 .article:								; A = first letter: "a " or "an "
 	call is_vowel
 	ld hl,txt_a_
@@ -579,9 +681,16 @@ txt_no_more_:	db "no more ",0
 txt_potion_tilde: db " Potion~",0
 txt_scroll_tilde: db "Scroll~ titled \"",0
 txt_quote:		db "\"",0
-txt_tried:		db " {tried",0
-txt_empty:		db " {empty",0
-txt_empty_too:	db " empty",0
+txt_tried:		db "tried",0
+txt_empty:		db "empty",0
+txt_blessed:	db "blessed",0
+txt_cursed:		db "cursed",0
+txt_open_brace:	db " {",0
+feel_words:		dw txt_average, txt_good, txt_excellent, txt_special
+txt_average:	db "average",0
+txt_good:		db "good",0
+txt_excellent:	db "excellent",0
+txt_special:	db "special",0
 txt_brace:		db "}",0
 txt_staff_:		db " Staff",0
 txt_wand_:		db " Wand",0
@@ -597,6 +706,7 @@ fk_slot:		db 0
 carry_try:		db 0
 od_unknown:		db 0
 od_class:		db 0
+od_bare:		db 0				; 1: no article ("The Dagger you are...")
 od_note:		db 0
 comb_kind:		dw 0
 comb_first:		db 0

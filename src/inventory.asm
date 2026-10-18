@@ -12,7 +12,7 @@
 	can't use yet are left out) */
 starting_kit:
 	ld hl,PACK+I_KIND_HI
-	ld b,PACK_MAX+EQ_SLOTS
+	ld b,PACK_MAX+EQ_MAX
 	ld de,ITEM_SIZE
 .clear:
 	ld (hl),ITEM_EMPTY
@@ -55,11 +55,7 @@ starting_kit:
 	jp calc_bonuses
 .make:
 	ld hl,(kit_kind)
-	ld (ix+I_KIND),l
-	ld (ix+I_KIND_HI),h
-	call kind_addr
-	call init_charges
-	ld (ix+I_NUMBER),1
+	call new_plain
 	ld (ix+I_MARKED),1
 	ld (ix+I_IDENT),1<<ID_STORE_BIT|1<<ID_KNOWN2_BIT	; (store_bought)
 	ret
@@ -80,14 +76,20 @@ calc_bonuses:
 	cp ITEM_EMPTY
 	jr z,.next
 	call item_kind_addr
+	bit ID_CURSED_BIT,(ix+I_IDENT)		; cursed: no base armour class
+	jr nz,.pluses
 	ld a,(p_ac)
 	add a,(iy+K_AC)
 	ld (p_ac),a
+.pluses:								; and its own pluses
+	ld a,(p_ac)
+	add a,(ix+I_TOAC)
+	ld (p_ac),a
 	ld a,(p_tohit)
-	add a,(iy+K_TOHIT)
+	add a,(ix+I_TOHIT)
 	ld (p_tohit),a
 	ld a,(p_todam)
-	add a,(iy+K_TODAM)
+	add a,(ix+I_TODAM)
 	ld (p_todam),a
 .next:
 	ld de,ITEM_SIZE
@@ -334,6 +336,17 @@ cmd_wield:
 	mul d,e
 	ld hl,EQUIP
 	add hl,de							; HL = equipment slot
+	push hl								; what's there now can't come off
+	inc hl								; if it's cursed
+	ld a,(hl)							; (I_KIND_HI)
+	ld de,I_IDENT-I_KIND_HI
+	add hl,de
+	cp ITEM_EMPTY
+	jr z,.free
+	bit ID_CURSED_BIT,(hl)
+.free:
+	pop hl
+	jp nz,stuck_on
 	push ix
 	pop de								; DE = pack slot
 	ld b,ITEM_SIZE
@@ -369,6 +382,32 @@ cmd_wield:
 	call objdes_msg
 	ld hl,txt_full_stop
 	call msg_add
+	call msg_end
+	bit ID_CURSED_BIT,(ix+I_IDENT)		; a curse makes itself known
+	ret z
+	set ID_DAMD_BIT,(ix+I_IDENT)
+	ld hl,msg_deathly_cold
+	jp msg_print
+
+/* stuck_on - HL = a cursed piece of equipment in the way: "The Dagger
+	(1d4) you are wielding appears to be cursed." and nothing happens */
+stuck_on:
+	push hl
+	pop ix
+	call msg_begin
+	ld hl,txt_the
+	call msg_add
+	ld a,1
+	ld (od_bare),a
+	call objdes_msg
+	xor a
+	ld (od_bare),a
+	ld a,(cmd_equip)
+	or a
+	ld hl,txt_wielding_cursed
+	jr z,$+5
+	ld hl,txt_wearing_cursed
+	call msg_add
 	jp msg_end
 
 /* cmd_takeoff - 't': take something off and put it in the pack */
@@ -392,6 +431,9 @@ cmd_takeoff:
 	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	ret z
+	bit ID_CURSED_BIT,(ix+I_IDENT)
+	ld hl,msg_seems_cursed
+	jp nz,msg_print
 	call pack_carry
 	jr c,.carried
 	ld hl,msg_no_room
@@ -740,6 +782,10 @@ msg_no_scrolls:	db "You are not carrying any scrolls!",0
 msg_cant_see:	db "You can't see to read the scroll.",0
 msg_too_confused: db "You are too confused to read a scroll.",0
 txt_read_which:	db "Read which scroll? (letter, or space)",0
+msg_deathly_cold: db "Oops! It feels deathly cold!",0
+msg_seems_cursed: db "Hmmm, it seems to be cursed.",0
+txt_wielding_cursed: db " you are wielding appears to be cursed.",0
+txt_wearing_cursed: db " you are wearing appears to be cursed.",0
 txt_aim_which:	db "Aim which wand? (letter, or space)",0
 txt_use_which:	db "Use which staff? (letter, or space)",0
 txt_zap_which:	db "Activate which rod? (letter, or space)",0

@@ -25,6 +25,8 @@
 		titled per game; monster confusion, protection from evil
 	Milestone 9b: Devices - wands, staffs and rods (WANDS.C, STAFFS.C,
 		RODS.C): charges, bolts, balls and beams; 9-bit item kinds
+	Milestone 9c-1: Pluses - magic_treasure's to-hit, to-dam and AC, curses,
+		enchant and curse scrolls, item feelings
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -215,6 +217,7 @@ memory_init:
 	include "src/items.asm"
 	include "src/pack.asm"
 	include "src/status.asm"
+	include "src/magic_items.asm"
 	include "src/view.asm"
 	include "src/player.asm"
 	include "src/messages.asm"

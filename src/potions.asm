@@ -1314,6 +1314,19 @@ identify_pack:
 	inc a
 	cp PACK_MAX
 	jr c,.each
+	jp known2_all
+
+/* known2_all - pluses and charges of everything carried are known */
+known2_all:
+	ld ix,PACK
+	ld b,PACK_MAX+EQ_MAX
+	ld de,ITEM_SIZE
+.each:
+	set ID_KNOWN2_BIT,(ix+I_IDENT)
+	add ix,de
+	djnz .each
+	ld hl,p_update
+	set PU_BONUS,(hl)
 	ret
 
 /* self_knowledge - list what the player knows of their own state over

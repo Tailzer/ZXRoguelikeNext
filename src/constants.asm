@@ -22,6 +22,13 @@ RACE_PAGE			equ 44				; 5 pages of races (data/races.asm)
 KIND_PAGE			equ 60				; item kinds, 128 per page (data/kinds.asm)
 FLAVOUR_PAGE		equ KIND_PAGE+(NUM_KINDS-1)/128	; the flavours follow the kinds
 IM2_TABLE			equ $BC00			; 257 bytes of $BD
+KNOWLEDGE			equ $7C00			; bank 5's spare 1K, after the tile definitions:
+object_ident		equ KNOWLEDGE		;  what the player knows, 64 per object_offset
+flavour_map			equ object_ident+8*64	;  colour shown for each potion
+wood_map			equ flavour_map+57	;  wood for each staff
+metal_map			equ wood_map+32		;  metal for each wand and rod
+KNOWLEDGE_END		equ metal_map+32
+	ASSERT KNOWLEDGE_END <= $8000
 IM2_JUMP			equ $BDBD			; jp im2_handler
 
 ; ---- banking ----
@@ -227,7 +234,8 @@ ITEM_MAX			equ 64
 PACK				equ ITEM_LIST+ITEM_MAX*ITEM_SIZE	; PACK_MAX carried items
 PACK_MAX			equ 12				; slots a-l
 EQUIP				equ PACK+PACK_MAX*ITEM_SIZE	; EQ_SLOTS worn/wielded items
-EQ_SLOTS			equ 7
+EQ_SLOTS			equ 7				; slots in use (shown by 'e')
+EQ_MAX				equ 12				; room kept for rings, amulet, light...
 EQ_WEAPON			equ 0
 EQ_BODY				equ 1
 EQ_SHIELD			equ 2
@@ -235,7 +243,7 @@ EQ_HELM				equ 3
 EQ_CLOAK			equ 4
 EQ_GLOVES			equ 5
 EQ_BOOTS			equ 6
-ITEM_SIZE			equ 9
+ITEM_SIZE			equ 14
 ITEM_EMPTY			equ $FF				; I_KIND_HI of a free slot
 KIND_GOLD			equ $FE				; I_KIND_HI of a pile of treasure
 ; item record
@@ -250,9 +258,23 @@ I_PVAL				equ 6				; wands and staffs: charges
 I_TIMEOUT			equ 6				; rods: word, turns until it's ready
 I_SUB				equ 8				; gold type
 I_IDENT				equ 8				; everything else: ID_ flags
+I_TOHIT				equ 9				; signed: magical pluses (magic_treasure)
+I_TODAM				equ 10
+I_TOAC				equ 11
+I_NAME2				equ 12				; ego or artifact (9c-3), 0 = none
+I_FEEL				equ 13				; FEEL_: how it felt (pseudo-identify)
 ID_STORE_BIT		equ 0				; store bought (the C's ID_STOREBOUGHT)
 ID_EMPTY_BIT		equ 1				; found to be empty (ID_EMPTY)
-ID_KNOWN2_BIT		equ 2				; charges known (known2)
+ID_KNOWN2_BIT		equ 2				; pluses or charges known (known2)
+ID_CURSED_BIT		equ 3				; it is cursed (TR_CURSED)
+ID_DAMD_BIT			equ 4				; and the player knows it (ID_DAMD)
+ID_MAGIK_BIT		equ 5				; felt to be good (ID_MAGIK)
+ID_SHOWHD_BIT		equ 6				; always show (+h,+d) (ID_SHOW_HITDAM)
+FEEL_NONE			equ 0				; inscriptions value_check gives
+FEEL_AVERAGE		equ 1
+FEEL_GOOD			equ 2
+FEEL_EXCELLENT		equ 3
+FEEL_SPECIAL		equ 4
 ; kind record (data/kinds.asm, made by tools/convert.py from TREASURE.C)
 KIND_SIZE			equ 64				; 128 per 8K page
 K_CHAR				equ 0
@@ -272,7 +294,24 @@ K_COST				equ 16				; word, base value in gold
 K_FLAGS				equ 18				; dword: the C's flags (potion effects)
 K_FLAVOUR			equ 22				; subval & 63: index into the flavour tables
 K_GROUP2			equ 23				; 1 for TV_POTION2 (effects 33-64)
-K_NAME				equ 24				; the name itself, '~' where plurals add 's'
+K_TOAC				equ 24				; signed: base magical AC
+K_MAGIC				equ 25				; MC_: how magic_treasure treats it
+K_NAME				equ 26				; the name itself, '~' where plurals add 's'
+; magic_treasure classes (K_MAGIC)
+MC_NONE				equ 0
+MC_ARMOUR			equ 1				; body armour, shields
+MC_DRAGON			equ 2				; dragon scale mail: always enchanted
+MC_WEAPON			equ 3
+MC_GLOVES			equ 4
+MC_BOOTS			equ 5
+MC_HELM				equ 6
+MC_CLOAK			equ 7
+MC_CROWN			equ 8
+OBJ_TOWN_LEVEL		equ 5				; what level store goods are made at
+; ego names (SN_ in CONSTANT.H) set so far
+SN_IRRITATION		equ 40
+SN_VULNERABILITY	equ 41
+SN_ENVELOPING		equ 42
 ; item classes; wearable ones map to equipment slot class - IC_WEAPON
 IC_FOOD				equ 1
 IC_POTION			equ 2
@@ -295,7 +334,7 @@ OBJ_GREAT			equ 11
 MAX_GOLD			equ 18
 
 ; the character's tables, after the pack (create.asm fills them)
-P_HP_TABLE			equ EQUIP+EQ_SLOTS*ITEM_SIZE	; player_hp[50], words
+P_HP_TABLE			equ EQUIP+EQ_MAX*ITEM_SIZE	; player_hp[50], words
 P_EXP_TABLE			equ P_HP_TABLE+100	; experience needed, 50 dwords
 
 ; ---- the town (GENERATE.C town_gen, STORE1.C, STORE2.C) ----
@@ -305,9 +344,17 @@ NUM_STORES			equ 8				; 6 shops, the black market, home
 STORE_BLACK			equ 6
 STORE_HOME			equ 7
 STORE_INVEN_MAX		equ 24
-STORE_ITEM			equ 5				; stock entry: kind (word), number, discount, charges
-STORE_INV			equ P_EXP_TABLE+200	; NUM_STORES x STORE_INVEN_MAX entries
-STORE_OWNER			equ STORE_INV+NUM_STORES*STORE_INVEN_MAX*STORE_ITEM
+STORE_ITEM			equ 10				; stock entry (store_inv, in the store overlay):
+SE_KIND				equ 0				;  word
+SE_NUMBER			equ 2
+SE_DISC				equ 3				;  special offer
+SE_PVAL				equ 4				;  charges
+SE_TOHIT			equ 5				;  pluses...
+SE_TODAM			equ 6
+SE_TOAC				equ 7
+SE_NAME2			equ 8
+SE_IDENT			equ 9				;  ID_CURSED (home items keep theirs)
+STORE_OWNER			equ P_EXP_TABLE+200
 STORE_COUNT			equ STORE_OWNER+NUM_STORES
 STORE_DOOR			equ STORE_COUNT+NUM_STORES	; (y, x) for each store
 	ASSERT STORE_DOOR+NUM_STORES*2 <= IM2_TABLE

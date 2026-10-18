@@ -624,11 +624,8 @@ p_tim_infra:	dw 0
 p_word_recall:	dw 0
 p_confuse_mon:	dw 0				; hands glowing (not timed)
 P_TIMED_SIZE	equ $-p_timed
-; what the player knows (object_ident, 64 per object_offset class)
-object_ident:	ds 8*64
-flavour_map:	ds MAX_FLAVOURS		; colour shown for each flavour slot
-wood_map:		ds 32				; wood for each staff
-metal_map:		ds 32				; metal for each wand and rod
+; what the player knows and this game's flavours live in bank 5's spare
+; 1K after the tile definitions (KNOWLEDGE in constants.asm)
 ; scratch
 ch_new:			dw 0
 ch_val:			dd 0

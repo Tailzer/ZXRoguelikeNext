@@ -39,7 +39,402 @@ timed_tick:
 	ld ix,te_tim_infra
 	call status_effect
 	call rod_tick
-	jp recall_tick
+	call recall_tick
+	jp feel_tick
+
+/* feel_tick - now and then you sense whether things are magical (the two
+	pseudo-identify blocks in DUNGEON.C): first anyone may feel something
+	"good" or "bad"; then warriors, rogues and paladins learn more */
+feel_tick:
+	ld hl,(p_confused)					; (not while confused)
+	ld a,h
+	or l
+	ret nz
+	ld a,(p_class)
+	cp 2
+	jr nz,.often
+	ld hl,10000							; priests: 1 in 10000/(lev*lev+40)+1
+	call per_level
+	jp nz,.second
+	jr .sense
+.often:
+	ld a,(game_turn)					; others: every 16 turns, 1 in
+	and 15								; 10 + 750/(5+lev)
+	jp nz,.second
+	ld a,(p_lev)
+	add a,5
+	ld c,a
+	ld hl,750
+	call div16_8
+	ld de,10
+	add hl,de
+	call randint16
+	dec hl
+	ld a,h
+	or l
+	jp nz,.second
+.sense:
+	xor a
+.each:
+	ld (fl_i),a
+	call feel_item
+	jr z,.next
+	call special_check
+	jr z,.next
+	ld (fl_good),a
+	ld a,(p_class)						; priests and rogues sense more
+	cp 2
+	jr z,.keen
+	cp 3
+	jr z,.keen
+	ld hl,50
+	ld de,10
+	jr .odds
+.keen:
+	ld hl,5
+	ld de,1
+.odds:
+	ld a,(fl_i)
+	cp PACK_MAX
+	jr c,$+3
+	ex de,hl
+	call randint16
+	dec hl
+	ld a,h
+	or l
+	jr nz,.next
+	ld a,(p_class)						; warriors, rogues and paladins
+	or a								; don't feel weapons and armour this
+	jr z,.next							; way (they do below)
+	cp 3
+	jr z,.next
+	cp 5
+	jr z,.next
+	call msg_begin						; "There's something good about..."
+	ld hl,txt_somethings
+	call msg_add
+	ld a,(fl_good)
+	dec a
+	ld hl,txt_feel_good
+	jr z,$+5
+	ld hl,txt_feel_bad
+	call msg_add
+	ld hl,txt_about_what
+	call msg_add
+	call add_use
+	ld hl,txt_dots
+	call msg_add
+	call msg_end
+	ld a,(fl_good)
+	dec a
+	jr z,.magik
+	set ID_DAMD_BIT,(ix+I_IDENT)
+	jr .next
+.magik:
+	set ID_MAGIK_BIT,(ix+I_IDENT)
+.next:
+	ld a,(fl_i)
+	inc a
+	cp PACK_MAX+EQ_MAX
+	jp c,.each
+.second:								; warriors 9000, rogues 20000,
+	ld a,(p_class)						; paladins 80000 / (lev*lev+40)
+	ld hl,9000
+	or a
+	jr z,.roll
+	ld hl,20000
+	cp 3
+	jr z,.roll
+	cp 5
+	ret nz
+	ld hl,80000/4						; (/4: kept to 16 bits)
+	call per_level4
+	ret nz
+	jr .value
+.roll:
+	call per_level
+	ret nz
+.value:
+	xor a
+.item:
+	ld (fl_i),a
+	call feel_item
+	jr z,.next2
+	call value_check
+	jr z,.next2
+	ld (fl_good),a
+	ld a,(fl_i)							; in the pack, 1 in 5
+	cp PACK_MAX
+	jr nc,.felt
+	ld a,5
+	call randint
+	dec a
+	jr nz,.next2
+.felt:
+	call msg_begin						; "You feel the Dagger you are
+	ld hl,txt_you_feel_the				;  wielding is good..."
+	call msg_add
+	call item_kind_addr
+	call kind_name
+	call add_plural
+	ld hl,txt_you_are_
+	call msg_add
+	call add_use
+	call item_kind_addr
+	ld a,(iy+K_CLASS)
+	cp IC_GLOVES
+	ld hl,txt_are_
+	jr z,.verb
+	cp IC_BOOTS
+	jr z,.verb
+	ld hl,txt_is_
+.verb:
+	call msg_add
+	ld a,(fl_good)
+	dec a
+	add a,a
+	ld hl,value_words
+	add hl,a
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	call msg_add
+	ld hl,txt_dots
+	call msg_add
+	call msg_end
+	ld a,(fl_good)						; worthless, terrible: cursed
+	cp 5
+	jr nc,.damned
+	ld (ix+I_FEEL),a
+	jr .next2
+.damned:
+	set ID_DAMD_BIT,(ix+I_IDENT)
+.next2:
+	ld a,(fl_i)
+	inc a
+	cp PACK_MAX+EQ_MAX
+	jp c,.item
+	ret
+
+/* per_level - HL = n: carry-free Z if 1d(n / (lev*lev + 40) + 1) is 1.
+	per_level4 - the same for 4*HL */
+per_level4:
+	ld a,4
+	jr per_level_n
+per_level:
+	ld a,1
+per_level_n:
+	ld (fl_mul),a
+	push hl
+	ld a,(p_lev)
+	ld e,a
+	ld d,a
+	mul d,e
+	ld hl,40
+	add hl,de
+	ex de,hl							; DE = lev*lev + 40
+	pop hl
+	ld (ch_val),hl
+	ld hl,0
+	ld (ch_val+2),hl
+	ld a,(fl_mul)
+	ld c,a
+	ld b,0
+	push de
+	call mul32_16
+	pop de
+	call div32_16
+	ld hl,(ch_val)
+	inc hl
+	call randint16
+	dec hl
+	ld a,h
+	or l
+	ret
+
+/* feel_item - (fl_i) = 0-11 pack, 12+ equipment -> IX, NZ if something */
+feel_item:
+	ld a,(fl_i)
+	ld e,a
+	ld d,ITEM_SIZE
+	mul d,e
+	ld ix,PACK
+	add ix,de
+	ld a,(ix+I_KIND_HI)
+	cp ITEM_EMPTY
+	ret
+
+/* special_check - IX = item -> A = 1 good, 2 bad, Z if neither (or known) */
+special_check:
+	call unfelt
+	ret z
+	bit ID_CURSED_BIT,(ix+I_IDENT)
+	ld a,2
+	jr nz,.yes
+	call arms
+	ret z
+	ld a,(ix+I_TOHIT)					; any plus at all
+	call .plus
+	jr nz,.good
+	ld a,(ix+I_TODAM)
+	call .plus
+	jr nz,.good
+	ld a,(ix+I_TOAC)
+	call .plus
+	ret z
+.good:
+	ld a,1
+.yes:
+	or a
+	ret
+.plus:									; A > 0 -> NZ
+	bit 7,a
+	jr z,$+3
+	xor a
+	or a
+	ret
+
+/* value_check - IX = item (weapon or armour) -> A = 1 average, 2 good,
+	3 excellent, 4 special, 5 worthless, 6 terrible; Z if nothing */
+value_check:
+	call unfelt
+	ret z
+	ld a,(ix+I_FEEL)					; (already inscribed)
+	or a
+	jr nz,.none
+	call arms
+	ret z
+	bit ID_CURSED_BIT,(ix+I_IDENT)
+	jr z,.blessed
+	ld a,(ix+I_NAME2)
+	or a
+	ld a,5
+	jr z,.yes
+	inc a
+	jr .yes
+.blessed:
+	ld a,(ix+I_NAME2)
+	or a
+	ld a,3								; an ego (9c-3 sorts excellent from
+	jr nz,.yes							; special)
+	ld a,(ix+I_TOHIT)
+	or (ix+I_TODAM)
+	or (ix+I_TOAC)
+	jr z,.average
+	bit 7,(ix+I_TOHIT)					; any plus above 0: good
+	jr z,.has_plus
+	bit 7,(ix+I_TODAM)
+	jr z,.has_plus
+	bit 7,(ix+I_TOAC)
+	jr z,.has_plus
+.average:
+	ld a,1
+	jr .yes
+.has_plus:
+	ld a,(ix+I_TOHIT)
+	call special_check.plus
+	jr nz,.good
+	ld a,(ix+I_TODAM)
+	call special_check.plus
+	jr nz,.good
+	ld a,(ix+I_TOAC)
+	call special_check.plus
+	jr z,.average
+.good:
+	ld a,2
+.yes:
+	or a
+	ret
+.none:
+	xor a
+	ret
+
+/* unfelt - IX = item -> Z if there's nothing left to sense: known2,
+	store bought, or already felt blessed or cursed */
+unfelt:
+	ld a,(ix+I_IDENT)
+	and 1<<ID_KNOWN2_BIT|1<<ID_STORE_BIT|1<<ID_MAGIK_BIT|1<<ID_DAMD_BIT
+	jr nz,.nothing
+	or 1
+	ret
+.nothing:
+	xor a
+	ret
+
+/* arms - IX = item -> NZ if it's a weapon or armour */
+arms:
+	call item_kind_addr
+	ld a,(iy+K_CLASS)
+	cp IC_WEAPON
+	jr c,.no
+	or 1
+	ret
+.no:
+	xor a
+	ret
+
+/* add_use - (fl_i): "carrying in your pack", "wielding"... */
+add_use:
+	ld a,(fl_i)
+	sub PACK_MAX
+	jr nc,$+4
+	ld a,EQ_MAX							; (the pack)
+	add a,a
+	ld hl,use_words
+	add hl,a
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	jp msg_add
+
+/* add_plural - HL = a kind's name: added with '~' as 's' */
+add_plural:
+	ld de,(msg_ptr)
+.copy:
+	ld a,(hl)
+	inc hl
+	or a
+	jr z,.done
+	cp '~'
+	jr nz,$+4
+	ld a,'s'
+	ld (de),a
+	inc de
+	jr .copy
+.done:
+	ld (msg_ptr),de
+	ret
+
+use_words:		dw txt_u_wield, txt_u_body, txt_u_arm, txt_u_head, txt_u_about
+				dw txt_u_hands, txt_u_feet, txt_u_pack, txt_u_pack, txt_u_pack
+				dw txt_u_pack, txt_u_pack, txt_u_pack
+value_words:	dw txt_average_f, txt_good_f, txt_excellent_f, txt_special_f
+				dw txt_worthless, txt_terrible
+txt_somethings:	db "There's something ",0
+txt_feel_good:	db "good",0
+txt_feel_bad:	db "bad",0
+txt_about_what:	db " about what you are ",0
+txt_dots:		db "...",0
+txt_you_feel_the: db "You feel the ",0
+txt_is_:		db " is ",0
+txt_you_are_:	db " you are ",0
+txt_are_:		db " are ",0
+txt_u_wield:	db "wielding",0
+txt_u_body:		db "wearing on your body",0
+txt_u_arm:		db "wearing on your arm",0
+txt_u_head:		db "wearing on your head",0
+txt_u_about:	db "wearing about your body",0
+txt_u_hands:	db "wearing on your hands",0
+txt_u_feet:		db "wearing on your feet",0
+txt_u_pack:		db "carrying in your pack",0
+txt_average_f:	db "average",0
+txt_good_f:		db "good",0
+txt_excellent_f: db "excellent",0
+txt_special_f:	db "special",0
+txt_worthless:	db "worthless",0
+txt_terrible:	db "terrible",0
 
 /* rod_tick - rods in the pack recharge, a turn at a time */
 rod_tick:
@@ -506,4 +901,7 @@ msg_no_res_cold:	db "You no longer feel safe from cold.",0
 
 cs_num:			db 0
 rt_slot:		db 0
+fl_i:			db 0
+fl_good:		db 0
+fl_mul:			db 0
 st_old:			dw 0
