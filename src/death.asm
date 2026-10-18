@@ -129,6 +129,7 @@ txt_space_d:	db " ",0
 
 killer_texts:	dw txt_starvation, txt_k_detonation, txt_k_death, txt_k_ruination
 				dw txt_k_poison, txt_k_wound, txt_k_strain, txt_k_aura
+				dw txt_k_earthquake
 txt_k_detonation: db "a potion of Detonation",0
 txt_k_death:	db "a potion of Death",0
 txt_k_ruination: db "a potion of Ruination",0
@@ -136,3 +137,4 @@ txt_k_poison:	db "poison",0
 txt_k_wound:	db "a fatal wound",0
 txt_k_strain:	db "the strain of casting Genocide",0
 txt_k_aura:		db "a malignant aura",0
+txt_k_earthquake: db "an Earthquake",0

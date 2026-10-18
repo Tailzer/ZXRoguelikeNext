@@ -422,8 +422,8 @@ summon_undead:
 	ld a,SUM_UNDEAD
 	ld (sb_kind),a
 /* summon_match - sb_kind: a race of that kind, found as the C does (m =
-	randint(l) - 1, then up to 20 on from there), next to D, E. Uniques
-	never come (the C lets a few kinds bring them) -> carry, D, E = where */
+	randint(l) - 1, then up to 20 on from there), next to D, E (a unique
+	already here or dead doesn't come: place_monster) -> carry, D, E */
 summon_match:
 	push de
 	xor a
@@ -471,32 +471,18 @@ summon_match:
 
 /* sb_test - IY = race -> carry if it's of kind sb_kind */
 sb_test:
-	or a
+	ld a,(sb_kind)
+	cp SUM_ANGEL
+	jr nc,.lettered
+	or a								; undead, demons, dragons: no uniques
 	bit RF_UNIQUE,(iy+R_FLAGS)
 	ret nz
-	ld a,(sb_kind)
 	cp SUM_UNDEAD
 	jr z,.undead
 	cp SUM_DEMON
 	jr z,.demon
-	cp SUM_DRAGON
-	jr z,.dragon
-	sub SUM_ANGEL						; the rest go by their letter
-	add a,a
-	ld hl,sb_letters
-	add hl,a
-	ld a,(hl)
-	inc hl
-	ld h,(hl)
-	ld l,a
-	ld b,(iy+R_CHAR)
-.letter:
-	ld a,(hl)
-	inc hl
-	or a
+	bit RF2_DRAGON,(iy+R_FLAGS2)
 	ret z
-	cp b
-	jr nz,.letter
 	scf
 	ret
 .undead:								; below dun_level + 5
@@ -514,17 +500,95 @@ sb_test:
 	cp (iy+R_LEVEL)
 	ccf
 	ret
-.dragon:
-	bit RF2_DRAGON,(iy+R_FLAGS2)
+.lettered:								; the rest go by their letter
+	sub SUM_ANGEL
+	ld l,a
+	ld h,0
+	add hl,hl
+	add hl,hl
+	ld de,sb_kinds
+	add hl,de
+	ld e,(hl)							; DE = the letters
+	inc hl
+	ld d,(hl)
+	inc hl
+	ld a,(hl)							; SB_ rule about uniques
+	or a
+	jr z,.letters
+	ld b,a
+	ld a,(iy+R_FLAGS)
+	and 1<<RF_UNIQUE
+	jr z,.common
+	ld a,b
+	cp SB_UNIQUE
+	jr z,.letters
+	or a
+	ret
+.common:
+	ld a,b
+	cp SB_COMMON
+	jr z,.letters
+	or a
+	ret
+.letters:
+	ex de,hl
+	ld b,(iy+R_CHAR)
+	ld a,(hl)
+	cp "!"
+	jr z,.not_in
+.in:
+	ld a,(hl)
+	inc hl
+	or a
 	ret z
+	cp b
+	jr nz,.in
 	scf
 	ret
-sb_letters:	dw sb_angel, sb_spider, sb_hound, sb_gundead, sb_ancientd
+.not_in:								; any letter but these
+	inc hl
+	ld a,(hl)
+	or a
+	scf
+	ret z
+	cp b
+	jr nz,.not_in
+	or a
+	ret
+SB_ANY		equ 0
+SB_COMMON	equ 1
+SB_UNIQUE	equ 2
+; from SUM_ANGEL on: the letters, the rule about uniques (MISC1.C summon_*)
+sb_kinds:	dw sb_angel
+			db SB_COMMON,0
+			dw sb_spider
+			db SB_COMMON,0
+			dw sb_hound
+			db SB_COMMON,0
+			dw sb_gundead
+			db SB_ANY,0
+			dw sb_ancientd
+			db SB_ANY,0
+			dw sb_wraith
+			db SB_UNIQUE,0
+			dw sb_reptile
+			db SB_COMMON,0
+			dw sb_ant
+			db SB_COMMON,0
+			dw sb_not_p
+			db SB_UNIQUE,0
+			dw sb_jabberwock
+			db SB_COMMON,0
 sb_angel:	db "A",0
 sb_spider:	db "S",0
 sb_hound:	db "CZ",0
 sb_gundead:	db "LVW",0
 sb_ancientd: db "D",0
+sb_wraith:	db "W",0
+sb_reptile:	db "R",0
+sb_ant:		db "a",0
+sb_not_p:	db "!P",0
+sb_jabberwock: db "J",0
 
 /* poly_at - D = y, E = x: the monster there becomes a random non-unique
 	dungeon race, awake (poly_monster in SPELLS.C) */

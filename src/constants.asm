@@ -260,6 +260,11 @@ SUM_SPIDER			equ 5
 SUM_HOUND			equ 6
 SUM_GUNDEAD			equ 7
 SUM_ANCIENTD		equ 8
+SUM_WRAITH			equ 9				; uniques only
+SUM_REPTILE			equ 10
+SUM_ANT				equ 11
+SUM_UNIQUE			equ 12				; uniques only, but not 'P'
+SUM_JABBERWOCK		equ 13
 ; bolt and ball elements (the C's GF_ types)
 GF_MAGIC_MISSILE	equ 0
 GF_LIGHTNING		equ 1
@@ -603,6 +608,7 @@ KILLER_POISON		equ $FE04
 KILLER_WOUND		equ $FE05
 KILLER_STRAIN		equ $FE06			; casting (mass) genocide
 KILLER_AURA			equ $FE07			; the One Ring
+KILLER_EARTHQUAKE	equ $FE08			; elemental force bringing the cave down
 ; object_ident flags (DESC.C) and the kinds that have flavours
 OD_TRIED_BIT		equ 0
 OD_KNOWN_BIT		equ 1
@@ -646,6 +652,13 @@ TR2_RES_CONF		equ $80				; byte 1
 TR2_RES_SOUND		equ $01				; byte 2
 TR2_RES_CHAOS		equ $08				; byte 2
 TR2_RES_BLIND		equ $80				; byte 2
+TR2_HOLD_LIFE		equ $08				; byte 0
+TR2_RES_LT			equ $02				; byte 2 (light, not lightning)
+TR2_RES_DARK		equ $04				; byte 2
+TR2_RES_DISENCHANT	equ $10				; byte 2
+TR2_RES_SHARDS		equ $20				; byte 2
+TR2_RES_NEXUS		equ $40				; byte 2
+TR2_RES_NETHER		equ $01				; byte 3
 OFS_AMULET			equ 0
 OFS_RING			equ 1
 OFS_STAFF			equ 2				; object_offset() for staffs

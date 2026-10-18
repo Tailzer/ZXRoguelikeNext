@@ -41,6 +41,8 @@
 		58 prayers
 	Milestone 9d-3a: Monster spells - curses, mind blasts, the classic
 		breaths, bolts and balls, teleports and summons
+	Milestone 9d-3b: The rest of the monster spells - the exotic breaths,
+		nether, nexus, time, gravity, forgetting and the bigger summons
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -301,6 +303,7 @@ spell_end:
 
 	MMU 2, PAGE_MCAST, $4000
 	include "src/mcast.asm"
+	include "src/mexotic.asm"
 mcast_end:
 	ASSERT mcast_end <= $6000, "Monster spell overlay is over 8K"
 
@@ -344,6 +347,7 @@ spells_end:
 
 	MMU 1 n, MSPELL_PAGE, DATA_WINDOW	; monster spells, 12 bytes a race
 	include "data/mspells.asm"
+	include "src/mexotic_text.asm"
 mspells_end:
 	ASSERT $$mspells_end == MSPELL_PAGE, "Monster spells run past their page"
 

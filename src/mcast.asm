@@ -176,13 +176,19 @@ mc_handlers:
 	dw mc_br_gas, mc_br_acid, mc_br_frost, mc_br_fire				; 21-24
 	dw mc_fire_bolt, mc_frost_bolt, mc_acid_bolt, mc_mmissile		; 25-28
 	dw mc_critical, mc_fire_ball, mc_frost_ball, mc_mana_bolt		; 29-32
-	dw 0, 0, 0, 0, 0, 0												; 33-38
-	dw mc_light_bolt, mc_light_ball, mc_acid_ball, 0				; 39-42
+	dw mc_br_chaos, mc_br_shards, mc_br_sound, mc_br_confusion		; 33-36
+	dw mc_br_disenchant, mc_br_nether								; 37-38
+	dw mc_light_bolt, mc_light_ball, mc_acid_ball, mc_traps			; 39-42
 	dw mc_die, mc_stare, mc_tele_away, mc_heal						; 43-46
 	dw mc_haste, mc_missiles, mc_plasma, mc_summon_mons				; 47-50
-	dw 0, mc_ice_bolt, 0, 0, mc_glow_red, mc_stink, 0, mc_water_bolt ; 51-58
-	dw 0, 0, mc_summon_angel, mc_summon_spiders, mc_summon_hounds	; 59-63
-	dw 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0					; 64-78
+	dw mc_nether_bolt, mc_ice_bolt, mc_shadow, mc_forget			; 51-54
+	dw mc_glow_red, mc_stink, mc_tele_level, mc_water_bolt			; 55-58
+	dw mc_whirlpool, mc_nether_ball, mc_summon_angel				; 59-61
+	dw mc_summon_spiders, mc_summon_hounds, mc_br_nexus			; 62-64
+	dw mc_br_force, mc_br_inertia, mc_br_bright, mc_br_time			; 65-68
+	dw mc_br_gravity, mc_br_dark, mc_br_plasma, mc_arrow			; 69-72
+	dw mc_summon_mighty, mc_dark_storm, mc_mana_storm				; 73-75
+	dw mc_summon_reptiles, mc_summon_ants, mc_summon_uniques		; 76-78
 	dw mc_summon_gundead, mc_summon_ancientd						; 79-80
 
 ; ---------------------------------------------------------------- 5-7
@@ -791,12 +797,15 @@ summon:
 	push bc
 	call mc_say
 	pop bc
-	ld a,c
-	ld (mc_sum_kind),a
 	ld a,(player_y)
 	ld (mc_sy),a
 	ld a,(player_x)
 	ld (mc_sx),a
+/* summon_more - B = how many more, C = SUM_ kind, from where the last
+	summons left off */
+summon_more:
+	ld a,c
+	ld (mc_sum_kind),a
 	push ix
 .each:
 	push bc
