@@ -45,6 +45,8 @@
 		nether, nexus, time, gravity, forgetting and the bigger summons
 	Milestone 9d-4: Monster blows - stat drains, poison, paralysis,
 		theft, elements, criticals and the cave-shaking blows
+	Milestone 10: Saving - Symbol Shift + X saves to roguelike.sav on the
+		SD card (esxDOS); a key at the title carries on from it
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -81,6 +83,12 @@ start:
 	call show_message
 	call wait_any_key					; timing of the key press seeds the RNG
 	call rng_mix
+	FARCALL PAGE_SAVE, load_game		; a saved game carries on
+	jr nc,enter_dungeon
+	call clear_screen
+	call msg_clear
+	call update_view
+	jp main_loop
 enter_dungeon:
 	FARCALL PAGE_CREATE, create_character
 	call clear_screen
@@ -129,6 +137,8 @@ dispatch:
 	jp z,.stay
 	cp CMD_CHARACTER
 	jp z,.character
+	cp CMD_SAVE
+	jp z,.save
 	cp CMD_INVEN
 	jr nc,.item_command
 	call try_move
@@ -197,6 +207,10 @@ dispatch:
 .character:
 	FARCALL PAGE_CREATE, show_character
 	jp main_loop
+.save:									; ^X: save, then back to the title
+	FARCALL PAGE_SAVE, save_game
+	jp nc,main_loop
+	jp start
 .down:
 	call go_down
 	jp main_loop
@@ -211,6 +225,7 @@ item_commands:							; in CMD_INVEN order
 	dw cmd_aim, cmd_use, cmd_zap, cmd_activate
 	dw cmd_cast, cmd_browse, cmd_study, cmd_pray
 player_died:
+	FARCALL PAGE_SAVE, delete_save		; (a dead character's save goes)
 	FARCALL PAGE_CREATE, player_died_screen
 	jp enter_dungeon
 
@@ -309,6 +324,11 @@ spell_end:
 	include "src/mmelee.asm"
 mcast_end:
 	ASSERT mcast_end <= $6000, "Monster spell overlay is over 8K"
+
+	MMU 2, PAGE_SAVE, $4000
+	include "src/save.asm"
+save_end:
+	ASSERT save_end <= $6000, "Save overlay is over 8K"
 
 	MMU 2, PAGE_DEVICE, $4000
 	include "src/devices.asm"

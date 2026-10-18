@@ -19,6 +19,8 @@ PAGE_SCROLL			equ 53				; overlay: reading scrolls
 PAGE_DEVICE			equ 54				; overlay: wands, staffs, rods
 PAGE_SPELL			equ 55				; overlay: spells, mana, learning
 PAGE_MCAST			equ 56				; overlay: monsters casting spells
+PAGE_SAVE			equ 57				; overlay: saving and restoring the game
+PAGE_SCREEN_HI		equ 11				; bank 5's upper half, normally in slot 3
 DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
 EGO_PAGE			equ 63				; ego names and flags (data/egos.asm)
 ACT_PAGE			equ 65				; what activating does (data/activate.asm)
@@ -701,6 +703,7 @@ CMD_CAST			equ 18				; m: cast a spell
 CMD_BROWSE			equ 19				; P: browse a book
 CMD_STUDY			equ 20				; G: learn new spells
 CMD_PRAY			equ 21				; p: recite a prayer
+CMD_SAVE			equ 22				; Symbol Shift + X: save and quit (^X)
 ; key modifiers in key_table
 KM_ANY				equ 0
 KM_SYMBOL			equ 1

@@ -19,7 +19,7 @@ Created at the start of each game as in `CREATE.C`: choose a race (10), sex and 
 `h j k l y u b n` (Angband roguelike keys) or cursor keys `5 6 7 8`.
 Walk into a closed door to open it, or into a monster to attack it; walking onto an item picks it up; walking onto a store's number goes in (`p` purchase, `s` sell, at home `g` get and `d` drop, space leaves). `s` stays still for a turn. `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
 
-`C` (Caps Shift+C) shows the character sheet.
+`C` (Caps Shift+C) shows the character sheet. Symbol Shift+X (the C's `^X`) saves the game and goes back to the title; pressing a key there carries on from the save.
 
 Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `z` aim a wand, `Z` (Caps Shift+Z) use a staff, `a` activate a rod, `A` (Caps Shift+A) activate an artifact, `m` cast a spell, `p` recite a prayer, `P` (Caps Shift+P) browse a book, `G` (Caps Shift+G) learn new spells, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels. Directions: `1`-`9` or `hjklyubn`.
 
@@ -167,7 +167,15 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - Quaker and Morgoth (DESTRUCT): a blow over 23 shakes everything within 8 squares, 1 in 8: monsters hurt or embedded in the rock ("wails out in pain!"), the player thrown aside (320 if trapped), floors turned to rock and rock opened
      - not like the C: kicks and embraces say so (the C is silent); a square something still stands on isn't turned to rock (nothing may stand in rock here); eating light does nothing (there are no light sources yet)
      - the monster spells' and blows' messages moved to a page of their own (68, `src/mcast_text.asm`); `data/mspells.asm` gained the DESTRUCT bit
-10. Saving to SD card
+10. **Saving** (`DUNGEON.C` ^X, `SAVE.C`, `DEATH.C`) *(done)*
+   - Symbol Shift+X: "Saving game...", then back to the title screen; "Save failed..." if it can't (and play goes on, as in the C)
+   - `roguelike.sav` in the folder the game was started from, through the esxDOS calls NextZXOS provides (`RST $08` F_OPEN/F_READ/F_WRITE/F_CLOSE/F_UNLINK; addresses in IX and HL)
+   - what's saved (19K): the character, stats and timed effects, the level, place and turn, the town seed, what's known of objects and flavours, every monster and floor item, the pack and equipment, spells and mana, dead uniques, the level map, the stores' stock, the artifacts made, and this game's scroll titles
+   - the file holds each block's length: a later build reads it as long as none of the blocks changed size ("Your saved game is from another version."); a short file isn't used ("Your saved game is damaged.")
+   - pressing a key at the title restores it and play carries on exactly where it was; with no save, a new character is made
+   - dying deletes the save (where the file can't be deleted it's marked dead, which counts as none); the C keeps a dead character's file and starts a new one from it
+   - in an emulator the SD card must be emulated: CSpect `-mmc=<folder>/`, ZEsarUX's esxdos handler (Settings > Storage > esxdos handler, with a root folder)
+   - the save code is its own overlay (57, `src/save.asm`)
 
 ## Memory map
 

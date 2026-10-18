@@ -263,4 +263,5 @@ key_table:
 	db $FD,%00000100,KM_NONE,CMD_DROP,0,0	; d: drop
 	db $FD,%00010000,KM_NONE,CMD_PICKUP,0,0	; g: pick up
 	db $FE,%00001000,KM_CAPS,CMD_CHARACTER,0,0	; C: character sheet
+	db $FE,%00000100,KM_SYMBOL,CMD_SAVE,0,0	; Symbol Shift + X: save (^X)
 	db 0
