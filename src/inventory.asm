@@ -57,6 +57,8 @@ starting_kit:
 .make:
 	ld hl,(kit_kind)
 	OVCALL PAGE_MISC, new_plain, PAGE_ITEMS
+	ld (ix+I_ATIME),0
+	ld (ix+I_ATIME+1),0
 	ld (ix+I_MARKED),1
 	ld (ix+I_IDENT),1<<ID_STORE_BIT|1<<ID_KNOWN2_BIT	; (store_bought)
 	ret
@@ -825,6 +827,76 @@ use_device:
 	ld (turn_taken),a
 	ret
 
+/* cmd_activate - 'A': activate a worn artifact, known to be one (activate
+	in DUNGEON.C); the device overlay does it */
+cmd_activate:
+	xor a
+	ld (act_n),a
+	ld (act_eq),a
+.each:
+	ld a,(act_eq)
+	ld e,a
+	ld d,ITEM_SIZE
+	mul d,e
+	ld ix,EQUIP
+	add ix,de
+	ld a,(ix+I_KIND_HI)
+	cp ITEM_EMPTY
+	jr z,.next
+	bit ID_KNOWN2_BIT,(ix+I_IDENT)
+	jr z,.next
+	call item_flags
+	ld a,(it_flags+5)
+	bit F2_ACTIVATE,a
+	jr z,.next
+	ld hl,act_n							; one more: listed as a, b...
+	ld e,(hl)
+	inc (hl)
+	ld d,0
+	ld hl,act_slots
+	add hl,de
+	ld a,(act_eq)
+	ld (hl),a
+	push de
+	call msg_begin
+	pop de
+	ld a,e
+	add a,'a'
+	call list_label
+	call objdes_msg
+	ld a,(act_n)
+	dec a
+	call list_line
+.next:
+	ld hl,act_eq
+	inc (hl)
+	ld a,(hl)
+	cp EQ_SLOTS
+	jr c,.each
+	ld a,(act_n)
+	or a
+	ld hl,msg_nothing_activates
+	jp z,msg_print
+	ld hl,txt_activate_which
+	call prompt
+	call read_ascii
+	push af
+	call msg_clear
+	pop af
+	sub 'a'
+	ld hl,act_n
+	cp (hl)
+	ret nc
+	ld hl,act_slots
+	add hl,a
+	ld a,(hl)
+	ld (pending_arg),a
+	ld a,PM_ACTIVATE
+	ld (pending_magic),a
+	ld a,1
+	ld (turn_taken),a
+	ret
+
 /* cmd_eat - 'E': eat some food (EAT.C, add_food in MISC1.C) */
 cmd_eat:
 	ld hl,txt_eat_which
@@ -1072,6 +1144,11 @@ txt_zap_which:	db "Activate which rod? (letter, or space)",0
 msg_no_wands:	db "You are not carrying any wands.",0
 msg_no_staffs:	db "You are not carrying any staffs.",0
 msg_no_rods:	db "You are not carrying any rods.",0
+msg_nothing_activates: db "You are not wearing/wielding anything that can be activated.",0
+txt_activate_which: db "Activate which item? (letter, or space)",0
+act_n:			db 0
+act_eq:			db 0
+act_slots:		ds EQ_SLOTS
 ud_none:		dw 0
 ud_class:		dw 0				; action, class
 msg_no_food:	db "You are not carrying any food.",0

@@ -7,6 +7,7 @@
 
 /* timed_tick - one turn of every timed effect, in the C's order */
 timed_tick:
+	call art_tick
 	ld ix,te_blind
 	call status_effect
 	ld ix,te_confused
@@ -645,6 +646,61 @@ dec_w:
 	ld (hl),e
 	ld a,d
 	or e
+	ret
+
+/* art_tick - worn artifacts that activate recharge a turn; the One Ring
+	takes a point of experience 1 turn in 20 ("Timeout Artifacts") */
+art_tick:
+	ld ix,EQUIP
+	ld b,EQ_SLOTS
+.each:
+	push bc
+	ld a,(ix+I_KIND_HI)
+	cp ITEM_EMPTY
+	jr z,.next
+	call item_flags
+	ld a,(it_flags+5)
+	bit F2_ACTIVATE,a
+	jr z,.next
+	ld l,(ix+I_ATIME)
+	ld h,(ix+I_ATIME+1)
+	ld a,h
+	or l
+	jr z,.ring
+	dec hl
+	ld (ix+I_ATIME),l
+	ld (ix+I_ATIME+1),h
+.ring:
+	ld hl,KIND_RING_POWER
+	call item_is_kind
+	jr nz,.next
+	ld a,20
+	call randint
+	dec a
+	jr nz,.next
+	push ix
+	ld hl,1
+	ld e,h
+	call lose_exp
+	ld hl,p_max_exp						; (max too)
+	ld a,(hl)
+	sub 1
+	ld (hl),a
+	jr nc,.drained
+	inc hl
+	ld a,(hl)
+	sub 1
+	ld (hl),a
+	jr nc,.drained
+	inc hl
+	dec (hl)
+.drained:
+	pop ix
+.next:
+	ld de,ITEM_SIZE
+	add ix,de
+	pop bc
+	djnz .each
 	ret
 
 /* afraid_tick - heroes can't stay afraid */

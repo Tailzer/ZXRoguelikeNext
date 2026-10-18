@@ -19,6 +19,7 @@ PAGE_SCROLL			equ 53				; overlay: reading scrolls
 PAGE_DEVICE			equ 54				; overlay: wands, staffs, rods
 DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
 EGO_PAGE			equ 63				; ego names and flags (data/egos.asm)
+ACT_PAGE			equ 65				; what activating does (data/activate.asm)
 RACE_PAGE			equ 44				; 5 pages of races (data/races.asm)
 KIND_PAGE			equ 60				; item kinds, 128 per page (data/kinds.asm)
 FLAVOUR_PAGE		equ 64				; flavour names and colours, titles, normal_table
@@ -274,6 +275,8 @@ I_KIND_HI			equ 1				; (also holds ITEM_EMPTY / KIND_GOLD)
 I_NUMBER			equ 2
 I_Y					equ 3
 I_X					equ 4
+I_ATIME				equ 3				; word: worn artifacts, turns until it
+										; can be activated again (y, x unused)
 I_MARKED			equ 5				; seen on the floor (the C's fm)
 I_VALUE				equ 6				; word, gold only
 I_PVAL				equ 6				; wands and staffs: charges
@@ -526,6 +529,7 @@ F2_HOLD_LIFE		equ 3
 F2_SLAY_ORC			equ 4
 F2_TELEPATHY		equ 5
 F2_LIGHT			equ 2				; byte 1
+F2_ACTIVATE			equ 3
 F2_LIGHTNING		equ 4				; (a lightning brand)
 ; races with intrinsics (calc_bonuses)
 RACE_HOBBIT			equ 3				; sustain DEX
@@ -541,6 +545,7 @@ KILLER_RUINATION	equ $FE03
 KILLER_POISON		equ $FE04
 KILLER_WOUND		equ $FE05
 KILLER_STRAIN		equ $FE06			; casting (mass) genocide
+KILLER_AURA			equ $FE07			; the One Ring
 ; object_ident flags (DESC.C) and the kinds that have flavours
 OD_TRIED_BIT		equ 0
 OD_KNOWN_BIT		equ 1
@@ -567,6 +572,7 @@ PM_READ				equ 2
 PM_AIM				equ 3
 PM_USE				equ 4
 PM_ZAP				equ 5
+PM_ACTIVATE			equ 6
 
 ; ---- commands ----
 CMD_MOVE			equ 0
@@ -586,6 +592,7 @@ CMD_READ			equ 13
 CMD_AIM				equ 14				; z: aim a wand
 CMD_USE				equ 15				; Z: use a staff
 CMD_ZAP				equ 16				; a: activate a rod
+CMD_ACTIVATE		equ 17				; A: activate an artifact
 ; key modifiers in key_table
 KM_ANY				equ 0
 KM_SYMBOL			equ 1

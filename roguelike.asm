@@ -33,6 +33,8 @@
 		stealth, infravision, regeneration, telepathy
 	Milestone 9c-3b: Artifacts - unique_weapon, unique_armour, the cloaks
 		and the special objects, each once a game
+	Milestone 9c-3c: Activation - the A command, activate()'s effects and
+		recharging
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -193,7 +195,7 @@ item_commands:							; in CMD_INVEN order
 	dw cmd_inventory, cmd_equipment, cmd_wield, cmd_takeoff
 	dw cmd_quaff, cmd_eat, cmd_drop, cmd_pickup
 	dw 0, cmd_read						; (CMD_CHARACTER is handled above)
-	dw cmd_aim, cmd_use, cmd_zap
+	dw cmd_aim, cmd_use, cmd_zap, cmd_activate
 player_died:
 	FARCALL PAGE_CREATE, player_died_screen
 	jp enter_dungeon
@@ -309,6 +311,11 @@ flavours_end:
 	include "data/egos.asm"
 egos_end:
 	ASSERT $$egos_end == EGO_PAGE, "Egos run past their page"
+
+	MMU 1 n, ACT_PAGE, DATA_WINDOW		; activation: effects and messages
+	include "data/activate.asm"
+acts_end:
+	ASSERT $$acts_end == ACT_PAGE, "Activations run past their page"
 
 	SAVENEX OPEN "build/roguelike.nex", start, stack_top
 	SAVENEX CORE 3,0,0

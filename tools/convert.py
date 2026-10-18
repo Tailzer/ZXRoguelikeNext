@@ -15,6 +15,7 @@ CONSTANT.H) and writes:
   data/egos.asm     ego item and artifact names and what they do (ego page)
   data/artifacts.asm which kinds may be which artifacts, the special objects
                     (misc overlay)
+  data/activate.asm what activating an artifact does (activation page)
 
 Usage:  tools/convert.py [path to Angband SRC]   (default ~/Downloads/angband-pc1.2/SRC,
         or $ANGBAND_SRC)
@@ -450,6 +451,7 @@ def main():
     open(os.path.join(OUT, "tables.asm"), "w").write("\n".join(lines) + "\n")
 
     ego_tables(note, objs, kinds, kind_of, specials)
+    activate_tables(note, kinds)
     player_tables(note, objs, kinds, kind_of)
     flavour_tables(note)
     store_tables(note, objs, kind_of)
@@ -738,6 +740,124 @@ def special_objects():
         d = re.search(r"\(randint\((\d+)\)>1\)\) goto again", m.group(2))
         out[idx] = (int(r.group(1)) if r else 1, int(d.group(1)))
     return out
+
+
+# ---------------------------------------------------------------- activation
+
+# activate() in DUNGEON.C: who -> (message, second message, effect, element,
+# number (dice "9d8", damage, distance...), name, recharge base, recharge 1d)
+# who is an SN_ name for artifacts, or a kind's name for the special objects
+# and dragon scale mails. Breaths list (element, message, name) choices.
+GFS = {"MM": 0, "LT": 1, "GAS": 2, "ACID": 3, "COLD": 4, "FIRE": 5}
+ACTS = [
+    ("SN_NARTHANC", "Your Dagger is covered in fire...", "", "BOLT", "FIRE", "9d8", "Fire Bolt", 5, 10),
+    ("SN_NIMTHANC", "Your Dagger is covered in frost...", "", "BOLT", "COLD", "6d8", "Frost Bolt", 4, 8),
+    ("SN_DETHANC", "Your Dagger is covered in sparks...", "", "BOLT", "LT", "4d8", "Lightning Bolt", 3, 7),
+    ("SN_RILIA", "Your Dagger throbs deep green...", "", "BALL", "GAS", 12, "Stinking Cloud", 3, 3),
+    ("SN_BELANGIL", "Your Dagger is covered in frost...", "", "BALL", "COLD", 48, "Frost Ball", 3, 7),
+    ("SN_DAL", "You feel energy flow through your feet...", "", "FEAR_POISON", "MM", 0, "", 5, 0),
+    ("SN_RINGIL", "Your sword glows an intense blue...", "", "BALL", "COLD", 100, "storm of Ice", 300, 0),
+    ("SN_ANDURIL", "Your sword glows an intense red...", "", "BALL", "FIRE", 72, "huge ball of Fire", 400, 0),
+    ("SN_FIRESTAR", "Your Morningstar rages in fire...", "", "BALL", "FIRE", 72, "huge ball of Fire", 100, 0),
+    ("SN_FEANOR", "", "", "FAST", "MM", (15, 25), "", 200, 0),
+    ("SN_THEODEN", "The blade of your axe glows black...", "", "DRAIN", "MM", 120, "", 400, 0),
+    ("SN_TURMIL", "The head of your hammer glows white...", "", "DRAIN", "MM", 90, "", 70, 0),
+    ("SN_CASPANION", "Your mail magically disarms traps...", "", "TD", "MM", 0, "", 10, 0),
+    ("SN_AVAVIR", "The air about you becomes charged...", "", "RECALL", "MM", 0, "", 200, 0),
+    ("SN_TARATOL", "", "", "FAST0", "MM", (15, 30), "", 166, 0),
+    ("SN_ERIRIL", "", "", "IDENTIFY", "MM", 0, "", 10, 0),
+    ("SN_OLORIN", "", "", "PROBE", "MM", 0, "", 20, 0),
+    ("SN_EONWE", "Your axe lets out a long, shrill note...", "", "MASS_GEN", "MM", 0, "", 1000, 0),
+    ("SN_LOTHARANG", "Your Battle Axe radiates deep purple...", "", "HEAL_CUT", "MM", "4d7", "", 2, 2),
+    ("SN_ARUNRUTH", "Your sword glows a pale blue...", "", "BOLT", "COLD", "12d8", "bolt of Frost", 500, 0),
+    ("SN_AEGLOS", "Your spear glows a bright white...", "", "BALL", "COLD", 100, "huge ball of Frost", 500, 0),
+    ("SN_OROME", "Your spear pulsates...", "", "MUD", "MM", 0, "", 5, 0),
+    ("SN_SOULKEEPER", "Your armour glows a bright white...", "You feel much better...", "HEAL", "MM", 1000, "", 888, 0),
+    ("SN_BELEGENNON", "", "", "TELEPORT", "MM", 10, "", 2, 0),
+    ("SN_CELEBORN", "", "", "GENOCIDE", "MM", 0, "", 500, 0),
+    ("SN_LUTHIEN", "", "", "RESTORE", "MM", 0, "", 450, 0),
+    ("SN_ULMO", "Your trident glows deep red...", "", "TELE_MON", "MM", 0, "", 150, 0),
+    ("SN_COLLUIN", "Your cloak glows many colours...", "You feel you can resist anything.", "RESIST", "MM", 0, "", 111, 0),
+    ("SN_HOLCOLLETH", "You momentarily disappear...", "", "SLEEP", "MM", 0, "", 55, 0),
+    ("SN_THINGOL", "You hear a low humming noise...", "", "RECHARGE", "MM", 0, "", 70, 0),
+    ("SN_COLANNON", "", "", "TELEPORT", "MM", 100, "", 45, 0),
+    ("SN_TOTILA", "Your Flail glows in scintillating colours...", "", "CONF_MON", "MM", 0, "", 15, 0),
+    ("SN_CAMMITHRIM", "Your Gloves glow extremely brightly...", "", "BOLT", "MM", "2d6", "Magic Missile", 2, 0),
+    ("SN_PAURHACH", "Your Gauntlets are covered in fire...", "", "BOLT", "FIRE", "9d8", "Fire Bolt", 5, 10),
+    ("SN_PAURNIMMEN", "Your Gauntlets are covered in frost...", "", "BOLT", "COLD", "6d8", "Frost Bolt", 4, 8),
+    ("SN_PAURAEGEN", "Your Gauntlets are covered in sparks...", "", "BOLT", "LT", "4d8", "Lightning Bolt", 3, 7),
+    ("SN_PAURNEN", "Your Gauntlets look very acidic...", "", "BOLT", "ACID", "5d8", "Acid Bolt", 4, 7),
+    ("SN_FINGOLFIN", "Magical spikes appear on your Cestus...", "", "BOLT", "MM", "150d1", "set of spikes", 88, 88),
+    ("SN_HOLHENNETH", "You close your eyes, an image forms in your mind...", "", "DETECT", "MM", 0, "", 55, 55),
+    ("SN_GONDOR", "You feel a warm tingling inside...", "", "HEAL", "MM", 500, "", 500, 0),
+    ("Power named Narya", "The ring glows deep red...", "", "BALL", "FIRE", 120, "huge ball of Fire", 222, 222),
+    ("Power named Nenya", "The ring glows bright white...", "", "BALL", "COLD", 200, "huge ball of Frost", 222, 333),
+    ("Power named Vilya", "The ring glows deep blue...", "", "BALL", "LT", 250, "huge ball of Lightning", 222, 444),
+    ("Power", "The ring glows intensely black...", "", "ONE_RING", "MM", 0, "", 444, 444),
+    ("Ingwe", "An aura of good floods the area...", "", "DISPEL_EVIL", "MM", 0, "", 444, 222),
+    ("Carlammas", "The amulet lets out a shrill wail...", "You feel somewhat safer...", "PROTEVIL", "MM", 0, "", 222, 222),
+    ("Tulkas", "The ring glows brightly...", "", "FAST", "MM", (50, 100), "", 200, 0),
+    ("Blue Dragon Scale Mail", "You breathe Lightning...", "", "BALL", "LT", 100, "huge ball of Lightning", 444, 444),
+    ("White Dragon Scale Mail", "You breathe Frost...", "", "BALL", "COLD", 110, "huge ball of Frost", 444, 444),
+    ("Black Dragon Scale Mail", "You breathe Acid...", "", "BALL", "ACID", 130, "huge ball of Acid", 444, 444),
+    ("Green Dragon Scale Mail", "You breathe Poison Gas...", "", "BALL", "GAS", 150, "huge cloud of Poison Gas", 444, 444),
+    ("Red Dragon Scale Mail", "You breathe Fire...", "", "BALL", "FIRE", 200, "huge ball of Fire", 444, 444),
+    ("Multi-Hued Dragon Scale Mail", "", "", "BREATH", [("LT", "Lightning", "ball"), ("COLD", "Frost", "ball"),
+        ("ACID", "Acid", "ball"), ("GAS", "Poison Gas", "cloud"), ("FIRE", "Fire", "ball")], 250, "", 222, 222),
+    ("Bronze Dragon Scale Mail", "You breathe Confusion...", "", "BALL", "MM", 120, "huge blast of Confusion", 444, 444),
+    ("Gold Dragon Scale Mail", "You breathe Sound...", "", "BALL", "MM", 130, "huge blast of Sound", 444, 444),
+    ("Chaos Dragon Scale Mail", "", "", "BREATH", [("MM", "Chaos", "ball"), ("MM", "Disenchantment", "ball")], 220, "", 300, 300),
+    ("Law Dragon Scale Mail", "", "", "BREATH", [("MM", "Sound", "blast"), ("MM", "Shards", "ball")], 230, "", 300, 300),
+    ("Balance Dragon Scale Mail", "", "", "BREATH", [("MM", "Chaos", "ball"), ("MM", "Disenchantment", "ball"),
+        ("MM", "Sound", "blast"), ("MM", "Shards", "ball")], 250, "", 300, 300),
+    ("Shining Dragon Scale Mail", "", "", "BREATH", [("MM", "Light", "flash"), ("MM", "Darkness", "sphere")], 200, "", 300, 300),
+    ("Power Dragon Scale Mail", "You breathe the Elements...", "", "BALL", "MM", 300, "massive ball of the Elements", 300, 300),
+]
+AE = ["BOLT", "BALL", "DRAIN", "MUD", "TELE_MON", "CONF_MON", "FAST", "FAST0", "HEAL", "HEAL_CUT",
+      "FEAR_POISON", "RECALL", "IDENTIFY", "PROBE", "MASS_GEN", "GENOCIDE", "TD", "TELEPORT", "RESTORE",
+      "RESIST", "SLEEP", "RECHARGE", "DETECT", "DISPEL_EVIL", "PROTEVIL", "ONE_RING", "BREATH"]
+
+
+def activate_tables(note, kinds):
+    lines = [note, "; activate() in DUNGEON.C: 16 bytes each: who (an SN_, or $8000 + a kind),",
+             "; AE_ effect, element (GF_; a breath: how many choices), number (dice B,C,",
+             "; damage, distance, or base and 1d for speed), messages, name (a breath: its",
+             "; choices), recharge base and 1d", ""]
+    lines += [f"AE_{e}\t\tequ {i + 1}" for i, e in enumerate(AE)]
+    lines += [f"NUM_ACTS\t\tequ {len(ACTS)}", "", "act_table:"]
+    strings, n = [], 0
+    def s(text):
+        nonlocal n
+        if not text:
+            return "0"
+        n += 1
+        strings.append(f"acs_{n}:\tdb {asm_string(text)},0")
+        return f"acs_{n}"
+    for who, msg, msg2, eff, gf, num, name, tb, tr in ACTS:
+        if who.startswith("SN_"):
+            key = who
+        else:
+            k = next(i for i, (o, c) in enumerate(kinds) if o["name"].replace("& ", "") == who and c in (8, 14, 15))
+            assert kinds[k][0]["flags2"] & value("TR_ACTIVATE"), who
+            key = f"$8000+{k}"
+        if eff == "BREATH":
+            label = f"acb_{len(strings)}"
+            choices = [f"{label}:"] + [f"\tdb {GFS[g]}\n\tdw {s('You breathe ' + w + '...')}, {s('huge ' + shape + ' of ' + w)}"
+                                       for g, w, shape in gf]
+            strings += choices
+            gfv, namev, num_v = len(gf), label, num
+        else:
+            gfv, namev, num_v = GFS[gf], s(name), num
+        if isinstance(num_v, str):
+            b, c = num_v.split("d")
+            numw = f"{int(b)}*256+{int(c)}"
+        elif isinstance(num_v, tuple):
+            numw = f"{num_v[0]}*256+{num_v[1]}"
+        else:
+            numw = str(num_v)
+        lines.append(f"\tdw {key}\n\tdb AE_{eff},{gfv}\n\tdw {numw},{s(msg)},{s(msg2)},{namev},{tb},{tr}\t; {who}")
+    lines += [""] + strings
+    open(os.path.join(OUT, "activate.asm"), "w").write("\n".join(lines) + "\n")
 
 
 def c_array(text, start):

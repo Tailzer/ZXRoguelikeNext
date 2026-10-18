@@ -1,5 +1,6 @@
 /* devices.asm - wands, staffs and rods  [overlay: PAGE_DEVICE]
-	References: WANDS.C aim, STAFFS.C use, RODS.C activate_rod, and from
+	References: WANDS.C aim, STAFFS.C use, RODS.C activate_rod, DUNGEON.C
+	activate (artifacts), and from
 	SPELLS.C fire_bolt/fire_ball/light_line/starlite/disarm_all/hp_monster/
 	drain_life/speed_monster/confuse_monster/sleep_monster/wall_to_mud/
 	td_destroy2/poly_monster/clone_monster/teleport_monster/speed_monsters/
@@ -30,12 +31,15 @@ GF_FIRE				equ 5
 		call device_xcall
 	ENDM
 
-/* device_action - B = PM_AIM/PM_USE/PM_ZAP, A = pack slot */
+/* device_action - B = PM_AIM/PM_USE/PM_ZAP, A = pack slot; or
+	PM_ACTIVATE, A = equipment slot */
 device_action:
 	ld (u_slot),a
 	ld a,b
 	ld (d_action),a
+	cp PM_ACTIVATE						; an artifact worn: A = its slot
 	ld a,(u_slot)
+	jp z,activate
 	call pack_slot
 	call item_kind_addr
 	ld (u_kind),hl
@@ -307,6 +311,464 @@ desc_charges:
 	ld hl,txt_charges_remaining
 	call msg_add
 	jp msg_end
+
+; ---------------------------------------------------------------- artifacts
+
+/* activate - A = the equipment slot of an artifact to activate (activate
+	in DUNGEON.C): not while it's recharging; it may fail; else its
+	messages and effect (data/activate.asm), and its recharge time */
+activate:
+	ld (a_slot),a
+	call a_item
+	ld a,(ix+I_ATIME)
+	or (ix+I_ATIME+1)
+	ld hl,msg_whines
+	jp nz,msg_print
+	ld a,18								; INT < 1d18 and 1d(level) > lev:
+	call randint						; it fails
+	ld b,a
+	ld a,(p_stat_use+A_INT)
+	cp b
+	jr nc,.works
+	call item_kind_addr
+	ld a,(iy+K_LEVEL)
+	call randint
+	ld b,a
+	ld a,(p_lev)
+	cp b
+	jr nc,.works
+	ld hl,msg_fail_activate
+	jp msg_print
+.works:
+	ld hl,msg_activate_it
+	call msg_print
+	call a_item							; which: its ego, or $8000 + kind
+	ld e,(ix+I_NAME2)
+	ld d,0
+	ld a,e
+	or a
+	jr nz,.key
+	ld e,(ix+I_KIND)
+	ld a,(ix+I_KIND_HI)
+	or $80
+	ld d,a
+.key:
+	nextreg NR_MMU1,ACT_PAGE
+	ld hl,act_table
+	ld b,NUM_ACTS
+.find:
+	ld a,(hl)
+	cp e
+	jr nz,.not_it
+	inc hl
+	ld a,(hl)
+	dec hl
+	cp d
+	jr z,.found
+.not_it:
+	ld a,16
+	add hl,a
+	djnz .find
+	ret
+.found:
+	ld de,a_entry
+	ld bc,16
+	ldir
+	ld a,(a_effect)						; a breath: one of its choices
+	cp AE_BREATH
+	jr nz,.strings
+	ld a,(a_gf)
+	call randint
+	dec a
+	ld e,a
+	ld d,5
+	mul d,e
+	ld hl,(a_name_p)
+	add hl,de
+	ld a,(hl)
+	ld (a_gf),a
+	inc hl
+	ld e,(hl)
+	inc hl
+	ld d,(hl)
+	inc hl
+	ld (a_msg_p),de
+	ld e,(hl)
+	inc hl
+	ld d,(hl)
+	ld (a_name_p),de
+	ld a,AE_BALL
+	ld (a_effect),a
+.strings:								; (copied out of the page)
+	ld hl,(a_msg_p)
+	ld de,a_msg
+	call .copy
+	ld hl,(a_msg2_p)
+	ld de,a_msg2
+	call .copy
+	ld hl,(a_name_p)
+	ld de,a_name
+	call .copy
+	ld hl,a_msg
+	ld a,(hl)
+	or a
+	call nz,msg_print
+	ld hl,a_msg2
+	ld a,(hl)
+	or a
+	call nz,msg_print
+	xor a
+	ld (a_cancel),a
+	ld a,(a_effect)
+	ld hl,act_effects-2
+	call jump_table
+	ld a,(a_cancel)						; no direction: nothing happened
+	or a
+	ret nz
+	ld hl,(a_trand)						; recharge: base + 1d(rand)
+	ld a,h
+	or l
+	jr z,$+5
+	call randint16
+	ld de,(a_tbase)
+	add hl,de
+	push hl
+	call a_item
+	pop hl
+	ld (ix+I_ATIME),l
+	ld (ix+I_ATIME+1),h
+	ret
+.copy:									; HL = string or 0 -> DE
+	ld a,h
+	or l
+	jr z,.empty
+.char:
+	ld a,(hl)
+	ld (de),a
+	inc hl
+	inc de
+	or a
+	jr nz,.char
+	ret
+.empty:
+	ld (de),a
+	ret
+
+/* a_item - IX = the artifact being activated */
+a_item:
+	ld a,(a_slot)
+	ld e,a
+	ld d,ITEM_SIZE
+	mul d,e
+	ld ix,EQUIP
+	add ix,de
+	ret
+
+act_effects:
+	dw ae_bolt, ae_ball, ae_drain, ae_mud, ae_tele_mon, ae_conf_mon		; 1-6
+	dw ae_fast, ae_fast0, ae_heal, ae_heal_cut, ae_fear_poison			; 7-11
+	dw ae_recall, ae_identify, probing, ae_mass_gen, ae_genocide		; 12-16
+	dw ae_td, ae_teleport, ae_restore, ae_resist, sleep_monsters		; 17-21
+	dw ae_recharge, rd_detect, ae_dispel_evil, ae_protevil, ae_one_ring	; 22-26
+	dw ae_ball														; 27 (a breath)
+
+/* ae_dir - a direction -> carry; none: a_cancel set */
+ae_dir:
+	call get_dir
+	ret c
+	ld a,1
+	ld (a_cancel),a
+	or a
+	ret
+
+ae_bolt:
+	call ae_dir
+	ret nc
+	call ae_named
+	ld bc,(a_num)						; (B = dice, C = sides)
+	call damroll
+	ld (d_dam),hl
+	jp fire_bolt
+ae_ball:
+	call ae_dir
+	ret nc
+	call ae_named
+	ld hl,(a_num)
+	ld (d_dam),hl
+	jp fire_ball
+ae_named:								; its element and name
+	ld a,(a_gf)
+	ld (d_type),a
+	ld hl,a_name
+	ld (d_name),hl
+	ret
+ae_drain:
+	call ae_dir
+	ret nc
+	ld hl,(a_num)
+	jp drain
+ae_mud:
+	call ae_dir
+	ret nc
+	jp wall_to_mud
+ae_tele_mon:
+	call ae_dir
+	ret nc
+	jp wd_teleport
+ae_conf_mon:
+	call ae_dir
+	ret nc
+	jp wd_conf_mon
+ae_fast0:								; only if not fast already
+	ld hl,p_fast
+	call get_w
+	ret nz
+ae_fast:								; fast += 1d(low) + high
+	ld hl,p_fast
+	ld bc,(a_num)
+	jp add_rand
+ae_heal:
+	ld hl,(a_num)
+	XCALL PAGE_MAGIC, hp_player
+	ret
+ae_heal_cut:							; heal the dice, and halve cuts - 50
+	ld bc,(a_num)
+	call damroll
+	XCALL PAGE_MAGIC, hp_player
+	ld hl,(p_cut)
+	call positive_w
+	ret z
+	sra h
+	rr l
+	ld de,-50
+	add hl,de
+	bit 7,h
+	jr z,$+5
+	ld hl,0
+	ld (p_cut),hl
+	ld hl,msg_you_wounds
+	jp msg_print
+ae_fear_poison:
+	XCALL PAGE_MAGIC, remove_fear
+	XCALL PAGE_MAGIC, cure_poison
+	ret
+ae_recall:								; recall in 15 + 1d20, if not already
+	ld hl,p_word_recall
+	call get_w
+	ret nz
+	ld a,20
+	call randint
+	add a,15
+	ld l,a
+	ld h,0
+	ld (p_word_recall),hl
+	ret
+ae_identify:
+	XCALL PAGE_SCROLL, sc_identify_item
+	ret
+ae_mass_gen:
+	XCALL PAGE_SCROLL, sc_mass_genocide
+	ret
+ae_genocide:
+	XCALL PAGE_SCROLL, sc_genocide
+	ret
+ae_td:
+	XCALL PAGE_SCROLL, sc_td_destroy
+	ret
+ae_teleport:
+	ld hl,(a_num)
+	XCALL PAGE_SCROLL, teleport
+	ret
+ae_restore:
+	XCALL PAGE_MAGIC, restore_level
+	ret
+ae_resist:								; 20 + 1d20 more of each
+	ld hl,p_resist_heat
+	ld bc,20*256+20
+	call add_rand
+	ld hl,p_resist_cold
+	ld bc,20*256+20
+	jp add_rand
+ae_recharge:
+	XCALL PAGE_SCROLL, sc_recharge
+	ret
+ae_dispel_evil:							; dispel evil for 5 x level
+	ld a,(p_lev)
+	ld e,a
+	ld d,5
+	mul d,e
+	ld b,e
+	ld a,1<<RF_EVIL
+	jp dispel
+ae_protevil:
+	XCALL PAGE_SCROLL, sc_protevil
+	ret
+ae_one_ring:							; 1d17 + 8 - lev/10:
+	ld a,(p_lev)
+	ld c,0
+.tens:
+	cp 10
+	jr c,.roll
+	sub 10
+	inc c
+	jr .tens
+.roll:
+	push bc
+	ld a,17
+	call randint
+	pop bc
+	add a,8
+	sub c
+	cp 5
+	jr z,.dispel						; 5: dispel everything
+	cp 6
+	jr z,.aura							; 6, 7: a malignant aura
+	cp 7
+	jr z,.aura
+	cp 8
+	jr c,.bolt
+	cp 11
+	jr nc,.bolt
+	call ae_dir							; 8-10: a ball of raw mana
+	ret nc
+	ld hl,txt_raw_mana_ball
+	ld de,300
+	call .mana
+	jp fire_ball
+.bolt:									; else a bolt of it
+	call ae_dir
+	ret nc
+	ld hl,txt_raw_mana_bolt
+	ld de,250
+	call .mana
+	jp fire_bolt
+.mana:
+	ld (d_name),hl
+	ld (d_dam),de
+	xor a								; (GF_MAGIC_MISSILE)
+	ld (d_type),a
+	ret
+.dispel:
+	xor a								; (the C's 1000: as hard as it can)
+	ld b,255
+	jp dispel
+.aura:
+	ld hl,msg_malignant
+	call msg_print
+	ld a,(p_lev)						; down a level: somewhere in the one
+	cp 2								; below
+	jr c,.ruin
+	call lose_a_level
+.ruin:
+	xor a
+.stat:
+	ld (d_star),a
+	XCALL PAGE_MAGIC, ruin_stat
+	ld a,(d_star)
+	inc a
+	cp 6
+	jr c,.stat
+	ld hl,(p_chp)						; and half the hit points
+	ld de,3
+	or a
+	sbc hl,de
+	ld hl,0
+	jr c,.hurt
+	ld hl,(p_chp)
+	srl h
+	rr l
+.hurt:
+	ld de,KILLER_AURA
+	ld (killer_race),de
+	jp take_hit
+
+/* lose_a_level - exp falls to somewhere in the level below (the One
+	Ring's aura): low = needed for level-1 (0 at 2), high = needed for this
+	level, exp = low + 1d(high - low) */
+lose_a_level:
+	ld a,(p_lev)
+	sub 3								; (entry k: needed for level k + 2)
+	ld hl,0
+	ld e,l
+	jr c,.low
+	add a,a
+	add a,a
+	ld hl,P_EXP_TABLE
+	add hl,a
+	ld e,(hl)
+	inc hl
+	ld d,(hl)
+	inc hl
+	ld a,(hl)
+	ex de,hl
+	ld e,a
+.low:									; E:HL = low
+	ld (a_low),hl
+	ld a,e
+	ld (a_low+2),a
+	ld a,(p_lev)
+	sub 2
+	add a,a
+	add a,a
+	ld hl,P_EXP_TABLE
+	add hl,a
+	ld e,(hl)
+	inc hl
+	ld d,(hl)
+	ex de,hl							; HL = high (low 16 bits)
+	ld de,(a_low)
+	or a
+	sbc hl,de							; the difference (at most 65535)
+	ld a,h
+	or l
+	jr z,.new
+	call randint16
+.new:									; new = low + 1d(diff)
+	ld de,(a_low)
+	add hl,de
+	ld a,(a_low+2)
+	adc a,0
+	ld e,a								; E:HL = new; lose exp - new
+	ld bc,(p_exp)
+	ld a,(p_exp+2)
+	push hl
+	ld h,b
+	ld l,c
+	pop bc
+	or a
+	sbc hl,bc
+	sbc a,e
+	ld e,a
+	XCALL PAGE_MAGIC, lose_exp
+	ld hl,(p_exp)						; max_exp = exp
+	ld (p_max_exp),hl
+	ld hl,(p_exp+2)
+	ld (p_max_exp+2),hl
+	ret
+
+msg_whines:		db "It whines, glows and fades...",0
+msg_fail_activate: db "You fail to activate it properly.",0
+msg_activate_it: db "You activate it...",0
+msg_you_wounds:	db "You wounds heal.",0
+msg_malignant:	db "You are surrounded by a malignant aura",0
+txt_raw_mana_ball: db "huge ball of Raw Mana",0
+txt_raw_mana_bolt: db "bolt of Raw Mana",0
+a_slot:			db 0
+a_cancel:		db 0
+a_low:			ds 3
+a_entry:							; (act_table's 16 bytes)
+a_key:			dw 0
+a_effect:		db 0
+a_gf:			db 0
+a_num:			dw 0
+a_msg_p:		dw 0
+a_msg2_p:		dw 0
+a_name_p:		dw 0
+a_tbase:		dw 0
+a_trand:		dw 0
+a_msg:			ds 64
+a_msg2:			ds 40
+a_name:			ds 32
 
 ; ---------------------------------------------------------------- staffs
 

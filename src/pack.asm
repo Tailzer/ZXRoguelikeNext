@@ -491,6 +491,8 @@ pack_carry:
 	pop de
 	ld bc,ITEM_SIZE
 	ldir
+	ld (ix+I_ATIME),0					; (its floor position: an artifact's
+	ld (ix+I_ATIME+1),0					;  activation timeout from now on)
 	pop af
 	scf
 	ret

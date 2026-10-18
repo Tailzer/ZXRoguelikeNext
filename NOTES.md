@@ -21,7 +21,7 @@ Walk into a closed door to open it, or into a monster to attack it; walking onto
 
 `C` (Caps Shift+C) shows the character sheet.
 
-Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `z` aim a wand, `Z` (Caps Shift+Z) use a staff, `a` activate a rod, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels. Directions: `1`-`9` or `hjklyubn`.
+Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `z` aim a wand, `Z` (Caps Shift+Z) use a staff, `a` activate a rod, `A` (Caps Shift+A) activate an artifact, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels. Directions: `1`-`9` or `hjklyubn`.
 
 ## Milestones
 
@@ -121,7 +121,16 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - value: an artifact's own cost (at most 65535), plus its known pluses; warriors feel it's "special"
      - the flavour tables moved to their own page (64), so the kinds can fill three pages
      - not yet: activation (9c-3c), the lights (the Phial, the Star of Elendil, the Arkenstone: no light sources yet), the bows (Beleg Cuthalion, Bard, Cubragol: no missile weapons yet); Razorback and Bladeturner can't appear (dragon scale mail never reaches unique_armour in 1.2)
-   - 9c-3c: activation; 9d: spells and monster spells
+   - 9c-3c: activation *(done)* — `DUNGEON.C` activate() and its timeout loop
+     - `A` lists what you wear that can be activated (and is known to be an artifact), then does it: "You activate it...", the artifact's own message and effect, and then it needs so many turns to recharge, counted down while it's worn ("It whines, glows and fades..." until then)
+     - it can fail: INT below 1d18 and 1d(its kind's level) above your level ("You fail to activate it properly.")
+     - every activation in 1.2 for the artifacts and special objects the game has: bolts (Narthanc, Nimthanc, Dethanc, the Paur- gauntlets, Arunruth, Cammithrim, Fingolfin's spikes), balls (Ringil, Anduril, Aeglos, Firestar, Rilia, Belangil, the Rings of Power), drain life (Theoden, Turmil), stone to mud (Orome), teleport other (Ulmo), confuse (Totila), speed (Feanor, Taratol, Tulkas), healing (Soulkeeper, Gondor, Lotharang), cures (Dal-i-thalion), recall (Avavir), identify (Eriril), probing (Olorin), mass genocide (Eonwe), genocide (Celeborn), trap and door destruction (Caspanion), teleport (Belegennon, Colannon), restore life levels (Luthien), resistance (Colluin), sleep (Holcolleth), recharging (Thingol), detection (Holhenneth), dispel evil (Ingwe), protection from evil (Carlammas), and dragon scale mail breath (Multi-Hued, Chaos, Law, Balance and Shining choose at random)
+     - the One Ring: dispel everything, a bolt or ball of raw mana, or a malignant aura (a level lost, every stat ruined, half your hit points); and while worn it takes a point of experience 1 turn in 20
+     - the converter writes the table from activate() (`data/activate.asm`, its own data page, 65); the effects borrow the wands', staffs' and scrolls' code in the device overlay
+     - an activation's timeout is kept in the item's floor position bytes, unused while it's carried (cleared as it's picked up)
+     - not yet: chaos, disenchantment, sound, shards, light, darkness, confusion and the elements' "raw mana" act as magic missiles (as in the C without colour), resist poison/acid/lightning timers (Colluin gives heat and cold only), the Phial, Star and Arkenstone (no lights), Cubragol (no bolts)
+     - (fixed in passing: dying of genocide's strain had no name on the tombstone)
+   - 9d: spells and monster spells
 10. Saving to SD card
 
 ## Memory map
@@ -158,11 +167,11 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 | 51 `PAGE_STORE` | `store.asm`, `data/stores.asm` | the stores: stock, prices, buying and selling |
 | 52 `PAGE_MAGIC` | `potions.asm`, `effects.asm` | quaffing, stat changes, timed effects (every turn), the colour and title shuffle |
 | 53 `PAGE_SCROLL` | `scrolls.asm` | reading scrolls (summons go through `level_call` to the level overlay) |
-| 54 `PAGE_DEVICE` | `devices.asm` | wands, staffs, rods: bolts, balls, beams (borrows scroll and potion effects through `device_xcall`) |
+| 54 `PAGE_DEVICE` | `devices.asm` | wands, staffs, rods and artifact activation: bolts, balls, beams (borrows scroll and potion effects through `device_xcall`) |
 
-Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 60-62 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page); the flavours (`data/flavours.asm`: potion colours, woods, metals, stones, amulets, the title syllables, the buffer this game's scroll titles are written into, normal_table) have their own page. 63 `EGO_PAGE` = `data/egos.asm` (ego and artifact names, flags and numbers, 24 bytes each); 64 `FLAVOUR_PAGE` = `data/flavours.asm`. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
+Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 60-62 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page); the flavours (`data/flavours.asm`: potion colours, woods, metals, stones, amulets, the title syllables, the buffer this game's scroll titles are written into, normal_table) have their own page. 63 `EGO_PAGE` = `data/egos.asm` (ego and artifact names, flags and numbers, 24 bytes each); 64 `FLAVOUR_PAGE` = `data/flavours.asm`; 65 `ACT_PAGE` = `data/activate.asm`. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
 
-Resident code ends around `$AEE6` after milestone 9c-3b (about 280 bytes left; `magic_items.asm` moved to the misc overlay, the knowledge tables to `$7C00` and the experience table into the creation overlay to make room) (`status.asm` holds the stat tables, timed-effect counters, what the player knows, the colour order and the after-use identify logic; `pack.asm` the item lists and chooser), the monster list starting at `$B000`. The creation overlay is at 7.6K of 8K, the magic overlay 6.3K, the items overlay 6.6K, the store overlay 7.1K, the scroll overlay 3.7K, the device overlay 6.3K, the misc overlay 3.3K.
+Resident code ends around `$AEF6` after milestone 9c-3c (about 260 bytes left; `magic_items.asm` moved to the misc overlay, the knowledge tables to `$7C00` and the experience table into the creation overlay to make room) (`status.asm` holds the stat tables, timed-effect counters, what the player knows, the colour order and the after-use identify logic; `pack.asm` the item lists and chooser), the monster list starting at `$B000`. The creation overlay is at 7.6K of 8K, the magic overlay 6.3K, the items overlay 6.6K, the store overlay 7.1K, the scroll overlay 3.7K, the device overlay 7.6K, the misc overlay 3.3K.
 
 Overlays that change stats or bonuses set `p_update`; `draw_view` (main loop only) runs `update_stuff`, which pages the items overlay to recalculate. Item commands that need the magic overlay leave `pending_magic` for `pending_actions` in the main loop.
 
