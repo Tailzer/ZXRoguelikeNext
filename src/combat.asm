@@ -166,22 +166,22 @@ regenhp:
 	sbc hl,de
 	ret nc								; already full
 	ld a,(regen_amount)					; A:HL = mhp * amount + 1442
-	ld e,a
-	ld a,(p_mhp)
-	ld d,a
-	mul d,e
-	push de
+	call .times_mhp
+	ld b,a
+	ld a,(p_eflags+1)					; regeneration: amount * 3 / 2
+	bit EF1_REGEN,a
+	ld a,b
+	jr z,.base
+	push hl
+	push af
 	ld a,(regen_amount)
-	ld e,a
-	ld a,(p_mhp+1)
-	ld d,a
-	mul d,e								; high byte product, shifted 8
-	pop hl
-	ld a,h
-	add a,e
-	ld h,a
-	ld a,0
-	adc a,d
+	srl a
+	call .times_mhp
+	pop bc
+	pop de
+	add hl,de
+	adc a,b
+.base:
 	ld de,REGEN_HPBASE
 	add hl,de
 	adc a,0
@@ -199,6 +199,25 @@ regenhp:
 	ld (p_chp),de
 	ld hl,0
 	ld (p_chp_frac),hl
+	ret
+.times_mhp:								; A = amount -> A:HL = mhp * amount
+	ld (regen_amount+1),a
+	ld e,a
+	ld a,(p_mhp)
+	ld d,a
+	mul d,e
+	push de
+	ld a,(regen_amount+1)
+	ld e,a
+	ld a,(p_mhp+1)
+	ld d,a
+	mul d,e								; high byte product, shifted 8
+	pop hl
+	ld a,h
+	add a,e
+	ld h,a
+	ld a,0
+	adc a,d
 	ret
 
 /* mon_name_to_msg - add "The <name>" / "It" (cap=1) or "the <name>" /
@@ -280,6 +299,7 @@ py_attack:
 	ld a,(w_sides)
 	ld c,a
 	call damroll
+	call tot_dam
 	call critical_blow
 	ld a,(p_todam)
 	ld e,a
@@ -320,6 +340,72 @@ py_attack:
 	dec (hl)
 	jr nz,.blow
 	ret
+
+/* tot_dam - HL = damage, IY = the monster's race -> HL = damage after the
+	weapon's slays and brands, the first that applies (tot_dam in MISC2.C).
+	Preserves IX, IY */
+tot_dam:
+	ld de,(w_slays)
+	ld a,d
+	or e
+	ret z
+	ld a,(iy+R_FLAGS)					; what the race is, and isn't
+	ld (td_race),a						; immune to
+	ld a,(iy+R_FLAGS2)
+	ld (td_race+1),a
+	ld a,(iy+R_RESIST)
+	cpl
+	ld (td_race+2),a
+	ld (td_dam),hl
+	ld hl,slay_table
+	ld b,NUM_SLAYS
+.each:
+	srl d
+	rr e
+	jr nc,.next
+	push de
+	ld a,(hl)
+	ld de,td_race
+	add de,a
+	ld a,(de)
+	inc hl
+	and (hl)
+	dec hl
+	pop de
+	jr z,.next
+	inc hl								; it applies: times the multiplier
+	inc hl
+	ld b,(hl)
+	ld hl,0
+	ld de,(td_dam)
+.times:
+	add hl,de
+	djnz .times
+	ret
+.next:
+	inc hl
+	inc hl
+	inc hl
+	djnz .each
+	ld hl,(td_dam)
+	ret
+
+; in w_slays bit order: which td_race byte (0 flags, 1 flags2, 2 not
+; immune), the bit, how many times the damage
+slay_table:
+	db 2,1<<RR_LIGHTNING,5				; lightning brand
+	db 1,1<<RF2_DRAGON,5				; execute dragon
+	db 1,1<<RF2_DRAGON,3				; slay dragon
+	db 0,1<<RF_UNDEAD,3
+	db 1,1<<RF2_ORC,3
+	db 1,1<<RF2_TROLL,3
+	db 1,1<<RF2_GIANT,3
+	db 0,1<<RF_DEMON,3
+	db 2,1<<RR_FROST,3					; frost brand
+	db 2,1<<RR_FIRE,3					; flame tongue
+	db 0,1<<RF_EVIL,2
+	db 1,1<<RF2_ANIMAL,2
+NUM_SLAYS		equ ($-slay_table)/3
 
 /* tohit_word - DE = p_tohit sign-extended. Preserves HL */
 tohit_word:
@@ -838,8 +924,10 @@ p_cla_bth:		db 0				; class_level_adj[class][CLA_BTH]
 p_cla_dev:		db 0				; class_level_adj[class][CLA_DEVICE]
 p_save:			db 0				; saving throw, race + class (signed)
 p_int_adj:		db 0				; stat_adj(A_INT)
-p_stl:			db 0				; stealth (signed)
-p_infra:		db 0				; infravision, in 10 ft
+p_stl:			db 0				; stealth (signed), with equipment's
+p_stl_race:		db 0				; the race's and class's
+p_infra:		db 0				; infravision, in 10 ft, with equipment's
+p_infra_race:	db 0				; the race's
 p_expfact:		db 100
 p_notice:		dw 0				; highest 1d1024 roll monsters notice
 p_stat_tohit:	db 0				; from DEX and STR (signed)
@@ -856,6 +944,9 @@ p_blows:		db 1
 w_dice:			db 1
 w_sides:		db 1
 w_weight:		dw 0
+w_slays:		dw 0				; the weapon's slays and brands (slay_table)
+td_race:		ds 3
+td_dam:			dw 0
 ; scratch
 th_ac:			db 0
 ri_n:			dw 0
@@ -863,7 +954,7 @@ ri_mask:		dw 0
 name_cap:		db 0
 hit_damage:		dw 0
 crit_dam:		dw 0
-regen_amount:	db 0
+regen_amount:	db 0,0
 attack_skill:	dw 0
 blows_left:		db 0
 attack_num:		db 0

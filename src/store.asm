@@ -611,7 +611,7 @@ item_cost:
 .known:
 	ld a,(iy+K_CLASS)
 	cp IC_AMULET
-	jr nc,.jewel
+	jp nc,.jewel
 	cp IC_WEAPON
 	jr nc,.arms
 	call .offer
@@ -639,6 +639,37 @@ item_cost:
 	bit ID_KNOWN2_BIT,(ix+I_IDENT)
 	ret z								; (pluses unknown: the plain cost)
 	call .offer
+	ld a,(ix+I_NAME2)					; an ego: + its cost, + so much per
+	or a								; point of its number, doubled for
+	jr z,.pluses						; the best weapons
+	push hl
+	call ego_addr
+	pop hl
+	ld e,(iy+E_COST)
+	ld d,(iy+E_COST+1)
+	call .sat_add
+	ld a,(ix+I_PVAL)
+	or a
+	jr z,.doubled
+	bit 7,a
+	jr nz,.doubled
+	ld b,a
+	ld e,(iy+E_P1COST)
+	ld d,(iy+E_P1COST+1)
+.per_point:
+	call .sat_add
+	djnz .per_point
+.doubled:
+	bit EO_DOUBLE,(iy+E_OPTS)
+	jr z,.ego_done
+	ld d,h
+	ld e,l
+	call .sat_add
+.ego_done:
+	push hl
+	call item_kind_addr
+	pop hl
+.pluses:
 	ld a,(ix+I_TOAC)					; any minus: worthless
 	ld b,a
 	or (ix+I_TOHIT)
@@ -670,6 +701,11 @@ item_cost:
 	ret
 .worthless:
 	ld hl,0
+	ret
+.sat_add:								; HL += DE, at most 65535
+	add hl,de
+	ret nc
+	ld hl,$FFFF
 	ret
 .jewel:									; rings and amulets: the cost
 	bit ID_KNOWN2_BIT,(ix+I_IDENT)		; magic_treasure gave it: what

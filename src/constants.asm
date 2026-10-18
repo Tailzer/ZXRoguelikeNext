@@ -18,6 +18,7 @@ PAGE_MAGIC			equ 52				; overlay: potions, timed effects, stats
 PAGE_SCROLL			equ 53				; overlay: reading scrolls
 PAGE_DEVICE			equ 54				; overlay: wands, staffs, rods
 DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
+EGO_PAGE			equ 63				; ego names and flags (data/egos.asm)
 RACE_PAGE			equ 44				; 5 pages of races (data/races.asm)
 KIND_PAGE			equ 60				; item kinds, 128 per page (data/kinds.asm)
 FLAVOUR_PAGE		equ KIND_PAGE+(NUM_KINDS-1)/128	; the flavours follow the kinds
@@ -222,6 +223,11 @@ R_FLAGS2			equ 14				; RF2_ bits
 RF2_WIN				equ 0				; CM_WIN: Sauron, Morgoth
 RF2_PHASE			equ 1				; CM_PHASE: passes through walls
 RF2_BREAK_WALL		equ 2				; BREAK_WALL: digs through them
+RF2_ANIMAL			equ 3				; what slays and brands look for
+RF2_ORC				equ 4
+RF2_DRAGON			equ 5
+RF2_TROLL			equ 6
+RF2_GIANT			equ 7
 R_RESIST			equ 15				; RR_ bits
 RR_FROST			equ 0				; IM_FROST
 RR_FIRE				equ 1
@@ -296,6 +302,11 @@ KIND_SIZE			equ 64				; 128 per 8K page
 K_CHAR				equ 0
 K_ATTR				equ 1
 K_CLASS				equ 2
+K_EGO				equ 3				; KE_: equipment magic_treasure treats specially
+KE_WHIP				equ 0				; (whips of fire)
+KE_ROBE				equ 1				; (robes of the Magi)
+KE_NO_RA			equ 2				; mithril and adamantite: never resist acid
+KE_SHOD				equ 3				; metal shod boots: never stealth
 K_LEVEL				equ 4
 K_WEIGHT			equ 5				; word, tenths of a pound
 K_DICE				equ 7
@@ -312,7 +323,8 @@ K_FLAVOUR			equ 22				; subval & 63: index into the flavour tables
 K_GROUP2			equ 23				; 1 for TV_POTION2 (effects 33-64)
 K_TOAC				equ 24				; signed: base magical AC
 K_MAGIC				equ 25				; MC_: how magic_treasure treats it
-K_NAME				equ 26				; the name itself, '~' where plurals add 's'
+K_FLAGS2			equ 26				; dword: the C's flags2
+K_NAME				equ 30				; the name itself, '~' where plurals add 's'
 ; magic_treasure classes (K_MAGIC)
 MC_NONE				equ 0
 MC_ARMOUR			equ 1				; body armour, shields
@@ -326,10 +338,18 @@ MC_CROWN			equ 8
 MC_RING				equ 9
 MC_AMULET			equ 10
 OBJ_TOWN_LEVEL		equ 5				; what level store goods are made at
-; ego names (SN_ in CONSTANT.H) set so far
-SN_IRRITATION		equ 40
-SN_VULNERABILITY	equ 41
-SN_ENVELOPING		equ 42
+; ego items: SN_ numbers come with data/egos.asm, 16 bytes each in EGO_PAGE
+EGO_SIZE			equ 16
+E_FLAGS				equ 0				; dword: flags it adds
+E_FLAGS2			equ 4				; dword: flags2 it adds
+E_COST				equ 8				; word: gold it adds to the value
+E_P1COST			equ 10				; word: gold per point of p1
+E_OPTS				equ 12				; EO_ bits
+EO_SHOW_P1			equ 0				; show its number: " (+2)"
+EO_SHOW_HD			equ 1
+EO_DOUBLE			equ 2				; value doubled
+E_DICE				equ 13				; dice instead of the kind's (0: the kind's)
+E_NAME				equ 14				; word: its name, "of Resistance"
 ; item classes; wearable ones map to equipment slot class - IC_WEAPON
 IC_FOOD				equ 1
 IC_POTION			equ 2
@@ -458,18 +478,38 @@ PU_HP				equ 1				; calc_hitpoints
 ; the C's item flags (TREASURE.C), as bits of each byte of p_eflags
 EF0_SEARCH			equ 6				; byte 0 (bits 0-5: the stats)
 EF0_SLOW_DIGEST		equ 7
-EF1_AGGRAVATE		equ 1				; byte 1
+EF1_STEALTH			equ 0				; byte 1
+EF1_AGGRAVATE		equ 1
 EF1_TELEPORT		equ 2
+EF1_REGEN			equ 3
 EF1_SPEED			equ 4
-EF2_RES_FIRE		equ 3				; byte 2
+EF1_SLAY_DRAGON		equ 5
+EF1_SLAY_ANIMAL		equ 6
+EF1_SLAY_EVIL		equ 7
+EF2_SLAY_UNDEAD		equ 0				; byte 2
+EF2_FROST_BRAND		equ 1
+EF2_FLAME_TONGUE	equ 2
+EF2_RES_FIRE		equ 3
 EF2_RES_ACID		equ 4
 EF2_RES_COLD		equ 5
 EF2_SUST_STAT		equ 6
 EF2_FREE_ACT		equ 7
 EF3_SEE_INVIS		equ 0				; byte 3
+EF3_RES_LIGHT		equ 1				; (lightning)
 EF3_FFALL			equ 2
+EF3_SLAY_X_DRAGON	equ 3
 EF3_POISON			equ 4
+EF3_INFRA			equ 6
 EF3_CURSED			equ 7
+; flags2, as bits of each byte of p_eflags2
+F2_SLAY_DEMON		equ 0				; byte 0
+F2_SLAY_TROLL		equ 1
+F2_SLAY_GIANT		equ 2
+F2_HOLD_LIFE		equ 3
+F2_SLAY_ORC			equ 4
+F2_TELEPATHY		equ 5
+F2_LIGHT			equ 2				; byte 1
+F2_LIGHTNING		equ 4				; (a lightning brand)
 ; races with intrinsics (calc_bonuses)
 RACE_HOBBIT			equ 3				; sustain DEX
 RACE_GNOME			equ 4				; free action

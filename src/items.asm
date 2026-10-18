@@ -30,6 +30,71 @@ item_kind_addr:
 	ld h,(ix+I_KIND_HI)
 	jr kind_addr
 
+/* ego_addr - A = ego (SN_) -> IY = its record, EGO_PAGE paged into the
+	data window. Clobbers DE */
+ego_addr:
+	nextreg NR_MMU1,EGO_PAGE
+	ld e,a
+	ld d,EGO_SIZE
+	mul d,e
+	ld iy,DATA_WINDOW
+	add iy,de
+	ret
+
+/* item_flags - IX = item -> it_flags: the C's flags then flags2, the
+	kind's with its ego's added. Leaves IY on the kind. Clobbers A, BC, DE,
+	HL */
+item_flags:
+	call item_kind_addr
+	push iy
+	pop hl
+	ld de,K_FLAGS
+	add hl,de
+	ld de,it_flags
+	ld bc,4
+	ldir
+	ld c,K_FLAGS2-K_FLAGS-4
+	add hl,bc
+	ld c,4
+	ldir
+	ld a,(ix+I_NAME2)
+	or a
+	ret z
+	call ego_addr						; (E_FLAGS, E_FLAGS2 come first)
+	push iy
+	pop hl
+	ld de,it_flags
+	ld b,8
+.or:
+	ld a,(de)
+	or (hl)
+	ld (de),a
+	inc hl
+	inc de
+	djnz .or
+	jp item_kind_addr
+
+/* item_dice - IX = item -> A = its number of damage dice: the kind's, or
+	its ego's (a whip of fire may have 2). Leaves IY on the kind. Clobbers
+	DE, HL */
+item_dice:
+	ld a,(ix+I_NAME2)
+	or a
+	jr z,.kind
+	call ego_addr
+	ld a,(iy+E_DICE)
+	push af
+	call item_kind_addr
+	pop af
+	or a
+	ret nz
+.kind:
+	call item_kind_addr
+	ld a,(iy+K_DICE)
+	ret
+
+it_flags:		ds 8
+
 /* kind_name - IY = kind record -> HL = its name. Clobbers DE */
 kind_name:
 	push iy
@@ -305,6 +370,13 @@ hunger_tick:
 	bit EF0_SLOW_DIGEST,a
 	jr z,$+3
 	inc de
+	ld a,(p_eflags+1)					; regeneration: three more
+	bit EF1_REGEN,a
+	jr z,.digested
+	dec de
+	dec de
+	dec de
+.digested:
 	add hl,de
 	ld (p_food),hl
 	bit 7,h

@@ -95,7 +95,23 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - no item feelings for rings and amulets (the C's pseudo-ID skips them)
      - `magic_items.asm` moved out of resident memory into the misc overlay (with the flavour shuffle); other overlays reach it with `OVCALL`
      - not yet: the verify prompt for L/R (both cases just choose), ring artifacts (Power, Narya, Nenya, Vilya, Barahir, Tulkas) and amulets (Ingwe, Carlammas, the Dwarves)
-   - 9c-3: egos and artifacts; 9d: spells and monster spells
+   - 9c-3a: ego items *(done)* — `MISC1.C` magic_treasure (the ego cases), `MISC2.C` tot_dam, `TREASURE.C` special_names, `DESC.C` objdes, `STORE1.C` item_value, `DUNGEON.C` value_check, `CREATURE.C` update_mon (telepathy), `SPELLS.C` self_knowledge/remove_curse
+     - every ego magic_treasure makes for the kinds the game has, at the C's odds (special = chance / 4, 3/2 of that for weapons, doubled for crowns):
+       - weapons: Holy Avenger, Defender, of Westernesse, Flame, Frost, slay Animal/Dragon/Evil/Undead/Orc/Troll/Giant/Demon; whips of Fire (1 in 10 with 2 dice); cursed weapons of Morgul deep down (AC -10, 10 lb heavier, see invisible, aggravation)
+       - body armour and shields: of Resistance, Elvenkind, Resist Acid (not mithril or adamantite)/Fire/Cold/Lightning; Robes of the Magi
+       - gloves: Free Action, Slaying, Agility, Power; cursed Clumsiness, Weakness
+       - boots: Slow Descent, Speed, Stealth (not metal shod); cursed Slowness, Noise, Great Mass
+       - helms: Intelligence, Wisdom, Infra-Vision, Light, Telepathy; crowns of Might, Lordliness, the Magi, Beauty, Seeing, Regeneration; cursed Stupidity, Dullness, Weakness, Teleportation, Ugliness
+       - cloaks: Protection, Stealth, of Aman; cursed Irritation, Vulnerability, Enveloping. As in the C, a magical cloak only gets an armour bonus when it's an ego
+     - names once known: "a Dagger (Defender) (1d4) (+3,+3) [+7] (+2 to stealth)", "a Pair of Soft Leather Boots of Speed [2,+5] (+1)", "a Set of Gauntlets of Power (+3,+4) [2,+2] (+3)"
+     - what they do: slays and brands in melee (x5 lightning and execute dragon, x3 slay dragon/undead/orc/troll/giant/demon and the brands unless immune, x2 evil and animal, the first that applies); stealth (monsters notice you less), infravision, regeneration (heal half as fast again, eat 3 more a turn), telepathy (every monster within 20 squares on screen is seen, through walls and blind), speed, stat bonuses, sustains (a Holy Avenger's number; the Robe of the Magi all six), free action, see invisible, resistances, feather fall
+     - monster races now carry the C's ANIMAL, ORC, DRAGON, TROLL and GIANT flags
+     - prices: an ego's cost (and so much per point of its number, doubled for Holy Avengers, Defenders and Westernesse) is added once it's known
+     - item feelings: egos feel "excellent"; Remove Curse can't lift Morgul's curse (*Remove Curse* can)
+     - Self Knowledge (moved to the items overlay) adds stealth, regeneration, ESP, hold life, permanent light, resist lightning, and the weapon: "Your weapon strikes at undead with holy wrath.", "Your weapon is truly foul."...
+     - ego names and flags live in their own data page (`data/egos.asm`, 16 bytes per SN_ number); kinds carry the C's flags2 and which ego rules apply to them
+     - not yet: artifacts (the C's chances of one are rolled, and nothing made), hold life and immunities do nothing yet (no experience drain or elemental attacks), permanent light doesn't light anything
+   - 9c-3b: artifacts and activation; 9d: spells and monster spells
 10. Saving to SD card
 
 ## Memory map
@@ -127,16 +143,16 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 |---|---|---|
 | 40 `PAGE_LEVEL` | `generate.asm`, `populate.asm` | building a new level |
 | 41 `PAGE_MISC` | `startup.asm`, `magic_items.asm`, `magic_init.asm` | power-on; making items (`new_item`, `new_plain`, `magic_treasure`); each game's flavour shuffle |
-| 42 `PAGE_ITEMS` | `inventory.asm`, `data/blows.asm` | item commands, picking up, starting kit |
+| 42 `PAGE_ITEMS` | `inventory.asm`, `knowledge.asm`, `data/blows.asm` | item commands, picking up, starting kit, bonuses, Self Knowledge |
 | 43 `PAGE_CREATE` | `create.asm`, `death.asm`, `data/player.asm` | making a character, the `C` sheet, the tombstone |
 | 51 `PAGE_STORE` | `store.asm`, `data/stores.asm` | the stores: stock, prices, buying and selling |
 | 52 `PAGE_MAGIC` | `potions.asm`, `effects.asm` | quaffing, stat changes, timed effects (every turn), the colour and title shuffle |
 | 53 `PAGE_SCROLL` | `scrolls.asm` | reading scrolls (summons go through `level_call` to the level overlay) |
 | 54 `PAGE_DEVICE` | `devices.asm` | wands, staffs, rods: bolts, balls, beams (borrows scroll and potion effects through `device_xcall`) |
 
-Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 60-62 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page) followed on the last of them (`FLAVOUR_PAGE`) by `data/flavours.asm`: the potion colours, woods and metals, the title syllables and the buffer this game's scroll titles are written into. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
+Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 60-62 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page) followed on the last of them (`FLAVOUR_PAGE`) by `data/flavours.asm`: the potion colours, woods and metals, the title syllables and the buffer this game's scroll titles are written into. 63 `EGO_PAGE` = `data/egos.asm` (ego names and flags, 16 bytes each). The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
 
-Resident code ends around `$AD1C` after milestone 9c-2 (about 740 bytes left; `magic_items.asm` moved to the misc overlay, the knowledge tables to `$7C00` and the experience table into the creation overlay to make room) (`status.asm` holds the stat tables, timed-effect counters, what the player knows, the colour order and the after-use identify logic; `pack.asm` the item lists and chooser), the monster list starting at `$B000`. The creation overlay is at 7.7K of 8K, the magic overlay 7.8K (nearly full), the items overlay 3.2K, the store overlay 6.9K, the scroll overlay 3.6K, the device overlay 6.3K, the misc overlay 1.3K.
+Resident code ends around `$AECD` after milestone 9c-3a (about 300 bytes left; `magic_items.asm` moved to the misc overlay, the knowledge tables to `$7C00` and the experience table into the creation overlay to make room) (`status.asm` holds the stat tables, timed-effect counters, what the player knows, the colour order and the after-use identify logic; `pack.asm` the item lists and chooser), the monster list starting at `$B000`. The creation overlay is at 7.6K of 8K, the magic overlay 6.3K, the items overlay 5.9K, the store overlay 7.0K, the scroll overlay 3.6K, the device overlay 6.3K, the misc overlay 2.2K.
 
 Overlays that change stats or bonuses set `p_update`; `draw_view` (main loop only) runs `update_stuff`, which pages the items overlay to recalculate. Item commands that need the magic overlay leave `pending_magic` for `pending_actions` in the main loop.
 

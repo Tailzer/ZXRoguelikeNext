@@ -149,14 +149,19 @@ monsters_see_all:
 
 /* update_mon - IX = monster. Visible unless blind, if within MAX_SIGHT,
 	on screen, in line of sight, not invisible (unless the player sees
-	invisible: high-elves, rings, or detect invisible), and either on a lit square
+	invisible: high-elves, rings, or detect invisible); with telepathy,
+	anything within MAX_SIGHT on screen, and either on a lit square
 	or within infravision (unless it's cold-blooded).
 	Clobbers everything but IX */
 update_mon:
+	call mon_race
+	ld a,(p_eflags2)					; telepathy: anything in range and
+	bit F2_TELEPATHY,a					; on screen, blind or not
+	ld (um_esp),a
+	jr nz,.seeable
 	ld a,(p_status)
 	bit PY_BLIND,a
 	jr nz,.hidden
-	call mon_race
 	bit RF_INVISIBLE,(iy+R_FLAGS)
 	jr z,.seeable
 	ld a,(p_eflags+3)					; (high-elves, or a ring)
@@ -183,6 +188,9 @@ update_mon:
 	jr c,.hidden
 	cp VIEW_W
 	jr nc,.hidden
+	ld a,(um_esp)
+	bit F2_TELEPATHY,a
+	jr nz,.visible
 	ld d,(ix+M_Y)
 	ld e,(ix+M_X)
 	push de
@@ -203,11 +211,14 @@ update_mon:
 .in_sight:
 	call los
 	jr nc,.hidden
+.visible:
 	ld (ix+M_ML),1
 	ret
 .hidden:
 	ld (ix+M_ML),0
 	ret
+
+um_esp:			db 0
 
 /* monsters_act - every monster takes its turn (creatures(TRUE)) */
 monsters_act:

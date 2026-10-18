@@ -103,6 +103,20 @@ objdes_msg:
 	ld a,(od_bare)						; just the name (objdes, pref FALSE)
 	or a
 	ret nz
+	ld a,(ix+I_NAME2)					; " of Resistance", once known
+	or a
+	jr z,.no_ego
+	bit ID_KNOWN2_BIT,(ix+I_IDENT)
+	jr z,.no_ego
+	ld hl,txt_space_
+	call msg_add
+	ld a,(ix+I_NAME2)
+	call ego_addr
+	ld l,(iy+E_NAME)
+	ld h,(iy+E_NAME+1)
+	call msg_add
+	call item_kind_addr
+.no_ego:
 	ld a,(iy+K_CLASS)
 	cp IC_WEAPON
 	jr z,.weapon
@@ -124,7 +138,7 @@ objdes_msg:
 .weapon:								; " (2d5)"
 	ld hl,txt_open_br
 	call msg_add
-	ld a,(iy+K_DICE)
+	call item_dice
 	call msg_add_u8
 	ld hl,txt_d
 	call msg_add
@@ -188,7 +202,37 @@ objdes_msg:
 .p1:									; rings and amulets: " (+2)" once
 	ld a,(iy+K_CLASS)					; known, unless 0 or a sustain
 	cp IC_AMULET						; (ID_NOSHOW_P1)
-	jr c,.notes
+	jr nc,.jewel_p1
+	bit ID_KNOWN2_BIT,(ix+I_IDENT)		; egos: " (+2)" if they show it,
+	jr z,.notes							; weapons " (+2 to stealth)"
+	ld a,(ix+I_NAME2)
+	or a
+	jr z,.notes
+	call ego_addr
+	ld b,(iy+E_OPTS)
+	ld c,(iy+E_FLAGS+1)
+	call item_kind_addr
+	bit EO_SHOW_P1,b
+	jr nz,.show_p1
+	ld a,(iy+K_CLASS)
+	cp IC_WEAPON
+	jr nz,.notes
+	bit EF1_STEALTH,c
+	jr z,.notes
+	ld a,(ix+I_PVAL)
+	or a
+	jr z,.notes
+	call .open_signed
+	ld hl,txt_to_stealth
+	call msg_add
+	jr .notes
+.show_p1:
+	ld a,(ix+I_PVAL)
+	call .open_signed
+	ld hl,txt_close_br
+	call msg_add
+	jr .notes
+.jewel_p1:
 	bit ID_KNOWN2_BIT,(ix+I_IDENT)
 	jr z,.notes
 	bit EF2_SUST_STAT,(iy+K_FLAGS+2)
@@ -280,6 +324,12 @@ objdes_msg:
 	jp p,msg_add_u8
 	neg
 	jp msg_add_u8
+.open_signed:							; " (" and A, signed
+	push af
+	ld hl,txt_open_br
+	call msg_add
+	pop af
+	jp .signed
 .put_char:									; A = one character
 	ld hl,(msg_ptr)
 	ld (hl),a
@@ -721,6 +771,7 @@ txt_staff_:		db " Staff",0
 txt_wand_:		db " Wand",0
 txt_rod_:		db " Rod",0
 txt_ring_:		db " Ring",0
+txt_to_stealth:	db " to stealth)",0
 txt_amulet_:	db " Amulet",0
 txt_charges_:	db " charges)",0
 txt_you_have_r:	db "You have ",0

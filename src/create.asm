@@ -408,11 +408,13 @@ derive:
 	ld a,(iy+PR_STL)
 	add a,(ix+PC_STL)
 	ld (p_stl),a
+	ld (p_stl_race),a					; (equipment adds to it: calc_bonuses)
 	ld a,(iy+PR_EXP)
 	add a,(ix+PC_EXP)
 	ld (p_expfact),a
 	ld a,(iy+PR_INFRA)
 	ld (p_infra),a
+	ld (p_infra_race),a
 	ld a,(ix+PC_LADJ)
 	ld (p_cla_bth),a
 	ld a,(ix+PC_LADJ+2)					; device skill per level
@@ -420,22 +422,6 @@ derive:
 	ld a,(iy+PR_BSAV)					; saving throw
 	add a,(ix+PC_SAV)
 	ld (p_save),a
-	ld a,(p_stl)						; monsters' noticing roll
-	add a,4
-	bit 7,a
-	jr z,$+3
-	xor a
-	cp 25
-	jr c,$+4
-	ld a,24
-	add a,a
-	ld hl,notice_table
-	add hl,a
-	ld a,(hl)
-	inc hl
-	ld h,(hl)
-	ld l,a
-	ld (p_notice),hl
 	call stat_bonuses
 	; age, height, weight (get_ahw; randnor taken as base +- mod)
 	ld a,(iy+PR_AGE_MOD)

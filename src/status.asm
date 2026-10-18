@@ -735,6 +735,7 @@ p_eflags:		dd 0				; the C's flags of everything worn (EF_ bits),
 									; with race gifts (see invisible, ffall, free action)
 p_sustain:		db 0				; bit per A_ stat: sustained by race or ring
 p_stat_mod:		ds 6				; signed: what equipment adds to each stat
+p_eflags2:		dd 0				; the C's flags2 of everything worn (F2_ bits)
 p_stat_use:		ds 6				; the stats in use (the C's use_stat)
 cs_num:			db 0
 new_rec:		ds ITEM_SIZE		; an item an overlay is having made in the misc

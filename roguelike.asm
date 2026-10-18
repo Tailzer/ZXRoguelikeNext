@@ -29,6 +29,8 @@
 		enchant and curse scrolls, item feelings
 	Milestone 9c-2: Rings and amulets - flavours, neck and ring slots,
 		stat, speed and other bonuses, sustains, resistances
+	Milestone 9c-3a: Ego items - magic_treasure's egos, slays and brands,
+		stealth, infravision, regeneration, telepathy
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -249,6 +251,7 @@ misc_end:
 
 	MMU 2, PAGE_ITEMS, $4000
 	include "src/inventory.asm"
+	include "src/knowledge.asm"
 	include "data/blows.asm"			; generated: blows_table
 items_end:
 	ASSERT items_end <= $6000, "Items overlay is over 8K"
@@ -295,6 +298,11 @@ races_end:
 	include "data/flavours.asm"			; generated: potion colours
 kinds_end:
 	ASSERT $$colour_names == FLAVOUR_PAGE && $$kinds_end == FLAVOUR_PAGE, "Flavours must sit on FLAVOUR_PAGE"
+
+	MMU 1 n, EGO_PAGE, DATA_WINDOW		; ego items: names, flags, values
+	include "data/egos.asm"
+egos_end:
+	ASSERT $$egos_end == EGO_PAGE, "Egos run past their page"
 
 	SAVENEX OPEN "build/roguelike.nex", start, stack_top
 	SAVENEX CORE 3,0,0

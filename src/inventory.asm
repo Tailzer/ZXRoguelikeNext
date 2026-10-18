@@ -175,19 +175,52 @@ calc_bonuses:
 	ld (p_blows),a
 	ld hl,0
 	ld (w_weight),hl
+	ld (w_slays),hl
 	ld a,(p_tohit)
 	sub 3
 	ld (p_tohit),a
 	ret
 .armed:
-	ld hl,(EQUIP+EQ_WEAPON*ITEM_SIZE+I_KIND)
-	call kind_addr
-	ld a,(iy+K_DICE)
+	ld ix,EQUIP+EQ_WEAPON*ITEM_SIZE
+	call item_flags						; its slays and brands
+	ld hl,slay_flags
+	ld de,0
+	ld b,NUM_SLAYS
+.slays:
+	ld a,(hl)							; (byte of it_flags, bit)
+	push hl
+	ld hl,it_flags
+	add hl,a
+	ld c,(hl)
+	pop hl
+	inc hl
+	ld a,(hl)
+	inc hl
+	and c
+	scf
+	jr nz,$+3
+	or a
+	rr d
+	rr e
+	djnz .slays
+	ld b,16-NUM_SLAYS
+.align:
+	srl d
+	rr e
+	djnz .align
+	ld (w_slays),de
+	call item_dice
 	ld (w_dice),a
 	ld a,(iy+K_SIDES)
 	ld (w_sides),a
 	ld l,(iy+K_WEIGHT)
 	ld h,(iy+K_WEIGHT+1)
+	ld a,(ix+I_NAME2)					; a weapon of Morgul weighs 10 lb
+	cp SN_MORGUL						; more
+	jr nz,.weight
+	ld de,100
+	add hl,de
+.weight:
 	ld (w_weight),hl
 	; attack_blows: too heavy if weight > STR*15 (to-hit drops by the excess)
 	ld a,(p_stat_use+A_STR)
@@ -257,14 +290,16 @@ calc_bonuses:
 	worn), p_sustain, the stat bonuses (p_stat_mod) and speed (p_eq_speed,
 	with every monster's speed changed to match) */
 equip_flags:
-	ld hl,p_eflags						; (p_eflags, p_sustain, p_stat_mod)
-	ld b,4+1+6
+	ld hl,p_eflags						; (p_eflags, p_sustain, p_stat_mod,
+	ld b,4+1+6+4						;  p_eflags2)
 	xor a
 .clear:
 	ld (hl),a
 	inc hl
 	djnz .clear
 	ld (ef_speed),a
+	ld (ef_stealth),a
+	ld (ef_infra),a
 	ld a,(p_race)						; race intrinsics
 	ld hl,race_gifts
 .race:
@@ -297,24 +332,15 @@ equip_flags:
 	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	jr z,.next
-	call item_kind_addr
-	ld hl,p_eflags						; its flags (cursed or not)
-	ld a,(iy+K_FLAGS)
-	or (hl)
-	ld (hl),a
-	inc hl
-	ld a,(iy+K_FLAGS+1)
-	or (hl)
-	ld (hl),a
-	inc hl
-	ld a,(iy+K_FLAGS+2)
-	or (hl)
-	ld (hl),a
-	inc hl
-	ld a,(iy+K_FLAGS+3)
-	or (hl)
-	ld (hl),a
-	ld a,(iy+K_FLAGS)					; its number to each stat it names
+	call item_flags						; its flags, and its ego's (cursed
+	ld hl,it_flags						; or not)
+	ld de,p_eflags
+	ld b,4
+	call .or_flags
+	ld de,p_eflags2
+	ld b,4
+	call .or_flags
+	ld a,(it_flags)						; its number to each stat it names
 	and $3F
 	ld c,a
 	ld hl,p_stat_mod
@@ -328,23 +354,36 @@ equip_flags:
 .stat_next:
 	inc hl
 	djnz .stat
-	bit EF1_SPEED,(iy+K_FLAGS+1)		; and to speed
-	jr z,.sustain
-	ld a,(ef_speed)
-	add a,(ix+I_PVAL)
-	ld (ef_speed),a
-.sustain:
-	bit EF2_SUST_STAT,(iy+K_FLAGS+2)	; a sustain: its number is the stat
-	jr z,.next							; (1 STR, 2 INT, 3 WIS, 4 CON, 5 DEX,
-	ld a,(ix+I_PVAL)					;  6 CHR)
+	ld a,(it_flags+1)					; and to speed and stealth
+	ld hl,ef_speed
+	bit EF1_SPEED,a
+	call nz,.add_p1
+	ld hl,ef_stealth
+	bit EF1_STEALTH,a
+	call nz,.add_p1
+	ld a,(it_flags+3)					; and infravision
+	ld hl,ef_infra
+	bit EF3_INFRA,a
+	call nz,.add_p1
+	ld a,(it_flags+2)					; a sustain: its number is the stat
+	bit EF2_SUST_STAT,a					; (1 STR, 2 INT, 3 WIS, 4 CON, 5 DEX,
+	jr z,.next							;  6 CHR, 10 all)
+	ld a,(ix+I_PVAL)
+	cp 10
+	jr nz,.one
+	ld a,$3F
+	jr .sustained
+.one:
 	dec a
 	cp 6
 	jr nc,.next
 	ld hl,sustain_bits
 	add hl,a
-	ld a,(p_sustain)
+	ld a,(hl)
+.sustained:
+	ld hl,p_sustain
 	or (hl)
-	ld (p_sustain),a
+	ld (hl),a
 .next:
 	ld de,ITEM_SIZE
 	add ix,de
@@ -364,8 +403,31 @@ equip_flags:
 	jr nz,.speed
 	ld hl,ef_speed
 	dec (hl)
-.speed:									; speed changes by the difference
-	ld a,(p_eq_speed)
+.speed:
+	ld a,(ef_stealth)					; stealth and infravision: the
+	ld hl,p_stl_race					; race's and class's, plus
+	add a,(hl)
+	ld (p_stl),a
+	add a,4								; monsters' noticing roll
+	bit 7,a
+	jr z,$+3
+	xor a
+	cp 25
+	jr c,$+4
+	ld a,24
+	add a,a
+	ld hl,notice_table
+	add hl,a
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	ld (p_notice),hl
+	ld a,(ef_infra)
+	ld hl,p_infra_race
+	add a,(hl)
+	ld (p_infra),a
+	ld a,(p_eq_speed)					; speed changes by the difference
 	ld b,a
 	ld a,(ef_speed)
 	ld (p_eq_speed),a
@@ -373,6 +435,28 @@ equip_flags:
 	ret z
 	neg									; (faster is lower)
 	jp change_speed
+.or_flags:								; B bytes from HL ORed into DE
+	ld a,(de)
+	or (hl)
+	ld (de),a
+	inc hl
+	inc de
+	djnz .or_flags
+	ret
+.add_p1:								; (HL) += its number. Keeps A
+	push af
+	ld a,(ix+I_PVAL)
+	add a,(hl)
+	ld (hl),a
+	pop af
+	ret
+
+; the weapon's flags in slay_table order: (byte of it_flags, bit)
+slay_flags:
+	db 5,1<<F2_LIGHTNING, 3,1<<EF3_SLAY_X_DRAGON, 1,1<<EF1_SLAY_DRAGON
+	db 2,1<<EF2_SLAY_UNDEAD, 4,1<<F2_SLAY_ORC, 4,1<<F2_SLAY_TROLL
+	db 4,1<<F2_SLAY_GIANT, 4,1<<F2_SLAY_DEMON, 2,1<<EF2_FROST_BRAND
+	db 2,1<<EF2_FLAME_TONGUE, 1,1<<EF1_SLAY_EVIL, 1,1<<EF1_SLAY_ANIMAL
 
 ; race, then its gifts as p_eflags (4 bytes) and p_sustain
 race_gifts:
@@ -385,6 +469,8 @@ race_gifts:
 ; the C's sustain numbers 1-6 as p_sustain bits
 sustain_bits:	db 1<<A_STR, 1<<A_INT, 1<<A_WIS, 1<<A_CON, 1<<A_DEX, 1<<A_CHR
 ef_speed:		db 0
+ef_stealth:		db 0
+ef_infra:		db 0
 
 /* the adj_weight thresholds for str_index 0-9 (anything more is 10) */
 str_index_limits:	db 2,3,4,6,8,10,13,15,18,20
