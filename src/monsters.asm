@@ -358,6 +358,12 @@ mon_move:
 	ld (ix+M_CONFUSED),a
 	ret
 .clear_headed:
+	bit RR_SPELLS,(iy+R_RESIST)			; it may cast a spell instead
+	jr z,.no_spells
+	FARCALL PAGE_MCAST, mon_cast_spell
+	ret c
+	call mon_race
+.no_spells:
 	bit RM_75,(iy+R_MOVE)
 	jr z,.not75
 	ld a,100

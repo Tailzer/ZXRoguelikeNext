@@ -39,6 +39,8 @@
 		casting, all 59 mage spells
 	Milestone 9d-2: Prayers - priests and paladins learn and recite the
 		58 prayers
+	Milestone 9d-3a: Monster spells - curses, mind blasts, the classic
+		breaths, bolts and balls, teleports and summons
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -297,6 +299,11 @@ scroll_end:
 spell_end:
 	ASSERT spell_end <= $6000, "Spell overlay is over 8K"
 
+	MMU 2, PAGE_MCAST, $4000
+	include "src/mcast.asm"
+mcast_end:
+	ASSERT mcast_end <= $6000, "Monster spell overlay is over 8K"
+
 	MMU 2, PAGE_DEVICE, $4000
 	include "src/devices.asm"
 device_end:
@@ -334,6 +341,11 @@ acts_end:
 	include "data/spells.asm"
 spells_end:
 	ASSERT $$spells_end == SPELL_PAGE, "Spells run past their page"
+
+	MMU 1 n, MSPELL_PAGE, DATA_WINDOW	; monster spells, 12 bytes a race
+	include "data/mspells.asm"
+mspells_end:
+	ASSERT $$mspells_end == MSPELL_PAGE, "Monster spells run past their page"
 
 	SAVENEX OPEN "build/roguelike.nex", start, stack_top
 	SAVENEX CORE 3,0,0

@@ -13,13 +13,7 @@
 
 OBJ_BOLT_RANGE		equ 18
 USE_DEVICE			equ 3
-; GF_ types: bolt and ball elements
-GF_MAGIC_MISSILE	equ 0
-GF_LIGHTNING		equ 1
-GF_POISON_GAS		equ 2
-GF_ACID				equ 3
-GF_FROST			equ 4
-GF_FIRE				equ 5
+; (GF_ types, the bolt and ball elements, are in constants.asm)
 
 ; borrow a routine from another overlay
 	MACRO XCALL ov_page, ov_routine

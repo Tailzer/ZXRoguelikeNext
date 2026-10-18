@@ -18,10 +18,12 @@ PAGE_MAGIC			equ 52				; overlay: potions, timed effects, stats
 PAGE_SCROLL			equ 53				; overlay: reading scrolls
 PAGE_DEVICE			equ 54				; overlay: wands, staffs, rods
 PAGE_SPELL			equ 55				; overlay: spells, mana, learning
+PAGE_MCAST			equ 56				; overlay: monsters casting spells
 DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
 EGO_PAGE			equ 63				; ego names and flags (data/egos.asm)
 ACT_PAGE			equ 65				; what activating does (data/activate.asm)
 SPELL_PAGE			equ 66				; each class's spells, their names
+MSPELL_PAGE			equ 67				; each monster race's spells (data/mspells.asm)
 RACE_PAGE			equ 44				; 5 pages of races (data/races.asm)
 KIND_PAGE			equ 60				; item kinds, 128 per page (data/kinds.asm)
 FLAVOUR_PAGE		equ 64				; flavour names and colours, titles, normal_table
@@ -239,6 +241,32 @@ RR_POISON			equ 3
 RR_ACID				equ 4
 RR_HURT_LIGHT		equ 5
 RR_HURT_ROCK		equ 6
+RR_SPELLS			equ 7				; it has spells (mon_cast_spell is tried)
+; monster spells (data/mspells.asm): CS_ bits of spells, spells2, then
+; spells3's low word (cast n is bit n-1), then RS_ flags
+MS_SIZE				equ 12
+MS_BITS				equ 80
+MS_FLAGS			equ 10
+RS_SMART			equ 0				; INTELLIGENT: casts to escape when hurt
+CS_FREQ				equ $0F				; 1 in this many turns it casts
+MAX_SPELL_DIS		equ 18				; the furthest a spell is cast from
+; what summon_by (level overlay) brings
+SUM_MONSTER			equ 0
+SUM_UNDEAD			equ 1
+SUM_DEMON			equ 2				; up to the summoner's level
+SUM_DRAGON			equ 3
+SUM_ANGEL			equ 4
+SUM_SPIDER			equ 5
+SUM_HOUND			equ 6
+SUM_GUNDEAD			equ 7
+SUM_ANCIENTD		equ 8
+; bolt and ball elements (the C's GF_ types)
+GF_MAGIC_MISSILE	equ 0
+GF_LIGHTNING		equ 1
+GF_POISON_GAS		equ 2
+GF_ACID				equ 3
+GF_FROST			equ 4
+GF_FIRE				equ 5
 ; R_MOVE bits (MONSTER.H cmove flags)
 RM_ONLY_ATT			equ 0				; MV_ONLY_ATT: never moves
 RM_NORMAL			equ 1				; MV_ATT_NORM: chases
@@ -587,6 +615,37 @@ TV_WAND				equ 65
 TV_ROD				equ 66
 TV_AMULET			equ 40
 TV_RING				equ 45
+TV_MISC				equ 1				; (what the destroy sets name)
+TV_CHEST			equ 2
+TV_BOLT				equ 11
+TV_ARROW			equ 12
+TV_BOW				equ 20
+TV_HAFTED			equ 21
+TV_POLEARM			equ 22
+TV_BOOTS			equ 30
+TV_GLOVES			equ 31
+TV_CLOAK			equ 32
+TV_HELM				equ 33
+TV_SHIELD			equ 34
+TV_HARD_ARMOR		equ 35
+TV_SOFT_ARMOR		equ 36
+TV_FLASK			equ 77
+TV_FOOD				equ 80
+; flag masks within it_flags / p_eflags (TR1_, byte 2 or 3) and
+; it_flags+4 / p_eflags2 (TR2_, the byte noted)
+TR1_RES_FIRE		equ $08				; byte 2
+TR1_RES_ACID		equ $10				; byte 2
+TR1_RES_COLD		equ $20				; byte 2
+TR1_RES_LIGHT		equ $02				; byte 3
+TR2_IM_FIRE			equ $40				; byte 0
+TR2_IM_COLD			equ $80				; byte 0
+TR2_IM_ACID			equ $01				; byte 1
+TR2_IM_LIGHT		equ $02				; byte 1
+TR2_IM_POISON		equ $40				; byte 1
+TR2_RES_CONF		equ $80				; byte 1
+TR2_RES_SOUND		equ $01				; byte 2
+TR2_RES_CHAOS		equ $08				; byte 2
+TR2_RES_BLIND		equ $80				; byte 2
 OFS_AMULET			equ 0
 OFS_RING			equ 1
 OFS_STAFF			equ 2				; object_offset() for staffs

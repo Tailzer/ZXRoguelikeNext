@@ -872,6 +872,7 @@ p_hitdie:		db 0
 p_bth:			db 0				; base to-hit, race + class
 p_cla_bth:		db 0				; class_level_adj[class][CLA_BTH]
 p_cla_dev:		db 0				; class_level_adj[class][CLA_DEVICE]
+p_cla_save:		db 0				; class_level_adj[class][CLA_SAVE]
 p_save:			db 0				; saving throw, race + class (signed)
 p_int_adj:		db 0				; stat_adj(A_INT)
 p_stl:			db 0				; stealth (signed), with equipment's

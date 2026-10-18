@@ -17,11 +17,12 @@ CONSTANT.H) and writes:
                     (misc overlay)
   data/activate.asm what activating an artifact does (activation page)
   data/spells.asm   each class's spells and their names (spell page)
+  data/mspells.asm  each monster race's spells (monster spell page)
 
 Usage:  tools/convert.py [path to Angband SRC]   (default ~/Downloads/angband-pc1.2/SRC,
         or $ANGBAND_SRC)
 """
-import os, re, sys
+import os, re, struct, sys
 
 SRC = sys.argv[1] if len(sys.argv) > 1 else os.environ.get(
     "ANGBAND_SRC", os.path.expanduser("~/Downloads/angband-pc1.2/SRC"))
@@ -188,6 +189,7 @@ def monsters():
         level, rarity = value(f[14]), value(f[15])
         colour = value(f[16]) if len(f) > 16 else 15
         races.append(dict(name=name, cmove=cmove, spells=spells | spells2 | spells3, cdefense=cdefense,
+                          s1=spells, s2=spells2, s3=spells3,
                           mexp=mexp, sleep=sleep, aaf=aaf, ac=ac, speed=speed, char=cchar, hd=hd,
                           attacks=[attacks[a] for a in dam if a], level=level, rarity=rarity,
                           colour=colour))
@@ -201,7 +203,16 @@ def resists(r):
                                 "HURT_LIGHT", "HURT_ROCK")):
         if r["cdefense"] & value(flag):
             bits |= 1 << bit
+    if r["s1"]:                                     # RR_SPELLS: mon_cast_spell is tried
+        bits |= 0x80
     return bits
+
+
+def mspell_record(r):
+    """12 bytes: spells, spells2 (dwords), spells3 (low word), RS_ flags"""
+    assert r["s3"] < 0x10000, r["name"]
+    flags = 1 if r["cdefense"] & value("INTELLIGENT") else 0
+    return (struct.pack("<IIH", r["s1"], r["s2"], r["s3"]) + bytes([flags, 0]))
 
 
 def race_record(r):
@@ -386,6 +397,10 @@ def main():
     for i, r in enumerate(races):
         lines += db_lines(race_record(r), f"{i}: {r['name']} (level {r['level']})")
     open(os.path.join(OUT, "races.asm"), "w").write("\n".join(lines) + "\n")
+    lines = [note, f"; monster spells: {len(races)} races, 12 bytes each (CS_ bits, spells3's low", "; word, RS_ flags), for MSPELL_PAGE", "", "mspell_table:"]
+    for i, r in enumerate(races):
+        lines += db_lines(mspell_record(r), f"{i}: {r['name']}")
+    open(os.path.join(OUT, "mspells.asm"), "w").write("\n".join(lines) + "\n")
 
     # kinds: one per distinct usable object name (copies of an object at
     # different depths share a kind, so they stack); dungeon objects only

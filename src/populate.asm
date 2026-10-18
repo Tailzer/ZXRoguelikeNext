@@ -401,40 +401,49 @@ summon_monster:
 	scf
 	ret
 
+/* summon_by - A = SUM_ kind, D = y, E = x, L = the summoner's level: one
+	of that kind appears next to there, awake (the summon_ functions of
+	MISC1.C) -> carry and D, E = where, if one did */
+summon_by:
+	ld (sb_kind),a
+	ld a,l
+	ld (sb_level),a
+	ld a,(sb_kind)
+	or a
+	jr nz,summon_match
+	call summon_monster
+	ret nc
+	ld de,(ss_found)
+	ret
+
 /* summon_undead - D = y, E = x: an undead (not unique, below level + 5)
 	appears next to there, awake (summon_undead in MISC1.C) -> carry */
 summon_undead:
+	ld a,SUM_UNDEAD
+	ld (sb_kind),a
+/* summon_match - sb_kind: a race of that kind, found as the C does (m =
+	randint(l) - 1, then up to 20 on from there), next to D, E. Uniques
+	never come (the C lets a few kinds bring them) -> carry, D, E = where */
+summon_match:
 	push de
+	xor a
+	ld (sb_picks),a
 .pick:
-	ld hl,NUM_RACES						; m = randint(l) - 1, then look on
-	call randint16						; up to 20 races for one that fits
+	ld hl,sb_picks						; (none of that kind at all: give up)
+	dec (hl)
+	jr z,.none
+	ld hl,NUM_RACES
+	call randint16
 	dec hl
 	ld b,21
 .look:
 	push bc
 	push hl
 	call race_addr
+	call sb_test
 	pop hl
 	pop bc
-	bit RF_UNDEAD,(iy+R_FLAGS)
-	jr z,.next
-	bit RF_UNIQUE,(iy+R_FLAGS)
-	jr nz,.next
-	ld a,(dun_level)
-	add a,5
-	cp (iy+R_LEVEL)
-	jr z,.next
-	jr c,.next
-	ld (place_race),hl
-	pop de
-	call summon_spot
-	ret nc
-	xor a
-	ld (place_sleep),a
-	call place_monster
-	scf
-	ret
-.next:
+	jr c,.found
 	inc hl
 	push hl
 	ld de,NUM_RACES
@@ -444,6 +453,78 @@ summon_undead:
 	jr nc,.pick
 	djnz .look
 	jr .pick
+.none:
+	pop de
+	or a
+	ret
+.found:
+	ld (place_race),hl
+	pop de
+	call summon_spot
+	ret nc
+	xor a
+	ld (place_sleep),a
+	call place_monster
+	ld de,(ss_found)
+	scf
+	ret
+
+/* sb_test - IY = race -> carry if it's of kind sb_kind */
+sb_test:
+	or a
+	bit RF_UNIQUE,(iy+R_FLAGS)
+	ret nz
+	ld a,(sb_kind)
+	cp SUM_UNDEAD
+	jr z,.undead
+	cp SUM_DEMON
+	jr z,.demon
+	cp SUM_DRAGON
+	jr z,.dragon
+	sub SUM_ANGEL						; the rest go by their letter
+	add a,a
+	ld hl,sb_letters
+	add hl,a
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	ld b,(iy+R_CHAR)
+.letter:
+	ld a,(hl)
+	inc hl
+	or a
+	ret z
+	cp b
+	jr nz,.letter
+	scf
+	ret
+.undead:								; below dun_level + 5
+	bit RF_UNDEAD,(iy+R_FLAGS)
+	ret z
+	ld a,(dun_level)
+	add a,4
+	cp (iy+R_LEVEL)
+	ccf
+	ret
+.demon:									; up to the summoner's level
+	bit RF_DEMON,(iy+R_FLAGS)
+	ret z
+	ld a,(sb_level)
+	cp (iy+R_LEVEL)
+	ccf
+	ret
+.dragon:
+	bit RF2_DRAGON,(iy+R_FLAGS2)
+	ret z
+	scf
+	ret
+sb_letters:	dw sb_angel, sb_spider, sb_hound, sb_gundead, sb_ancientd
+sb_angel:	db "A",0
+sb_spider:	db "S",0
+sb_hound:	db "CZ",0
+sb_gundead:	db "LVW",0
+sb_ancientd: db "D",0
 
 /* poly_at - D = y, E = x: the monster there becomes a random non-unique
 	dungeon race, awake (poly_monster in SPELLS.C) */
@@ -538,6 +619,7 @@ summon_spot_n:
 	cp e
 	jr z,.no
 .yes:
+	ld (ss_found),de
 	pop bc
 	scf
 	ret
@@ -588,6 +670,10 @@ group_offsets:							; dy, dx for cases 13 down to 1
 
 place_race:		dw 0
 ss_centre:		dw 0
+ss_found:		dw 0				; where summon_spot found room
+sb_kind:		db 0
+sb_level:		db 0
+sb_picks:		db 0
 MON_SUMMON_ADJ	equ 2
 place_sleep:	db 0
 alloc_left:		db 0
