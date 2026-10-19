@@ -33,8 +33,12 @@ lamp_off:
 	jr nz,.row
 	ret
 
-/* lamp_on - light the 3x3 around the player, remembering walls/doors/stairs */
+/* lamp_on - light the 3x3 around the player, remembering walls/doors/stairs
+	(only while their light is on: player_light) */
 lamp_on:
+	ld a,(p_light)
+	or a
+	ret z
 	ld a,(p_status)						; blind: no light
 	bit PY_BLIND,a
 	ret nz
@@ -57,6 +61,23 @@ lamp_on:
 	add hl,de
 	dec c
 	jr nz,.row
+	ret
+
+/* light_refresh - the player's light has come on or gone out: the 3x3
+	again, and what can be seen of the monsters (creatures(FALSE)) */
+light_refresh:
+	push ix
+	call lamp_off
+	call lamp_on
+	call monsters_see_all
+	pop ix
+	ret
+
+/* no_light - Z if the player's square isn't lit (no_light in MORIA1.C) */
+no_light:
+	call player_square
+	ld a,(hl)
+	and F_SEEN
 	ret
 
 /* light_arrive - the player has just arrived on their square:

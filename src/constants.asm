@@ -293,7 +293,7 @@ ITEM_MAX			equ 64
 PACK				equ ITEM_LIST+ITEM_MAX*ITEM_SIZE	; PACK_MAX carried items
 PACK_MAX			equ 12				; slots a-l
 EQUIP				equ PACK+PACK_MAX*ITEM_SIZE	; EQ_SLOTS worn/wielded items
-EQ_SLOTS			equ 10				; slots in use (shown by 'e')
+EQ_SLOTS			equ 11				; slots in use (shown by 'e')
 EQ_MAX				equ 12				; room kept for a light and a spare
 EQ_WEAPON			equ 0
 EQ_BODY				equ 1
@@ -305,6 +305,7 @@ EQ_BOOTS			equ 6
 EQ_NECK				equ 7
 EQ_RIGHT			equ 8				; rings: right hand first
 EQ_LEFT				equ 9
+EQ_LIGHT			equ 10				; the light source
 ITEM_SIZE			equ 14
 ITEM_EMPTY			equ $FF				; I_KIND_HI of a free slot
 KIND_GOLD			equ $FE				; I_KIND_HI of a pile of treasure
@@ -427,6 +428,10 @@ IC_AMULET			equ 14				; (slot 7, the neck)
 IC_RING				equ 15				; (slots 8 and 9)
 IC_MAGIC_BOOK		equ 16				; (carried, not worn)
 IC_PRAYER_BOOK		equ 17
+IC_LIGHT			equ 18				; Wooden Torches (they stack, by fuel)
+IC_FLASK			equ 19				; Flasks of oil
+IC_LANTERN			equ 20				; lanterns and the light artifacts
+OBJ_LAMP_MAX		equ 15000			; the most a lamp holds
 FILTER_CHARGED		equ $FE				; choose_pack filter: wand or staff
 TREAS_ROOM_ALLOC	equ 9				; mean objects in rooms
 TREAS_ANY_ALLOC		equ 3				; mean objects anywhere
@@ -445,7 +450,7 @@ NUM_STORES			equ 8				; 6 shops, the black market, home
 STORE_BLACK			equ 6
 STORE_HOME			equ 7
 STORE_INVEN_MAX		equ 24
-STORE_ITEM			equ 10				; stock entry (store_inv, in the store overlay):
+STORE_ITEM			equ 11				; stock entry (store_inv, in the store overlay):
 SE_KIND				equ 0				;  word
 SE_NUMBER			equ 2
 SE_DISC				equ 3				;  special offer
@@ -455,6 +460,7 @@ SE_TODAM			equ 6
 SE_TOAC				equ 7
 SE_NAME2			equ 8
 SE_IDENT			equ 9				;  ID_CURSED (home items keep theirs)
+SE_PVAL_HI			equ 10				;  (a light's fuel is a word)
 STORE_OWNER			equ P_EXP_TABLE+200
 STORE_COUNT			equ STORE_OWNER+NUM_STORES
 STORE_DOOR			equ STORE_COUNT+NUM_STORES	; (y, x) for each store
@@ -704,6 +710,7 @@ CMD_BROWSE			equ 19				; P: browse a book
 CMD_STUDY			equ 20				; G: learn new spells
 CMD_PRAY			equ 21				; p: recite a prayer
 CMD_SAVE			equ 22				; Symbol Shift + X: save and quit (^X)
+CMD_FUEL			equ 23				; F: refill a lamp
 ; key modifiers in key_table
 KM_ANY				equ 0
 KM_SYMBOL			equ 1

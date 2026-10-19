@@ -56,7 +56,7 @@ art_table:
 	db 1,1, 1,2,SN_CRISDURIAN
 	dw 21				; & Flail
 	db 1,1, 1,1,SN_TOTILA
-	dw 308				; & Short sword
+	dw 311				; & Short sword
 	db 1,1, 1,1,SN_GILETTAR
 	dw 13				; & Katana
 	db 1,1, 1,3,SN_AGLARANG
@@ -82,91 +82,91 @@ art_table:
 	db 1,1, 1,3,SN_DOOMCALLER
 	dw 25				; & Quarterstaff
 	db 7,3, 3,1,SN_NAR, 3,1,SN_ERIRIL, 1,2,SN_OLORIN
-	dw 70				; Adamantite Plate Mail
+	dw 72				; Adamantite Plate Mail
 	db 1,1, 1,3,SN_SOULKEEPER
-	dw 307				; Multi-Hued Dragon Scale Mail
+	dw 310				; Multi-Hued Dragon Scale Mail
 	db 1,1, 1,1,SN_RAZORBACK
-	dw 326				; Power Dragon Scale Mail
+	dw 329				; Power Dragon Scale Mail
 	db 1,1, 1,1,SN_BLADETURNER
-	dw 45				; & Pair of Hard Leather Boots
+	dw 47				; & Pair of Hard Leather Boots
 	db 1,1, 1,5,SN_FEANOR
-	dw 44				; & Pair of Soft Leather Boots
+	dw 46				; & Pair of Soft Leather Boots
 	db 1,1, 1,1,SN_DAL
-	dw 82				; & Small Metal Shield
+	dw 84				; & Small Metal Shield
 	db 1,1, 1,2,SN_THORIN
-	dw 68				; Full Plate Armour
+	dw 70				; Full Plate Armour
 	db 1,1, 1,1,SN_ISILDUR
-	dw 65				; Metal Brigandine Armour
+	dw 67				; Metal Brigandine Armour
 	db 1,1, 1,1,SN_ROHAN
-	dw 83				; & Large Metal Shield
+	dw 85				; & Large Metal Shield
 	db 1,1, 1,3,SN_ANARION
-	dw 79				; & Set of Cestus
+	dw 81				; & Set of Cestus
 	db 1,1, 1,3,SN_FINGOLFIN
-	dw 77				; & Set of Leather Gloves
+	dw 79				; & Set of Leather Gloves
 	db 3,2, 1,1,SN_CAMBELEG, 2,1,SN_CAMMITHRIM
-	dw 78				; & Set of Gauntlets
+	dw 80				; & Set of Gauntlets
 	db 6,5, 1,1,SN_PAURHACH, 1,1,SN_PAURNIMMEN, 1,1,SN_PAURAEGEN, 1,1,SN_PAURNEN, 2,1,SN_CAMLOST
-	dw 72				; Mithril Chain Mail
+	dw 74				; Mithril Chain Mail
 	db 1,1, 1,1,SN_BELEGENNON
-	dw 71				; Mithril Plate Mail
+	dw 73				; Mithril Plate Mail
 	db 1,1, 1,1,SN_CELEBORN
-	dw 63				; Augmented Chain Mail
+	dw 65				; Augmented Chain Mail
 	db 1,1, 1,3,SN_CASPANION
-	dw 55				; Soft Leather Armour
+	dw 57				; Soft Leather Armour
 	db 1,1, 1,1,SN_HITHLOMIR
-	dw 59				; Leather Scale Mail
+	dw 61				; Leather Scale Mail
 	db 1,1, 1,1,SN_THALKETTOTH
-	dw 61				; Chain Mail
+	dw 63				; Chain Mail
 	db 1,1, 1,1,SN_ARVEDUI
-	dw 47				; & Hard Leather Cap
+	dw 49				; & Hard Leather Cap
 	db 1,1, 1,1,SN_THRANDUIL
-	dw 48				; & Metal Cap
+	dw 50				; & Metal Cap
 	db 1,1, 1,1,SN_THENGEL
-	dw 50				; & Steel Helm
+	dw 52				; & Steel Helm
 	db 1,1, 1,1,SN_HAMMERHAND
-	dw 81				; & Large Leather Shield
+	dw 83				; & Large Leather Shield
 	db 1,1, 1,1,SN_CELEFARN
-	dw 46				; & Pair of Metal Shod Boots
+	dw 48				; & Pair of Metal Shod Boots
 	db 1,1, 1,1,SN_THROR
-	dw 49				; & Iron Helm
+	dw 51				; & Iron Helm
 	db 12,3, 2,1,SN_DOR_LOMIN, 5,1,SN_HOLHENNETH, 5,1,SN_GORLIM
-	dw 52				; & Golden Crown
+	dw 54				; & Golden Crown
 	db 1,1, 1,3,SN_GONDOR
-	dw 51				; & Iron Crown
+	dw 53				; & Iron Crown
 	db 1,1, 1,1,SN_BERUTHIEL
 	dw $FFFF
 
 art_cloak_table:
-	dw 75				; & Cloak
+	dw 77				; & Cloak
 	db 9,5, 2,1,SN_COLLUIN, 2,1,SN_HOLCOLLETH, 1,1,SN_THINGOL, 2,1,SN_THORONGIL, 2,1,SN_COLANNON
-	dw 76				; & Shadow Cloak
+	dw 78				; & Shadow Cloak
 	db 2,2, 1,1,SN_LUTHIEN, 1,1,SN_TUOR
 	dw $FFFF
-NUM_ART_BITS	equ 188
+NUM_ART_BITS	equ 191
 
 ; special_place_object's 12 cases: kind (or $FFFF), 1 in r, 1 in m deeper, bit
 special_cases:
-	dw 335
-	db 30,50,179	; Power named Narya
-	dw 336
-	db 35,60,180	; Power named Nenya
-	dw 337
-	db 40,70,181	; Power named Vilya
 	dw 338
-	db 60,100,182	; Power
-	dw $FFFF
-	db 0,0,0		; The Phial of Galadriel (not yet)
+	db 30,50,179	; Power named Narya
 	dw 339
-	db 10,50,183	; Ingwe
+	db 35,60,180	; Power named Nenya
 	dw 340
-	db 6,35,184	; Carlammas
-	dw $FFFF
-	db 0,0,0		; The Star of Elendil (not yet)
-	dw $FFFF
-	db 0,0,0		; The Arkenstone of Thrain (not yet)
+	db 40,70,181	; Power named Vilya
 	dw 341
-	db 25,65,185	; Tulkas
+	db 60,100,182	; Power
 	dw 342
-	db 25,60,186	; the Dwarves
+	db 1,30,183	; The Phial of Galadriel
 	dw 343
-	db 20,50,187	; Barahir
+	db 10,50,184	; Ingwe
+	dw 344
+	db 6,35,185	; Carlammas
+	dw 345
+	db 8,30,186	; The Star of Elendil
+	dw 346
+	db 18,60,187	; The Arkenstone of Thrain
+	dw 347
+	db 25,65,188	; Tulkas
+	dw 348
+	db 25,60,189	; the Dwarves
+	dw 349
+	db 20,50,190	; Barahir

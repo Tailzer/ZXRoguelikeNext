@@ -63,6 +63,10 @@ starting_kit:
 	ld (ix+I_ATIME+1),0
 	ld (ix+I_MARKED),1
 	ld (ix+I_IDENT),1<<ID_STORE_BIT|1<<ID_KNOWN2_BIT	; (store_bought)
+	ld a,(iy+K_CLASS)					; torches come five to a bundle
+	cp IC_LIGHT
+	ret nz
+	ld (ix+I_NUMBER),5
 	ret
 
 /* calc_bonuses - what everything worn does (py_bonuses and calc_bonuses
@@ -335,6 +339,7 @@ equip_flags:
 	ld (ef_speed),a
 	ld (ef_stealth),a
 	ld (ef_infra),a
+	ld (ef_search),a
 	ld a,(p_race)						; race intrinsics
 	ld hl,race_gifts
 .race:
@@ -396,6 +401,10 @@ equip_flags:
 	ld hl,ef_stealth
 	bit EF1_STEALTH,a
 	call nz,.add_p1
+	ld a,(it_flags)						; and searching
+	ld hl,ef_search
+	bit EF0_SEARCH,a
+	call nz,.add_p1
 	ld a,(it_flags+3)					; and infravision
 	ld hl,ef_infra
 	bit EF3_INFRA,a
@@ -423,7 +432,8 @@ equip_flags:
 	ld de,ITEM_SIZE
 	add ix,de
 	pop bc
-	djnz .slot
+	dec b
+	jp nz,.slot
 	ld de,KIND_RING_SPEED				; two Rings of Speed (+1 on the right)
 	ld hl,(EQUIP+EQ_RIGHT*ITEM_SIZE+I_KIND)	; only count once (py_bonuses)
 	or a
@@ -439,6 +449,14 @@ equip_flags:
 	ld hl,ef_speed
 	dec (hl)
 .speed:
+	ld a,(ef_search)					; searching: skill up, and more often
+	ld b,a
+	ld a,(p_srh_race)
+	add a,b
+	ld (p_srh),a
+	ld a,(p_fos_race)
+	sub b
+	ld (p_fos),a
 	ld a,(ef_stealth)					; stealth and infravision: the
 	ld hl,p_stl_race					; race's and class's, plus
 	add a,(hl)
@@ -506,6 +524,7 @@ sustain_bits:	db 1<<A_STR, 1<<A_INT, 1<<A_WIS, 1<<A_CON, 1<<A_DEX, 1<<A_CHR
 ef_speed:		db 0
 ef_stealth:		db 0
 ef_infra:		db 0
+ef_search:		db 0
 
 /* the adj_weight thresholds for str_index 0-9 (anything more is 10) */
 str_index_limits:	db 2,3,4,6,8,10,13,15,18,20
@@ -587,9 +606,17 @@ cmd_wield:
 	ld (cmd_slot),a
 	call item_kind_addr
 	ld a,(iy+K_CLASS)
+	cp IC_LIGHT							; lights go in the light slot
+	jr z,.light
+	cp IC_LANTERN
+	jr z,.light
 	cp IC_RING
 	call z,ring_hand					; (A = the slot)
 	ret nc
+	jr .slot
+.light:
+	ld a,IC_WEAPON+EQ_LIGHT
+.slot:
 	sub IC_WEAPON
 	ld (cmd_equip),a
 	ld e,a
@@ -608,6 +635,9 @@ cmd_wield:
 .free:
 	pop hl
 	jp nz,stuck_on
+	ld a,(ix+I_NUMBER)					; one from a stack (torches)
+	cp 2
+	jr nc,.one_of
 	push ix
 	pop de								; DE = pack slot
 	ld b,ITEM_SIZE
@@ -624,6 +654,7 @@ cmd_wield:
 	cp ITEM_EMPTY
 	ld a,(cmd_slot)
 	call z,pack_remove
+.worn:
 	call calc_bonuses
 	ld a,1
 	ld (turn_taken),a
@@ -631,8 +662,12 @@ cmd_wield:
 	ld a,(cmd_equip)
 	or a
 	ld hl,txt_you_wield
-	jr z,$+5
+	jr z,.said
+	cp EQ_LIGHT
+	ld hl,txt_light_is
+	jr z,.said
 	ld hl,txt_you_wear
+.said:
 	call msg_add
 	ld a,(cmd_equip)
 	ld e,a
@@ -649,6 +684,34 @@ cmd_wield:
 	set ID_DAMD_BIT,(ix+I_IDENT)
 	ld hl,msg_deathly_cold
 	jp msg_print
+.one_of:								; HL = the slot, IX = the stack: one
+	ld (wd_slot),hl						; of it goes on, what was there into
+	inc hl								; the pack (which needs room)
+	ld a,(hl)
+	cp ITEM_EMPTY
+	jr z,.room
+	call pack_count
+	cp PACK_MAX
+	ld hl,msg_drop_first
+	jp nc,msg_print
+.room:
+	push ix
+	pop hl
+	ld de,new_rec
+	ld bc,ITEM_SIZE
+	ldir
+	ld a,1
+	ld (new_rec+I_NUMBER),a
+	dec (ix+I_NUMBER)
+	ld ix,(wd_slot)
+	ld a,(ix+I_KIND_HI)
+	cp ITEM_EMPTY
+	call nz,pack_carry
+	ld hl,new_rec
+	ld de,(wd_slot)
+	ld bc,ITEM_SIZE
+	ldir
+	jp .worn
 
 /* ring_hand - a ring goes on the right hand if it's free, else the left;
 	with both full, ask which (MORIA1.C). -> A = IC_WEAPON + the slot, carry;
@@ -707,6 +770,77 @@ stuck_on:
 	call msg_add
 	jp msg_end
 
+/* cmd_fuel - 'F': fill the lamp from a flask of oil (refill_lamp in
+	DUNGEON.C) */
+cmd_fuel:
+	ld ix,EQUIP+EQ_LIGHT*ITEM_SIZE
+	ld a,(ix+I_KIND_HI)
+	cp ITEM_EMPTY
+	jr z,.no_lamp
+	call item_kind_addr
+	ld a,(iy+K_CLASS)
+	cp IC_LANTERN
+	jr nz,.no_lamp
+	bit 1,(iy+K_FLAGS2+3)				; (artifacts aren't lamps)
+	jr z,.lamp
+.no_lamp:
+	ld hl,msg_not_lamp
+	jp msg_print
+.lamp:
+	xor a
+.find:
+	ld (cmd_slot),a
+	cp PACK_MAX
+	jr nc,.no_oil
+	call pack_slot
+	ld a,(ix+I_KIND_HI)
+	cp ITEM_EMPTY
+	jr z,.no_oil
+	call item_kind_addr
+	ld a,(iy+K_CLASS)
+	cp IC_FLASK
+	jr z,.oil
+	ld a,(cmd_slot)
+	inc a
+	jr .find
+.no_oil:
+	ld hl,msg_no_oil
+	jp msg_print
+.oil:
+	ld a,1
+	ld (turn_taken),a
+	ld e,(ix+I_PVAL)
+	ld d,(ix+I_PVAL+1)
+	ld hl,(EQUIP+EQ_LIGHT*ITEM_SIZE+I_PVAL)
+	add hl,de
+	ld de,OBJ_LAMP_MAX+1
+	or a
+	sbc hl,de
+	add hl,de
+	jr c,.fits
+	ld hl,OBJ_LAMP_MAX
+	ld (EQUIP+EQ_LIGHT*ITEM_SIZE+I_PVAL),hl
+	ld hl,msg_overflows
+	call msg_print
+	ld hl,msg_lamp_full
+	jr .said
+.fits:
+	ld (EQUIP+EQ_LIGHT*ITEM_SIZE+I_PVAL),hl
+	ld de,OBJ_LAMP_MAX/2
+	or a
+	sbc hl,de
+	ld hl,msg_lamp_half
+	jr z,.said
+	ld hl,msg_lamp_more
+	jr nc,.said
+	ld hl,msg_lamp_less
+.said:
+	call msg_print
+	ld a,(cmd_slot)						; "You have 4 Flasks of oil (b)."
+	call desc_remain
+	ld a,(cmd_slot)
+	jp use_one
+
 /* cmd_takeoff - 't': take something off and put it in the pack */
 cmd_takeoff:
 	call show_equip
@@ -741,8 +875,12 @@ cmd_takeoff:
 	ld a,(cmd_equip)
 	or a
 	ld hl,txt_were_wielding
-	jr z,$+5
+	jr z,.said
+	cp EQ_LIGHT
+	ld hl,txt_light_was
+	jr z,.said
 	ld hl,txt_were_wearing
+.said:
 	call msg_add
 	call objdes_msg
 	ld hl,txt_full_stop
@@ -781,6 +919,9 @@ cmd_read:
 	or l
 	ld hl,msg_cant_see
 	jp nz,msg_print
+	call no_light
+	ld hl,msg_no_light
+	jp z,msg_print
 	ld hl,(p_confused)
 	ld a,h
 	or l
@@ -1079,61 +1220,11 @@ carry_here:
 	call msg_add
 	jp msg_end
 
-/* msg_add_u16 - HL -> 16-bit value: add it as a decimal number */
-msg_add_u16:
-	push ix
-	call .add
-	pop ix
-	ret
-.add:
-	ld e,(hl)
-	inc hl
-	ld d,(hl)
-	ex de,hl
-	ld de,(msg_ptr)
-	ld ix,pow10_table
-	ld b,0								; set once a digit is written
-.digit:
-	ld c,(ix+0)
-	ld a,c
-	or (ix+1)
-	jr z,.last
-	push bc
-	ld b,(ix+1)
-	ld a,'0'
-.sub:
-	or a
-	sbc hl,bc
-	jr c,.got
-	inc a
-	jr .sub
-.got:
-	add hl,bc
-	pop bc
-	cp '0'
-	jr nz,.write
-	bit 0,b
-	jr z,.skip
-.write:
-	ld (de),a
-	inc de
-	ld b,1
-.skip:
-	inc ix
-	inc ix
-	jr .digit
-.last:
-	ld a,l
-	add a,'0'
-	ld (de),a
-	inc de
-	ld (msg_ptr),de
-	ret
 
 
 equip_names:	dw txt_eq_weapon, txt_eq_body, txt_eq_shield, txt_eq_helm
 				dw txt_eq_cloak, txt_eq_gloves, txt_eq_boots, txt_eq_neck
-				dw txt_eq_right, txt_eq_left
+				dw txt_eq_right, txt_eq_left, txt_eq_light
 txt_eq_weapon:	db "Wielding     : ",0
 txt_eq_body:	db "On body      : ",0
 txt_eq_shield:	db "On arm       : ",0
@@ -1144,6 +1235,7 @@ txt_eq_boots:	db "On feet      : ",0
 txt_eq_neck:	db "Around neck  : ",0
 txt_eq_right:	db "On right hand: ",0
 txt_eq_left:	db "On left hand : ",0
+txt_eq_light:	db "Light source : ",0
 txt_which_hand:	db "Put ring on which hand (l/r/L/R)?",0
 txt_nothing:	db "(nothing)",0
 txt_any_key:	db "-- press a key --",0
@@ -1156,6 +1248,17 @@ txt_you_wield:	db "You are wielding ",0
 txt_you_wear:	db "You are wearing ",0
 txt_were_wielding: db "You were wielding ",0
 txt_were_wearing: db "You were wearing ",0
+txt_light_is:	db "Your light source is ",0
+txt_light_was:	db "Your light source was ",0
+msg_drop_first:	db "You will have to drop something first.",0
+msg_not_lamp:	db "But you are not using a lamp.",0
+msg_no_oil:		db "You have no oil.",0
+msg_overflows:	db "Your lamp overflows, spilling oil on the ground.",0
+msg_lamp_full:	db "Your lamp is full.",0
+msg_lamp_more:	db "Your lamp is more than half full.",0
+msg_lamp_half:	db "Your lamp is half full.",0
+msg_lamp_less:	db "Your lamp is less than half full.",0
+wd_slot:		dw 0
 txt_you_drop:	db "You drop ",0
 txt_you_have:	db "You have ",0
 txt_slot_letter: db " (a).",0

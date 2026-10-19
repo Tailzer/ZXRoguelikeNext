@@ -244,7 +244,7 @@ key_table:
 	db $EF,%00000100,0,CMD_MOVE, 1, 0	; 8 cursor right
 	db $FB,%00010000,1,CMD_DOWN, 0, 0	; > (Symbol Shift + T)
 	db $FB,%00001000,1,CMD_UP,   0, 0	; < (Symbol Shift + R)
-	db $FD,%00000010,0,CMD_STAY, 0, 0	; s: stay in place for a turn
+	db $FD,%00000010,0,CMD_STAY, 0, 0	; s: search (and stay) for a turn
 	db $DF,%00000100,KM_NONE,CMD_INVEN,0,0	; i: inventory
 	db $FB,%00000100,KM_CAPS,CMD_EAT,0,0	; E: eat
 	db $FB,%00000100,KM_NONE,CMD_EQUIP,0,0	; e: equipment
@@ -264,4 +264,5 @@ key_table:
 	db $FD,%00010000,KM_NONE,CMD_PICKUP,0,0	; g: pick up
 	db $FE,%00001000,KM_CAPS,CMD_CHARACTER,0,0	; C: character sheet
 	db $FE,%00000100,KM_SYMBOL,CMD_SAVE,0,0	; Symbol Shift + X: save (^X)
+	db $FD,%00001000,KM_CAPS,CMD_FUEL,0,0	; F: refill a lamp
 	db 0

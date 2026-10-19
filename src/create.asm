@@ -409,6 +409,14 @@ derive:
 	add a,(ix+PC_STL)
 	ld (p_stl),a
 	ld (p_stl_race),a					; (equipment adds to it: calc_bonuses)
+	ld a,(iy+PR_SRH)					; searching: skill and frequency
+	add a,(ix+PC_SRH)
+	ld (p_srh),a
+	ld (p_srh_race),a
+	ld a,(iy+PR_FOS)
+	add a,(ix+PC_FOS)
+	ld (p_fos),a
+	ld (p_fos_race),a
 	ld a,(iy+PR_EXP)
 	add a,(ix+PC_EXP)
 	ld (p_expfact),a

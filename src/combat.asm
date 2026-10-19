@@ -779,6 +779,10 @@ p_save:			db 0				; saving throw, race + class (signed)
 p_int_adj:		db 0				; stat_adj(A_INT)
 p_stl:			db 0				; stealth (signed), with equipment's
 p_stl_race:		db 0				; the race's and class's
+p_srh:			db 0				; searching skill (srh), with equipment's
+p_srh_race:		db 0				; the race's and class's
+p_fos:			db 0				; searching frequency (signed: lower, more)
+p_fos_race:		db 0				; the race's and class's
 p_infra:		db 0				; infravision, in 10 ft, with equipment's
 p_infra_race:	db 0				; the race's
 p_expfact:		db 100

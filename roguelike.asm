@@ -47,6 +47,9 @@
 		theft, elements, criticals and the cave-shaking blows
 	Milestone 10: Saving - Symbol Shift + X saves to roguelike.sav on the
 		SD card (esxDOS); a key at the title carries on from it
+	Milestone 11: Light sources - torches, lanterns and oil, a light slot,
+		fuel burning down, and the dark without them; searching for
+		secret doors ('s', and as you walk)
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -200,9 +203,10 @@ dispatch:
 	call 0
 	call pending_actions				; e.g. the potion chosen to quaff
 	jp .after
-.stay:
+.stay:									; 's': search for a turn
 	ld a,1
 	ld (turn_taken),a
+	call search
 	jp .after
 .character:
 	FARCALL PAGE_CREATE, show_character
@@ -224,6 +228,7 @@ item_commands:							; in CMD_INVEN order
 	dw 0, cmd_read						; (CMD_CHARACTER is handled above)
 	dw cmd_aim, cmd_use, cmd_zap, cmd_activate
 	dw cmd_cast, cmd_browse, cmd_study, cmd_pray
+	dw 0, cmd_fuel						; (CMD_SAVE is handled above)
 player_died:
 	FARCALL PAGE_SAVE, delete_save		; (a dead character's save goes)
 	FARCALL PAGE_CREATE, player_died_screen

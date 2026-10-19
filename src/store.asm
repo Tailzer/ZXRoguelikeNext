@@ -430,6 +430,9 @@ store_carry:
 	inc hl
 	ld a,(ix+I_IDENT)					; (the home keeps what you knew)
 	ld (hl),a
+	inc hl
+	ld a,(ix+I_PVAL+1)					; (fuel)
+	ld (hl),a
 	ld a,(sc_store)						; one more entry
 	ld hl,STORE_COUNT
 	add hl,a
@@ -451,7 +454,12 @@ entry_to_item:
 	inc hl
 	ld a,(hl)
 	ld (ix+I_PVAL),a
-	ld (ix+I_PVAL+1),0
+	push hl
+	ld de,SE_PVAL_HI-SE_PVAL
+	add hl,de
+	ld a,(hl)
+	pop hl
+	ld (ix+I_PVAL+1),a
 	inc hl
 	ld a,(hl)
 	ld (ix+I_TOHIT),a

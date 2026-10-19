@@ -31,7 +31,7 @@ save_blocks:
 	SV_BLOCK 0, p_lev, w_slays+2-p_lev					; the character
 	SV_BLOCK 0, p_stat_max, p_stat_use+6-p_stat_max		; stats, flags, speed
 	SV_BLOCK 0, p_status, 2
-	SV_BLOCK 0, p_timed, p_confuse_mon+2-p_timed		; timed effects
+	SV_BLOCK 0, p_timed, P_TIMED_SIZE					; timed effects, light
 	SV_BLOCK 0, dun_level, 5							; level, place, view
 	SV_BLOCK 0, game_turn, 2
 	SV_BLOCK 0, town_seed, 3							; the town, and its night

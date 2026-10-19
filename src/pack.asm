@@ -118,6 +118,10 @@ objdes_msg:
 	call item_kind_addr
 .no_ego:
 	ld a,(iy+K_CLASS)
+	cp IC_LIGHT
+	jr z,.light
+	cp IC_LANTERN
+	jr z,.light
 	cp IC_MAGIC_BOOK
 	jp nc,.notes
 	cp IC_WEAPON
@@ -135,6 +139,19 @@ objdes_msg:
 	ld a,(ix+I_PVAL)
 	call msg_add_u8
 	ld hl,txt_charges_
+	call msg_add
+	jp .notes
+.light:								; " with 4000 turns of light" (not the
+	bit 1,(iy+K_FLAGS2+3)				; artifacts: TR_ARTIFACT)
+	jp nz,.notes
+	ld hl,txt_with_
+	call msg_add
+	push ix
+	pop hl
+	ld de,I_PVAL
+	add hl,de
+	call msg_add_u16
+	ld hl,txt_turns_light
 	call msg_add
 	jp .notes
 .weapon:								; " (2d5)"
@@ -368,6 +385,23 @@ objdes_msg:
 	jr nz,.char
 	bit 0,b
 	jr z,.copy
+	dec de								; "ch~" -> "ches" (Torches), else "s"
+	ld a,(de)
+	inc de
+	cp 'h'
+	ld a,'s'
+	jr nz,.char
+	dec de
+	dec de
+	ld a,(de)
+	inc de
+	inc de
+	cp 'c'
+	ld a,'s'
+	jr nz,.char
+	ld a,'e'
+	ld (de),a
+	inc de
 	ld a,'s'
 .char:
 	ld (de),a
@@ -474,6 +508,20 @@ pack_carry:
 	ld hl,carry_known
 	cp (hl)
 	jr nz,.not_same
+	ld a,(iy+K_CLASS)					; torches: only with the same fuel
+	cp IC_LIGHT
+	jr nz,.same
+	ld hl,(carry_src)
+	ld de,I_PVAL
+	add hl,de
+	ld a,(ix+I_PVAL)
+	cp (hl)
+	jr nz,.not_same
+	inc hl
+	ld a,(ix+I_PVAL+1)
+	cp (hl)
+	jr nz,.not_same
+.same:
 	ld hl,(carry_src)
 	ld de,I_NUMBER
 	add hl,de
@@ -508,12 +556,14 @@ pack_carry:
 	ret
 
 /* stackable - A = class -> carry if things of it stack: food, potions,
-	scrolls and books */
+	scrolls, books, torches (with the same fuel) and flasks of oil */
 stackable:
 	cp IC_WAND
 	ret c
 	cp IC_MAGIC_BOOK
 	ccf
+	ret nc
+	cp IC_LANTERN						; (lanterns never do)
 	ret
 
 /* pack_combine - HL = a kind just identified: its stacks in the pack join
@@ -676,8 +726,14 @@ filter_ok:
 	ret z
 	or a
 	ret
-.wearable:								; (not books)
+.wearable:								; (not books, nor oil)
 	ld a,c
+	cp IC_LIGHT
+	scf
+	ret z
+	cp IC_LANTERN
+	scf
+	ret z
 	cp IC_MAGIC_BOOK
 	ret nc
 	cp IC_WEAPON
@@ -800,6 +856,8 @@ txt_prayer_book: db "Holy Book~ of Prayers ",0
 txt_to_stealth:	db " to stealth)",0
 txt_amulet_:	db " Amulet",0
 txt_charges_:	db " charges)",0
+txt_with_:		db " with ",0
+txt_turns_light: db " turns of light",0
 txt_you_have_r:	db "You have ",0
 txt_slot_r:		db " (a).",0
 msg_combine:	db "You combine similar objects from the shop and dungeon.",0

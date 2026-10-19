@@ -17,9 +17,9 @@ Created at the start of each game as in `CREATE.C`: choose a race (10), sex and 
 ## Controls
 
 `h j k l y u b n` (Angband roguelike keys) or cursor keys `5 6 7 8`.
-Walk into a closed door to open it, or into a monster to attack it; walking onto an item picks it up; walking onto a store's number goes in (`p` purchase, `s` sell, at home `g` get and `d` drop, space leaves). `s` stays still for a turn. `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
+Walk into a closed door to open it, or into a monster to attack it; walking onto an item picks it up; walking onto a store's number goes in (`p` purchase, `s` sell, at home `g` get and `d` drop, space leaves). `s` searches for a turn (staying still). `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
 
-`C` (Caps Shift+C) shows the character sheet. Symbol Shift+X (the C's `^X`) saves the game and goes back to the title; pressing a key there carries on from the save.
+`C` (Caps Shift+C) shows the character sheet. Symbol Shift+X (the C's `^X`) saves the game and goes back to the title; pressing a key there carries on from the save. `F` (Caps Shift+F) fills a lantern from a flask of oil.
 
 Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `z` aim a wand, `Z` (Caps Shift+Z) use a staff, `a` activate a rod, `A` (Caps Shift+A) activate an artifact, `m` cast a spell, `p` recite a prayer, `P` (Caps Shift+P) browse a book, `G` (Caps Shift+G) learn new spells, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels. Directions: `1`-`9` or `hjklyubn`.
 
@@ -165,7 +165,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - thieves: 1d168 under your DEX keeps your purse or pack ("You quickly protect your money pouch!"); gold goes by a tenth plus 1d25, an item one at a time (never an artifact); then 1 in 2 (gold) or 1 in 3 (items) "There is a puff of smoke!" and it's gone, with no more blows; eating food, draining a wand's or staff's charges into its hit points (and marking it empty)
      - critical blows: hits, bites and claws may cut, hits, tramples, butts and charges may stun, worse the nearer the damage is to the dice's maximum (a mortal wound, or knocked out, at the top)
      - Quaker and Morgoth (DESTRUCT): a blow over 23 shakes everything within 8 squares, 1 in 8: monsters hurt or embedded in the rock ("wails out in pain!"), the player thrown aside (320 if trapped), floors turned to rock and rock opened
-     - not like the C: kicks and embraces say so (the C is silent); a square something still stands on isn't turned to rock (nothing may stand in rock here); eating light does nothing (there are no light sources yet)
+     - not like the C: kicks and embraces say so (the C is silent); a square something still stands on isn't turned to rock (nothing may stand in rock here)
      - the monster spells' and blows' messages moved to a page of their own (68, `src/mcast_text.asm`); `data/mspells.asm` gained the DESTRUCT bit
 10. **Saving** (`DUNGEON.C` ^X, `SAVE.C`, `DEATH.C`) *(done)*
    - Symbol Shift+X: "Saving game...", then back to the title screen; "Save failed..." if it can't (and play goes on, as in the C)
@@ -176,6 +176,21 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - dying deletes the save (where the file can't be deleted it's marked dead, which counts as none); the C keeps a dead character's file and starts a new one from it
    - in an emulator the SD card must be emulated: CSpect `-mmc=<folder>/`, ZEsarUX's esxdos handler (Settings > Storage > esxdos handler, with a root folder)
    - the save code is its own overlay (57, `src/save.asm`)
+11. **Light sources** (`DUNGEON.C` the light check and refill_lamp, `TREASURE.C`, `MISC1.C` magic_treasure, `DESC.C`) *(done)*
+   - Wooden Torches (4000 turns of fuel), Brass Lanterns (7500) and Flasks of oil (7500) are items now, in the dungeon and the General Store; every class starts with 5 torches in the pack, unlit, as in the C
+   - a light slot ("Light source :"); `w` puts a light there, one from a bundle of torches ("Your light source is a Wooden Torch with 4000 turns of light."); `t` takes it off ("Your light source was ...")
+   - the player's light (the 3x3 around them) only shines while the light source has fuel, or while something worn gives light (the Phial): no light, and dark rooms and corridors stay dark; lit rooms still light up as you enter
+   - a turn of fuel each turn; under 40, now and then "Your light is growing faint."; at 0, "Your light has gone out!"
+   - `F` fills a lantern from a flask, up to 15000 ("Your lamp is more than half full.", "Your lamp overflows, spilling oil on the ground.", "You have no oil.", "But you are not using a lamp.")
+   - reading a scroll or a book needs light where you stand: "You have no light to read by."
+   - torches found in the dungeon have 1d4000 turns left, lanterns 1d7500; torches stack only with the same fuel, lanterns never; plurals as the C ("Torches")
+   - the Phial of Galadriel, the Star of Elendil and the Arkenstone of Thrain: lights that never burn down; activated, the Phial lights the room, the Star maps the area, the Arkenstone lights the whole level
+   - monsters that eat light now do: 250 + 1d250 turns of fuel ("Your light dims.")
+   - store entries grew a byte for the fuel, so saves from before this don't load
+   - not yet: throwing flasks of oil (there's no throwing yet)
+   - searching (`MORIA1.C` search, `MORIA2.C` move_char, `CREATE.C` srh/fos), so secret doors can be found without magic: `s` searches the 8 squares round you; walking, you search every step if your searching frequency is 1 or less, else 1 in that many
+     - each square: 1d100 under the searching skill (race + class, plus Searching rings) finds a secret door ("You have found a secret door."), which becomes a closed door; a tenth of the chance when confused, blind or in the dark
+     - not yet: traps and chests to find; the character sheet doesn't show searching
 
 ## Memory map
 

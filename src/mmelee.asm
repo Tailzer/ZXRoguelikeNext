@@ -110,7 +110,7 @@ blow_types:
 	dw blow_acid, blow_cold, blow_light, blow_corrode, blow_blind	; 6-10
 	dw blow_paralyse, blow_gold, blow_object, blow_poison, blow_dex	; 11-15
 	dw blow_con, blow_int, blow_wis, blow_exp, blow_aggravate		; 16-20
-	dw blow_disenchant, blow_food, 0, blow_charges, blow_all			; 21-25
+	dw blow_disenchant, blow_food, blow_eat_light, blow_charges, blow_all	; 21-25
 
 /* blow_say - "The Jackal bites you." ("It" if unseen) */
 blow_say:
@@ -678,6 +678,42 @@ blow_food:								; 22: the first food in the pack
 	call mx_print
 .none:
 	pop ix
+	jp blow_done
+blow_eat_light:							; 23: the light source's fuel, 250 +
+	ld a,(EQUIP+EQ_LIGHT*ITEM_SIZE+I_KIND_HI)	; 1d250 (to no less than 1)
+	cp ITEM_EMPTY
+	jp z,blow_done
+	ld hl,(EQUIP+EQ_LIGHT*ITEM_SIZE+I_PVAL)
+	ld a,h
+	or l
+	jp z,blow_done
+	push ix
+	ld ix,EQUIP+EQ_LIGHT*ITEM_SIZE
+	call item_kind_addr
+	pop ix
+	bit 1,(iy+K_FLAGS2+3)				; (not artifacts)
+	jp nz,blow_done
+	ld a,250
+	call randint
+	ld e,a
+	ld d,0
+	ld hl,250
+	add hl,de
+	ex de,hl
+	ld hl,(EQUIP+EQ_LIGHT*ITEM_SIZE+I_PVAL)
+	or a
+	sbc hl,de
+	jr z,.one
+	jr nc,.left
+.one:
+	ld hl,1
+.left:
+	ld (EQUIP+EQ_LIGHT*ITEM_SIZE+I_PVAL),hl
+	ld hl,(p_blind)
+	ld a,h
+	or l
+	ld hl,mb_dims
+	call z,mx_print
 	jp blow_done
 blow_charges:							; 24: a wand's or staff's charges
 	call pack_count						; feed the monster

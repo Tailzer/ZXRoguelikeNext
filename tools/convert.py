@@ -257,7 +257,8 @@ CLASSES = {"TV_FOOD": 1, "TV_POTION1": 2, "TV_POTION2": 2,
            "TV_SWORD": 7, "TV_HAFTED": 7, "TV_POLEARM": 7,
            "TV_SOFT_ARMOR": 8, "TV_HARD_ARMOR": 8, "TV_SHIELD": 9, "TV_HELM": 10,
            "TV_CLOAK": 11, "TV_GLOVES": 12, "TV_BOOTS": 13,
-           "TV_AMULET": 14, "TV_RING": 15, "TV_MAGIC_BOOK": 16, "TV_PRAYER_BOOK": 17}
+           "TV_AMULET": 14, "TV_RING": 15, "TV_MAGIC_BOOK": 16, "TV_PRAYER_BOOK": 17,
+           "TV_LIGHT": 20, "TV_FLASK": 19}       # (torches are 18: they stack)
 DEVICE_NOUN = {4: "Wand", 5: "Staff", 6: "Rod", 14: "Amulet", 15: "Ring"}
 # scroll effects that wait for later milestones: glyphs, traps, acquirement
 SCROLL_LATER = {"TV_SCROLL1": 0x00002000 | 0x00200000,
@@ -291,6 +292,8 @@ def usable(o):
         return None
     if cls == 3 and o["flags"] & SCROLL_LATER[o["tval_name"]]:
         return None
+    if cls == 20 and "Torch" in o["name"]:
+        return 18
     return cls
 
 
@@ -813,6 +816,9 @@ ACTS = [
     ("Power named Vilya", "The ring glows deep blue...", "", "BALL", "LT", 250, "huge ball of Lightning", 222, 444),
     ("Power", "The ring glows intensely black...", "", "ONE_RING", "MM", 0, "", 444, 444),
     ("Ingwe", "An aura of good floods the area...", "", "DISPEL_EVIL", "MM", 0, "", 444, 222),
+    ("The Phial of Galadriel", "The phial wells with clear light...", "", "LIGHT_AREA", "MM", 0, "", 10, 10),
+    ("The Star of Elendil", "The star shines brightly...", "And you sense your surroundings...", "MAP_AREA", "MM", 0, "", 50, 50),
+    ("The Arkenstone of Thrain", "The stone glows a deep green", "", "WIZ_LIGHT", "MM", 0, "", 100, 100),
     ("Carlammas", "The amulet lets out a shrill wail...", "You feel somewhat safer...", "PROTEVIL", "MM", 0, "", 222, 222),
     ("Tulkas", "The ring glows brightly...", "", "FAST", "MM", (50, 100), "", 200, 0),
     ("Blue Dragon Scale Mail", "You breathe Lightning...", "", "BALL", "LT", 100, "huge ball of Lightning", 444, 444),
@@ -836,7 +842,8 @@ AE = ["BOLT", "BALL", "DRAIN", "MUD", "TELE_MON", "CONF_MON", "FAST", "FAST0", "
       "RESIST", "SLEEP", "RECHARGE", "DETECT", "DISPEL_EVIL", "PROTEVIL", "ONE_RING", "BREATH",
       # (spells use these too, through do_effect)
       "SLEEP_ONE", "POLY", "SLOW_ONE", "LIGHT_LINE", "SLEEP_ADJ", "EARTHQUAKE", "DETECT_EVIL", "DETECT_MON",
-      "TURN_UNDEAD", "BANISH", "DISPEL", "DETECT_ALL", "PROBE_ALL"]
+      "TURN_UNDEAD", "BANISH", "DISPEL", "DETECT_ALL", "PROBE_ALL",
+      "LIGHT_AREA", "MAP_AREA", "WIZ_LIGHT"]
 
 
 def activate_tables(note, kinds):
@@ -858,7 +865,7 @@ def activate_tables(note, kinds):
         if who.startswith("SN_"):
             key = who
         else:
-            k = next(i for i, (o, c) in enumerate(kinds) if o["name"].replace("& ", "") == who and c in (8, 14, 15))
+            k = next(i for i, (o, c) in enumerate(kinds) if o["name"].replace("& ", "") == who and c in (8, 14, 15, 20))
             assert kinds[k][0]["flags2"] & value("TR_ACTIVATE"), who
             key = f"$8000+{k}"
         if eff == "BREATH":

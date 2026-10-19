@@ -468,6 +468,7 @@ act_effects:
 	dw ae_sleep_one, ae_poly, ae_slow_one, ae_light_line, ae_sleep_adj	; 28-32
 	dw earthquake, detect_evil, ae_detect_mon						; 33-35
 	dw ae_turn_undead, ae_banish, ae_dispel, rd_detect, probing		; 36-40
+	dw ae_light_area, ae_map_area, ae_wiz_light						; 41-43
 
 /* do_effect - one of activate's effects for a spell: sp_entry (16 bytes,
 	as act_table's) and sp_name, in high RAM. -> A = 1 if it was called off
@@ -518,6 +519,15 @@ ae_sleep_adj:							; sleep_monsters1: those next to you
 	cp 2
 	ret nc
 	jp sleep_monsters.one
+ae_light_area:							; the Phial: light_area
+	XCALL PAGE_SCROLL, sc_light
+	ret
+ae_map_area:							; the Star: map_area
+	XCALL PAGE_SCROLL, sc_map
+	ret
+ae_wiz_light:							; the Arkenstone: wizard_light(TRUE)
+	XCALL PAGE_MAGIC, wizard_light
+	ret
 ae_detect_mon:
 	xor a
 	ld hl,msg_sense_monsters

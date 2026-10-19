@@ -212,6 +212,57 @@ strlen:
 	pop hl
 	ret
 
+/* msg_add_u16 - HL -> 16-bit value: add it as a decimal number */
+msg_add_u16:
+	push ix
+	call .add
+	pop ix
+	ret
+.add:
+	ld e,(hl)
+	inc hl
+	ld d,(hl)
+	ex de,hl
+	ld de,(msg_ptr)
+	ld ix,pow10_table
+	ld b,0								; set once a digit is written
+.digit:
+	ld c,(ix+0)
+	ld a,c
+	or (ix+1)
+	jr z,.last
+	push bc
+	ld b,(ix+1)
+	ld a,'0'
+.sub:
+	or a
+	sbc hl,bc
+	jr c,.got
+	inc a
+	jr .sub
+.got:
+	add hl,bc
+	pop bc
+	cp '0'
+	jr nz,.write
+	bit 0,b
+	jr z,.skip
+.write:
+	ld (de),a
+	inc de
+	ld b,1
+.skip:
+	inc ix
+	inc ix
+	jr .digit
+.last:
+	ld a,l
+	add a,'0'
+	ld (de),a
+	inc de
+	ld (msg_ptr),de
+	ret
+
 /* msg_add_u8 - add A as a decimal number to the message being built */
 msg_add_u8:
 	ld de,(msg_ptr)

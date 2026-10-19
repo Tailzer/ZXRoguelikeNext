@@ -828,6 +828,9 @@ sp_ready:
 	or l
 	ld hl,t_cant_see
 	jr nz,.say
+	call no_light
+	ld hl,msg_no_light
+	jr z,.no
 	ld hl,(p_confused)
 	ld a,h
 	or l

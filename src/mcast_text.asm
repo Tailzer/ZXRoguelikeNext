@@ -202,3 +202,4 @@ mb_rations:			db "It got at your rations!",0
 mb_energy:			db "Energy drains from your pack!",0
 mb_wails_pain:		db " wails out in pain!",0
 mb_embedded:		db " is embedded in the rock.",0
+mb_dims:			db "Your light dims.",0

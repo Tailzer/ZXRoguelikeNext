@@ -51,7 +51,10 @@ AE_BANISH		equ 37
 AE_DISPEL		equ 38
 AE_DETECT_ALL		equ 39
 AE_PROBE_ALL		equ 40
-NUM_ACTS		equ 60
+AE_LIGHT_AREA		equ 41
+AE_MAP_AREA		equ 42
+AE_WIZ_LIGHT		equ 43
+NUM_ACTS		equ 63
 
 act_table:
 	dw SN_NARTHANC
@@ -174,66 +177,75 @@ act_table:
 	dw SN_GONDOR
 	db AE_HEAL,0
 	dw 500,acs_50,0,0,500,0	; SN_GONDOR
-	dw $8000+335
+	dw $8000+338
 	db AE_BALL,5
 	dw 120,acs_52,0,acs_51,222,222	; Power named Narya
-	dw $8000+336
+	dw $8000+339
 	db AE_BALL,4
 	dw 200,acs_54,0,acs_53,222,333	; Power named Nenya
-	dw $8000+337
+	dw $8000+340
 	db AE_BALL,1
 	dw 250,acs_56,0,acs_55,222,444	; Power named Vilya
-	dw $8000+338
+	dw $8000+341
 	db AE_ONE_RING,0
 	dw 0,acs_57,0,0,444,444	; Power
-	dw $8000+339
+	dw $8000+343
 	db AE_DISPEL_EVIL,0
 	dw 0,acs_58,0,0,444,222	; Ingwe
-	dw $8000+340
+	dw $8000+342
+	db AE_LIGHT_AREA,0
+	dw 0,acs_59,0,0,10,10	; The Phial of Galadriel
+	dw $8000+345
+	db AE_MAP_AREA,0
+	dw 0,acs_60,acs_61,0,50,50	; The Star of Elendil
+	dw $8000+346
+	db AE_WIZ_LIGHT,0
+	dw 0,acs_62,0,0,100,100	; The Arkenstone of Thrain
+	dw $8000+344
 	db AE_PROTEVIL,0
-	dw 0,acs_59,acs_60,0,222,222	; Carlammas
-	dw $8000+341
+	dw 0,acs_63,acs_64,0,222,222	; Carlammas
+	dw $8000+347
 	db AE_FAST,0
-	dw 50*256+100,acs_61,0,0,200,0	; Tulkas
-	dw $8000+302
-	db AE_BALL,1
-	dw 100,acs_63,0,acs_62,444,444	; Blue Dragon Scale Mail
-	dw $8000+303
-	db AE_BALL,4
-	dw 110,acs_65,0,acs_64,444,444	; White Dragon Scale Mail
-	dw $8000+304
-	db AE_BALL,3
-	dw 130,acs_67,0,acs_66,444,444	; Black Dragon Scale Mail
+	dw 50*256+100,acs_65,0,0,200,0	; Tulkas
 	dw $8000+305
-	db AE_BALL,2
-	dw 150,acs_69,0,acs_68,444,444	; Green Dragon Scale Mail
+	db AE_BALL,1
+	dw 100,acs_67,0,acs_66,444,444	; Blue Dragon Scale Mail
 	dw $8000+306
-	db AE_BALL,5
-	dw 200,acs_71,0,acs_70,444,444	; Red Dragon Scale Mail
+	db AE_BALL,4
+	dw 110,acs_69,0,acs_68,444,444	; White Dragon Scale Mail
 	dw $8000+307
+	db AE_BALL,3
+	dw 130,acs_71,0,acs_70,444,444	; Black Dragon Scale Mail
+	dw $8000+308
+	db AE_BALL,2
+	dw 150,acs_73,0,acs_72,444,444	; Green Dragon Scale Mail
+	dw $8000+309
+	db AE_BALL,5
+	dw 200,acs_75,0,acs_74,444,444	; Red Dragon Scale Mail
+	dw $8000+310
 	db AE_BREATH,5
-	dw 250,0,0,acb_71,222,222	; Multi-Hued Dragon Scale Mail
-	dw $8000+318
+	dw 250,0,0,acb_75,222,222	; Multi-Hued Dragon Scale Mail
+	dw $8000+321
 	db AE_BALL,0
-	dw 120,acs_83,0,acs_82,444,444	; Bronze Dragon Scale Mail
-	dw $8000+319
-	db AE_BALL,0
-	dw 130,acs_85,0,acs_84,444,444	; Gold Dragon Scale Mail
+	dw 120,acs_87,0,acs_86,444,444	; Bronze Dragon Scale Mail
 	dw $8000+322
-	db AE_BREATH,2
-	dw 220,0,0,acb_91,300,300	; Chaos Dragon Scale Mail
-	dw $8000+323
-	db AE_BREATH,2
-	dw 230,0,0,acb_98,300,300	; Law Dragon Scale Mail
-	dw $8000+324
-	db AE_BREATH,4
-	dw 250,0,0,acb_105,300,300	; Balance Dragon Scale Mail
+	db AE_BALL,0
+	dw 130,acs_89,0,acs_88,444,444	; Gold Dragon Scale Mail
 	dw $8000+325
 	db AE_BREATH,2
-	dw 200,0,0,acb_118,300,300	; Shining Dragon Scale Mail
+	dw 220,0,0,acb_95,300,300	; Chaos Dragon Scale Mail
 	dw $8000+326
+	db AE_BREATH,2
+	dw 230,0,0,acb_102,300,300	; Law Dragon Scale Mail
+	dw $8000+327
+	db AE_BREATH,4
+	dw 250,0,0,acb_109,300,300	; Balance Dragon Scale Mail
+	dw $8000+328
+	db AE_BREATH,2
+	dw 200,0,0,acb_122,300,300	; Shining Dragon Scale Mail
+	dw $8000+329
 	db AE_BALL,0
-	dw 300,acs_107,0,acs_106,300,300	; Power Dragon Scale Mail
+	dw 300,acs_111,0,acs_110,300,300	; Power Dragon Scale Mail
 
 acs_1:	db "Fire Bolt",0
 acs_2:	db "Your Dagger is covered in fire...",0
@@ -293,87 +305,91 @@ acs_55:	db "huge ball of Lightning",0
 acs_56:	db "The ring glows deep blue...",0
 acs_57:	db "The ring glows intensely black...",0
 acs_58:	db "An aura of good floods the area...",0
-acs_59:	db "The amulet lets out a shrill wail...",0
-acs_60:	db "You feel somewhat safer...",0
-acs_61:	db "The ring glows brightly...",0
-acs_62:	db "huge ball of Lightning",0
-acs_63:	db "You breathe Lightning...",0
-acs_64:	db "huge ball of Frost",0
-acs_65:	db "You breathe Frost...",0
-acs_66:	db "huge ball of Acid",0
-acs_67:	db "You breathe Acid...",0
-acs_68:	db "huge cloud of Poison Gas",0
-acs_69:	db "You breathe Poison Gas...",0
-acs_70:	db "huge ball of Fire",0
-acs_71:	db "You breathe Fire...",0
-acs_72:	db "You breathe Lightning...",0
-acs_73:	db "huge ball of Lightning",0
-acs_74:	db "You breathe Frost...",0
-acs_75:	db "huge ball of Frost",0
-acs_76:	db "You breathe Acid...",0
-acs_77:	db "huge ball of Acid",0
-acs_78:	db "You breathe Poison Gas...",0
-acs_79:	db "huge cloud of Poison Gas",0
-acs_80:	db "You breathe Fire...",0
-acs_81:	db "huge ball of Fire",0
-acb_71:
+acs_59:	db "The phial wells with clear light...",0
+acs_60:	db "The star shines brightly...",0
+acs_61:	db "And you sense your surroundings...",0
+acs_62:	db "The stone glows a deep green",0
+acs_63:	db "The amulet lets out a shrill wail...",0
+acs_64:	db "You feel somewhat safer...",0
+acs_65:	db "The ring glows brightly...",0
+acs_66:	db "huge ball of Lightning",0
+acs_67:	db "You breathe Lightning...",0
+acs_68:	db "huge ball of Frost",0
+acs_69:	db "You breathe Frost...",0
+acs_70:	db "huge ball of Acid",0
+acs_71:	db "You breathe Acid...",0
+acs_72:	db "huge cloud of Poison Gas",0
+acs_73:	db "You breathe Poison Gas...",0
+acs_74:	db "huge ball of Fire",0
+acs_75:	db "You breathe Fire...",0
+acs_76:	db "You breathe Lightning...",0
+acs_77:	db "huge ball of Lightning",0
+acs_78:	db "You breathe Frost...",0
+acs_79:	db "huge ball of Frost",0
+acs_80:	db "You breathe Acid...",0
+acs_81:	db "huge ball of Acid",0
+acs_82:	db "You breathe Poison Gas...",0
+acs_83:	db "huge cloud of Poison Gas",0
+acs_84:	db "You breathe Fire...",0
+acs_85:	db "huge ball of Fire",0
+acb_75:
 	db 1
-	dw acs_72, acs_73
-	db 4
-	dw acs_74, acs_75
-	db 3
 	dw acs_76, acs_77
-	db 2
+	db 4
 	dw acs_78, acs_79
-	db 5
+	db 3
 	dw acs_80, acs_81
-acs_82:	db "huge blast of Confusion",0
-acs_83:	db "You breathe Confusion...",0
-acs_84:	db "huge blast of Sound",0
-acs_85:	db "You breathe Sound...",0
-acs_86:	db "You breathe Chaos...",0
-acs_87:	db "huge ball of Chaos",0
-acs_88:	db "You breathe Disenchantment...",0
-acs_89:	db "huge ball of Disenchantment",0
-acb_91:
-	db 0
-	dw acs_86, acs_87
-	db 0
-	dw acs_88, acs_89
-acs_90:	db "You breathe Sound...",0
-acs_91:	db "huge blast of Sound",0
-acs_92:	db "You breathe Shards...",0
-acs_93:	db "huge ball of Shards",0
-acb_98:
+	db 2
+	dw acs_82, acs_83
+	db 5
+	dw acs_84, acs_85
+acs_86:	db "huge blast of Confusion",0
+acs_87:	db "You breathe Confusion...",0
+acs_88:	db "huge blast of Sound",0
+acs_89:	db "You breathe Sound...",0
+acs_90:	db "You breathe Chaos...",0
+acs_91:	db "huge ball of Chaos",0
+acs_92:	db "You breathe Disenchantment...",0
+acs_93:	db "huge ball of Disenchantment",0
+acb_95:
 	db 0
 	dw acs_90, acs_91
 	db 0
 	dw acs_92, acs_93
-acs_94:	db "You breathe Chaos...",0
-acs_95:	db "huge ball of Chaos",0
-acs_96:	db "You breathe Disenchantment...",0
-acs_97:	db "huge ball of Disenchantment",0
-acs_98:	db "You breathe Sound...",0
-acs_99:	db "huge blast of Sound",0
-acs_100:	db "You breathe Shards...",0
-acs_101:	db "huge ball of Shards",0
-acb_105:
+acs_94:	db "You breathe Sound...",0
+acs_95:	db "huge blast of Sound",0
+acs_96:	db "You breathe Shards...",0
+acs_97:	db "huge ball of Shards",0
+acb_102:
 	db 0
 	dw acs_94, acs_95
 	db 0
 	dw acs_96, acs_97
+acs_98:	db "You breathe Chaos...",0
+acs_99:	db "huge ball of Chaos",0
+acs_100:	db "You breathe Disenchantment...",0
+acs_101:	db "huge ball of Disenchantment",0
+acs_102:	db "You breathe Sound...",0
+acs_103:	db "huge blast of Sound",0
+acs_104:	db "You breathe Shards...",0
+acs_105:	db "huge ball of Shards",0
+acb_109:
 	db 0
 	dw acs_98, acs_99
 	db 0
 	dw acs_100, acs_101
-acs_102:	db "You breathe Light...",0
-acs_103:	db "huge flash of Light",0
-acs_104:	db "You breathe Darkness...",0
-acs_105:	db "huge sphere of Darkness",0
-acb_118:
 	db 0
 	dw acs_102, acs_103
 	db 0
 	dw acs_104, acs_105
-acs_106:	db "massive ball of the Elements",0
-acs_107:	db "You breathe the Elements...",0
+acs_106:	db "You breathe Light...",0
+acs_107:	db "huge flash of Light",0
+acs_108:	db "You breathe Darkness...",0
+acs_109:	db "huge sphere of Darkness",0
+acb_122:
+	db 0
+	dw acs_106, acs_107
+	db 0
+	dw acs_108, acs_109
+acs_110:	db "massive ball of the Elements",0
+acs_111:	db "You breathe the Elements...",0

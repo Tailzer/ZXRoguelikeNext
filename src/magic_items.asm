@@ -88,6 +88,25 @@ magic_treasure:
 	ld (mt_crown),a
 	ld a,(iy+K_EGO)						; (m_bonus pages the kinds out)
 	ld (mt_kego),a
+	ld a,(iy+K_CLASS)					; a torch or lantern found in the
+	cp IC_LIGHT							; dungeon: 1d its fuel (the C's odd
+	jr z,.fuel							; subvals)
+	cp IC_LANTERN
+	jr nz,.not_light
+.fuel:
+	ld a,(mt_nounique)					; (not the stores')
+	or a
+	ret nz
+	ld l,(ix+I_PVAL)
+	ld h,(ix+I_PVAL+1)
+	ld a,h
+	or l
+	ret z								; (the Phial and its like)
+	call randint16
+	ld (ix+I_PVAL),l
+	ld (ix+I_PVAL+1),h
+	ret
+.not_light:
 	ld a,(iy+K_MAGIC)
 	or a
 	ret z

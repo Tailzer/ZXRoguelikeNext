@@ -57,6 +57,18 @@ try_move:
 	ld a,d
 	ld (player_y),a
 	call light_arrive
+	ld a,(p_fos)						; noticing things as you go: every
+	bit 7,a								; step if the frequency is 1 or less,
+	jr nz,.search						; else 1 in that many
+	cp 2
+	jr c,.search
+	call randint
+	dec a
+	call z,search
+	jr .searched
+.search:
+	call search
+.searched:
 	call player_square					; a store's door: go in
 	ld a,(hl)
 	and TERRAIN_MASK
@@ -103,6 +115,81 @@ try_move:
 	ld a,1
 	ld (turn_taken),a
 	ret
+
+/* search - each square round the player, 1d100 under the searching
+	skill (a tenth of it when confused, blind or in the dark) finds a secret
+	door there (search in MORIA1.C; there are no traps or chests yet) */
+search:
+	ld a,(p_srh)
+	bit 7,a
+	jr z,$+3
+	xor a
+	ld c,a
+	ld hl,(p_confused)
+	ld a,h
+	or l
+	call nz,.tenth
+	ld hl,(p_blind)
+	ld a,h
+	or l
+	jr nz,.dim
+	push bc
+	call no_light
+	pop bc
+	jr nz,.lit
+.dim:
+	call .tenth
+.lit:
+	ld a,c
+	ld (sr_chance),a
+	ld a,(player_y)
+	dec a
+	ld d,a
+	ld b,3
+.row:
+	push bc
+	ld a,(player_x)
+	dec a
+	ld e,a
+	ld b,3
+.col:
+	push bc
+	push de
+	ld a,100
+	call randint
+	ld hl,sr_chance
+	cp (hl)
+	jr nc,.next
+	pop de
+	push de
+	call map_addr
+	ld a,(hl)
+	and TERRAIN_MASK
+	cp T_DOOR_SECRET
+	jr nz,.next
+	ld a,(hl)							; a door, closed
+	and $FF-TERRAIN_MASK
+	or T_DOOR_CLOSED
+	ld (hl),a
+	ld hl,msg_secret_door
+	call msg_print
+.next:
+	pop de
+	pop bc
+	inc e
+	djnz .col
+	pop bc
+	inc d
+	djnz .row
+	ret
+.tenth:
+	ld a,c
+	ld c,10
+	call div8
+	ld c,a
+	ret
+sr_chance:		db 0
+msg_secret_door: db "You have found a secret door.",0
 
 /* store_here - A = the store whose door the player is on */
 store_here:

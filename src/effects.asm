@@ -5,8 +5,97 @@
 	all of them count down and say so when they end.
  */
 
+/* light_tick - the light source burns a turn of fuel ("Your light is
+	growing faint." under 40), and the player's light goes out, or comes on,
+	as it should (the light status check in DUNGEON.C) */
+light_tick:
+	ld ix,EQUIP+EQ_LIGHT*ITEM_SIZE
+	xor a
+	ld (lt_perm),a
+	ld hl,0
+	ld a,(ix+I_KIND_HI)
+	cp ITEM_EMPTY
+	jr z,.fuel
+	call item_kind_addr					; TR_LIGHT: it never burns down
+	ld a,(iy+K_FLAGS2+1)
+	and 1<<F2_LIGHT
+	ld (lt_perm),a
+	ld l,(ix+I_PVAL)
+	ld h,(ix+I_PVAL+1)
+.fuel:
+	ld (lt_fuel),hl
+	ld a,(p_light)
+	or a
+	jr z,.dark
+	ld a,h
+	or l
+	jr z,.empty
+	call .burn
+	ld hl,(lt_fuel)
+	ld a,h
+	or l
+	jr nz,.faint
+	ld (p_light),a						; out
+	call light_refresh
+	ld hl,msg_light_out
+	jp msg_print
+.faint:
+	ld de,40
+	or a
+	sbc hl,de
+	ret nc
+	ld a,(lt_perm)
+	or a
+	ret nz
+	ld hl,(p_blind)
+	ld a,h
+	or l
+	ret nz
+	ld a,5
+	call randint
+	cp 1
+	ret nz
+	ld hl,msg_light_faint
+	jp msg_print
+.empty:									; no fuel: only a light of its own
+	ld a,(p_eflags2+1)					; (the Phial's) keeps it on
+	bit F2_LIGHT,a
+	ret nz
+	xor a
+	ld (p_light),a
+	jp light_refresh
+.dark:
+	ld a,h
+	or l
+	jr nz,.lit
+	ld a,(p_eflags2+1)
+	bit F2_LIGHT,a
+	ret z
+.lit:
+	ld a,h
+	or l
+	call nz,.burn
+	ld a,1
+	ld (p_light),a
+	jp light_refresh
+.burn:
+	ld a,(lt_perm)
+	or a
+	ret nz
+	ld hl,(lt_fuel)
+	dec hl
+	ld (lt_fuel),hl
+	ld (ix+I_PVAL),l
+	ld (ix+I_PVAL+1),h
+	ret
+lt_fuel:		dw 0
+lt_perm:		db 0
+msg_light_out:	db "Your light has gone out!",0
+msg_light_faint: db "Your light is growing faint.",0
+
 /* timed_tick - one turn of every timed effect, in the C's order */
 timed_tick:
+	call light_tick
 	call art_tick
 	ld ix,te_blind
 	call status_effect

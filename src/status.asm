@@ -789,6 +789,7 @@ p_resist_acid:	dw 0
 p_resist_light:	dw 0				; (lightning)
 p_resist_poison: dw 0
 p_confuse_mon:	dw 0				; hands glowing (not timed)
+p_light:		db 0				; the player's light is on (player_light)
 P_TIMED_SIZE	equ $-p_timed
 ; what the player knows and this game's flavours live in bank 5's spare
 ; 1K after the tile definitions (KNOWLEDGE in constants.asm)

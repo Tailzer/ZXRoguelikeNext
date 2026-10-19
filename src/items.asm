@@ -140,6 +140,15 @@ kind_charges:
 /* init_charges - IX = a new item, IY = its kind: its charges, or a rod
 	that's ready. Clobbers A, DE, HL */
 init_charges:
+	ld a,(iy+K_CLASS)					; lights and oil: their fuel, a word
+	cp IC_LIGHT
+	jr c,.charges
+	ld a,(iy+K_P1)
+	ld (ix+I_PVAL),a
+	ld a,(iy+K_P1+1)
+	ld (ix+I_PVAL+1),a
+	ret
+.charges:
 	call kind_charges
 	ld (ix+I_PVAL),a
 	ld (ix+I_PVAL+1),0
