@@ -19,7 +19,7 @@ Created at the start of each game as in `CREATE.C`: choose a race (10), sex and 
 `h j k l y u b n` (Angband roguelike keys) or cursor keys `5 6 7 8`.
 Walk into a closed door to open it, or into a monster to attack it; walking onto an item picks it up; walking onto a store's number goes in (`p` purchase, `s` sell, at home `g` get and `d` drop, space leaves). `s` searches for a turn (staying still). `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
 
-`C` (Caps Shift+C) shows the character sheet. Symbol Shift+X (the C's `^X`) saves the game and goes back to the title; pressing a key there carries on from the save. `F` (Caps Shift+F) fills a lantern from a flask of oil. `D` (Caps Shift+D) disarms a trap you've found, `T` (Caps Shift+T) tunnels through rubble or rock; both ask for a direction.
+`C` (Caps Shift+C) shows the character sheet. Symbol Shift+X (the C's `^X`) saves the game and goes back to the title; pressing a key there carries on from the save. `F` (Caps Shift+F) fills a lantern from a flask of oil. `D` (Caps Shift+D) disarms a trap you've found, `T` (Caps Shift+T) tunnels through rubble or rock; both ask for a direction. `v` throws something from the pack in a direction.
 
 Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `z` aim a wand, `Z` (Caps Shift+Z) use a staff, `a` activate a rod, `A` (Caps Shift+A) activate an artifact, `m` cast a spell, `p` recite a prayer, `P` (Caps Shift+P) browse a book, `G` (Caps Shift+G) learn new spells, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels. Directions: `1`-`9` or `hjklyubn`.
 
@@ -187,7 +187,6 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - the Phial of Galadriel, the Star of Elendil and the Arkenstone of Thrain: lights that never burn down; activated, the Phial lights the room, the Star maps the area, the Arkenstone lights the whole level
    - monsters that eat light now do: 250 + 1d250 turns of fuel ("Your light dims.")
    - store entries grew a byte for the fuel, so saves from before this don't load
-   - not yet: throwing flasks of oil (there's no throwing yet)
    - searching (`MORIA1.C` search, `MORIA2.C` move_char, `CREATE.C` srh/fos), so secret doors can be found without magic: `s` searches the 8 squares round you; walking, you search every step if your searching frequency is 1 or less, else 1 in that many
      - each square: 1d100 under the searching skill (race + class, plus Searching rings) finds a secret door ("You have found a secret door."), which becomes a closed door; a tenth of the chance when confused, blind or in the dark
      - not yet: chests to find; the character sheet doesn't show searching
@@ -199,6 +198,15 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - magic: Trap Detection/Location (scroll, staff, rod, Detection), Find Traps/Doors (mage), Find Traps (priest) find the traps in view; Trap Creation (scroll, monster spell) puts traps on every floor square round you, no experience for disarming those; Trap/Door Destruction (scroll, wand, spell, Caspanion) and Disarming destroy them
    - the trap list is 32 x 4 bytes of high RAM (saved with it), so saves from before this don't load; the trap code is its own overlay (58, `src/traps.asm`)
    - not yet: chests and their traps; shovels and picks (TV_DIGGING isn't converted yet, so `T` digs with your weapon; the TUNNEL bonus is ready for them)
+13a. **Throwing** (`MORIA2.C` throw_object/inven_throw/facts/drop_throw, `MISC2.C` tot_dam) *(done)*
+   - `v` throws one of anything in the pack ("Fire/Throw which one?") in a direction ("You have 4 Flasks of oil (c)."); confused, it goes astray
+   - it flies up to (STR + 20) x 10 / its weight squares (at most 10), stopping at a wall or the first monster in its way
+   - to hit: 3/4 of the missile skill (race + class) less the distance, with the player's to-hit less the wielded weapon's plus its own, and the missile adjustment per level; an unseen monster is much harder to hit ("The Dagger finds a mark.")
+   - damage: its dice + to-dam, through its slays and brands, maybe a critical ("The Flask of oil hits the Orc.", "The Orc grunts with pain.", "You have killed the Orc."); flasks of oil burn: 2d6 x 3 against anything not immune to fire
+   - what hits is used up; what misses or falls short lands on the floor where it stopped or next to it, or 1 in 10 "The Flask of oil disappears."
+   - the missile skill is new character data, so saves from before this don't load
+   - throwing lives in the trap overlay (58, `src/throw.asm`); the pain words are the device overlay's (`pain_add`)
+13b. **Bows** (slings, bows and crossbows with their ammunition: the multipliers and ranges in `facts`; Beleg Cuthalion, Bard, Cubragol)
 
 ## Memory map
 
@@ -237,7 +245,7 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 | 52 `PAGE_MAGIC` | `potions.asm`, `effects.asm` | quaffing, stat changes, timed effects (every turn), the colour and title shuffle |
 | 53 `PAGE_SCROLL` | `scrolls.asm` | reading scrolls (summons go through `level_call` to the level overlay) |
 | 55 `PAGE_SPELL` | `spells.asm` | spells and prayers: learning, mana, browsing, casting |
-| 58 `PAGE_TRAP` | `traps.asm` | placing traps and rubble, setting them off, `D`, `T`, trap magic |
+| 58 `PAGE_TRAP` | `traps.asm`, `throw.asm` | placing traps and rubble, setting them off, `D`, `T`, trap magic; `v` throwing |
 | 54 `PAGE_DEVICE` | `devices.asm` | wands, staffs, rods and artifact activation: bolts, balls, beams (borrows scroll and potion effects through `device_xcall`) |
 
 Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 60-62 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page); the flavours (`data/flavours.asm`: potion colours, woods, metals, stones, amulets, the title syllables, the buffer this game's scroll titles are written into, normal_table) have their own page. 63 `EGO_PAGE` = `data/egos.asm` (ego and artifact names, flags and numbers, 24 bytes each); 64 `FLAVOUR_PAGE` = `data/flavours.asm`; 65 `ACT_PAGE` = `data/activate.asm`; 66 `SPELL_PAGE` = `data/spells.asm`. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.

@@ -267,4 +267,5 @@ key_table:
 	db $FD,%00001000,KM_CAPS,CMD_FUEL,0,0	; F: refill a lamp
 	db $FD,%00000100,KM_CAPS,CMD_DISARM,0,0	; D: disarm a trap
 	db $FB,%00010000,KM_CAPS,CMD_TUNNEL,0,0	; T: tunnel
+	db $FE,%00010000,KM_NONE,CMD_THROW,0,0	; v: throw
 	db 0

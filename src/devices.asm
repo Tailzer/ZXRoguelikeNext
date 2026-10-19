@@ -1468,6 +1468,13 @@ say_name:
 	call msg_add
 	jp msg_end
 
+/* pain_add - IX = monster, DE = its hit points before: " grunts with
+	pain." and so on added to the message (for throwing) */
+pain_add:
+	ld (d_oldhp),de
+	call pain_message
+	jp msg_add
+
 /* say_victim - HL = text: "The Kobold" (remembered) + text. Names are
 	taken before a monster is hurt: its death may say something first */
 say_victim:

@@ -52,6 +52,7 @@
 		secret doors ('s', and as you walk)
 	Milestone 12: Traps - the 18 traps and rubble, found by searching
 		or magic, 'D' to disarm and 'T' to tunnel
+	Milestone 13a: Throwing - 'v' throws anything, flasks of oil burn
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -148,6 +149,8 @@ dispatch:
 	jp z,.disarm
 	cp CMD_TUNNEL
 	jp z,.tunnel
+	cp CMD_THROW
+	jp z,.throw
 	cp CMD_INVEN
 	jr nc,.item_command
 	call try_move
@@ -222,6 +225,9 @@ dispatch:
 	jp .after
 .tunnel:
 	FARCALL PAGE_TRAP, cmd_tunnel
+	jp .after
+.throw:
+	FARCALL PAGE_TRAP, cmd_throw
 	jp .after
 .character:
 	FARCALL PAGE_CREATE, show_character
@@ -347,6 +353,7 @@ mcast_end:
 
 	MMU 2, PAGE_TRAP, $4000
 	include "src/traps.asm"
+	include "src/throw.asm"
 trap_end:
 	ASSERT trap_end <= $6000, "Trap overlay is over 8K"
 

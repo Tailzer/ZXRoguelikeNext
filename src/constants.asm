@@ -726,6 +726,7 @@ CMD_SAVE			equ 22				; Symbol Shift + X: save and quit (^X)
 CMD_FUEL			equ 23				; F: refill a lamp
 CMD_DISARM			equ 24				; D: disarm a trap
 CMD_TUNNEL			equ 25				; T: tunnel (rubble, rock)
+CMD_THROW			equ 26				; v: throw
 ; key modifiers in key_table
 KM_ANY				equ 0
 KM_SYMBOL			equ 1

@@ -425,6 +425,11 @@ derive:
 	ld (p_infra_race),a
 	ld a,(ix+PC_LADJ)
 	ld (p_cla_bth),a
+	ld a,(ix+PC_LADJ+1)					; missiles
+	ld (p_cla_bthb),a
+	ld a,(iy+PR_BTHB)
+	add a,(ix+PC_BTHB)
+	ld (p_bthb),a
 	ld a,(ix+PC_LADJ+2)					; device skill per level
 	ld (p_cla_dev),a
 	ld a,(ix+PC_LADJ+3)					; disarming per level
