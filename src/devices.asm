@@ -903,7 +903,7 @@ use_staff:
 	ret
 
 staff_effects:
-	dw st_light, st_doors, no_effect, st_treasure, st_objects		; 1-5
+	dw st_light, st_doors, st_traps, st_treasure, st_objects		; 1-5
 	dw st_teleport, st_earthquake, st_summon, st_destruction, st_starlite	; 6-10
 	dw st_haste_mons, st_slow_mons, st_sleep_mons, st_cure_light		; 11-14
 	dw st_det_inv, st_haste_self, st_slow, no_effect, st_det_evil			; 15-19
@@ -917,6 +917,9 @@ st_light:
 	ret
 st_doors:
 	XCALL PAGE_SCROLL, sc_doors
+	ret
+st_traps:
+	XCALL PAGE_SCROLL, sc_traps
 	ret
 st_treasure:
 	XCALL PAGE_SCROLL, sc_treasure
@@ -1163,7 +1166,7 @@ rod_effects:
 	dw wd_cd_ball, wd_fr_ball, no_effect, wd_ac_ball, rd_ac_bolt		; 16-20
 	dw no_effect, st_mapping, st_identify, rd_cure, rd_heal			; 21-25
 	dw rd_detect, rd_restore, rd_speed, rd_illume, st_probe			; 26-30
-	dw rd_recall, no_effect											; 31-32
+	dw rd_recall, st_traps											; 31-32
 NUM_ROD_EFFECTS		equ ($-rod_effects)/2
 ; which rods need a direction, and how long each takes to recharge
 rod_aimed:		db 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,0,0,0,0, 0,0,0,0,0, 0,0
@@ -1242,6 +1245,7 @@ rd_detect:								; detection(): everything in view
 	XCALL PAGE_SCROLL, sc_treasure
 	XCALL PAGE_SCROLL, sc_objects
 	XCALL PAGE_SCROLL, sc_doors
+	call st_traps
 	xor a
 	ld hl,msg_sense_monsters
 	jp show_monsters
@@ -2085,6 +2089,8 @@ td_destroy2:
 	call beam_step
 	call beam_square
 	ld b,a								; (terrain flags)
+	call trap_gone						; traps go too
+	jr c,.flash
 	ld a,(hl)
 	and TERRAIN_MASK
 	cp T_DOOR_CLOSED
@@ -2095,6 +2101,7 @@ td_destroy2:
 	and ~TERRAIN_MASK
 	or T_CORRIDOR
 	ld (hl),a
+.flash:
 	ld hl,msg_bright_flash_d
 	call msg_print
 	ld a,1
@@ -2121,6 +2128,8 @@ disarm_all:
 .square:
 	call beam_square
 	ld b,a
+	call trap_gone						; traps are disarmed
+	jr c,.any
 	ld a,(hl)
 	and TERRAIN_MASK
 	cp T_DOOR_SECRET
@@ -2129,6 +2138,7 @@ disarm_all:
 	and ~TERRAIN_MASK
 	or T_DOOR_CLOSED|F_PERM
 	ld (hl),a
+.any:
 	ld a,1
 	ld (d_any),a
 .next:

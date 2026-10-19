@@ -783,6 +783,9 @@ p_srh:			db 0				; searching skill (srh), with equipment's
 p_srh_race:		db 0				; the race's and class's
 p_fos:			db 0				; searching frequency (signed: lower, more)
 p_fos_race:		db 0				; the race's and class's
+p_dis:			db 0				; disarming skill, race + class
+p_cla_dis:		db 0				; class_level_adj[class][CLA_DISARM]
+step_from:		dw 0				; where the last step came from (x, y)
 p_infra:		db 0				; infravision, in 10 ft, with equipment's
 p_infra_race:	db 0				; the race's
 p_expfact:		db 100

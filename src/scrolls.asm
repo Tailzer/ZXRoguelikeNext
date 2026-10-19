@@ -80,8 +80,8 @@ scroll_effects:
 	dw sc_enchant_hit, sc_enchant_dam, sc_enchant_ac, sc_identify		; 1-4
 	dw sc_remove_curse, sc_light										; 5-6
 	dw sc_summon, sc_phase, sc_teleport, sc_tele_level, sc_confuse	; 7-11
-	dw sc_map, sc_none, sc_none, sc_treasure, sc_objects, sc_none	; 12-17
-	dw sc_doors, sc_mass_genocide, sc_det_inv, sc_aggravate, sc_none	; 18-22
+	dw sc_map, sc_none, sc_none, sc_treasure, sc_objects, sc_traps	; 12-17
+	dw sc_doors, sc_mass_genocide, sc_det_inv, sc_aggravate, sc_trap_create	; 18-22
 	dw sc_td_destroy, sc_none, sc_recharge, sc_genocide, sc_darkness	; 23-27
 	dw sc_protevil, sc_food, sc_dispel_undead, sc_star_remove, sc_none	; 28-32
 	dw sc_star_weapon, sc_curse_weapon, sc_star_armour, sc_curse_armour	; 33-36
@@ -924,8 +924,21 @@ sc_dispel_undead:
 
 ; ---------------------------------------------------------------- 23, 29
 
-/* sc_td_destroy - doors around you are destroyed */
+/* sc_traps - detect_trap: the traps in view are found */
+sc_traps:
+	OVCALL PAGE_TRAP, detect_traps, PAGE_SCROLL
+	ret nc
+	jp ident
+/* sc_trap_create - trap_creation: traps all round you */
+sc_trap_create:
+	OVCALL PAGE_TRAP, trap_creation, PAGE_SCROLL
+	ret nc
+	jp ident
+
+/* sc_td_destroy - doors and traps around you are destroyed */
 sc_td_destroy:
+	OVCALL PAGE_TRAP, traps_around_gone, PAGE_SCROLL
+	call c,ident
 	call player_square
 	ld de,-MAP_W-1
 	add hl,de

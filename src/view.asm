@@ -119,6 +119,7 @@ draw_view:
 	jr nz,.row
 
 	call draw_items						; items, under any monsters
+	call draw_traps
 	ld a,(dun_level)
 	or a
 	call z,draw_store_doors

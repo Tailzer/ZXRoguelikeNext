@@ -46,9 +46,11 @@ try_move:
 	bit TF_PASSABLE,a
 	jr z,.blocked
 	bit F_MON_BIT,(hl)
-	jr nz,.monster
+	jp nz,.monster
 	ld a,1
 	ld (turn_taken),a
+	ld hl,(player_x)					; (x, y: a rockfall sends you back)
+	ld (step_from),hl
 	push de
 	call lamp_off
 	pop de
@@ -69,6 +71,15 @@ try_move:
 .search:
 	call search
 .searched:
+	ld a,(player_y)						; a trap here goes off
+	ld d,a
+	ld a,(player_x)
+	ld e,a
+	call trap_at
+	jr nc,.no_trap
+	FARCALL PAGE_TRAP, hit_trap
+	ret									; (a trap's square has no item yet)
+.no_trap:
 	call player_square					; a store's door: go in
 	ld a,(hl)
 	and TERRAIN_MASK
@@ -118,7 +129,7 @@ try_move:
 
 /* search - each square round the player, 1d100 under the searching
 	skill (a tenth of it when confused, blind or in the dark) finds a secret
-	door there (search in MORIA1.C; there are no traps or chests yet) */
+	door or a hidden trap there (search in MORIA1.C; no chests yet) */
 search:
 	ld a,(p_srh)
 	bit 7,a
@@ -160,6 +171,17 @@ search:
 	ld hl,sr_chance
 	cp (hl)
 	jr nc,.next
+	pop de								; a hidden trap is found
+	push de
+	push ix
+	call trap_at
+	jr nc,.no_trap
+	bit TRF_SEEN,(ix+TR_FLAGS)
+	jr nz,.no_trap
+	set TRF_SEEN,(ix+TR_FLAGS)
+	FARCALL PAGE_TRAP, say_found_trap
+.no_trap:
+	pop ix
 	pop de
 	push de
 	call map_addr
@@ -281,6 +303,7 @@ new_level:
 	call light_arrive
 	FARCALL PAGE_LEVEL, alloc_monsters
 	FARCALL PAGE_LEVEL, alloc_items
+	FARCALL PAGE_TRAP, alloc_traps
 	call update_view
 	jp monsters_see_all
 .town:
@@ -288,6 +311,7 @@ new_level:
 	call msg_clear
 	FARCALL PAGE_STORE, store_maint		; the stores restock
 	call items_clear					; nothing lying about in town
+	FARCALL PAGE_TRAP, alloc_traps		; (no traps either)
 	call random_open_spot
 	ld a,d
 	ld (player_y),a

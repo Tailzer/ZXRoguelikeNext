@@ -427,6 +427,11 @@ derive:
 	ld (p_cla_bth),a
 	ld a,(ix+PC_LADJ+2)					; device skill per level
 	ld (p_cla_dev),a
+	ld a,(ix+PC_LADJ+3)					; disarming per level
+	ld (p_cla_dis),a
+	ld a,(iy+PR_DIS)
+	add a,(ix+PC_DIS)
+	ld (p_dis),a
 	ld a,(ix+PC_LADJ+4)					; saving throw per level
 	ld (p_cla_save),a
 	ld a,(ix+PC_SPELL)					; spells: none, mage, priest

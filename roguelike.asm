@@ -50,6 +50,8 @@
 	Milestone 11: Light sources - torches, lanterns and oil, a light slot,
 		fuel burning down, and the dark without them; searching for
 		secret doors ('s', and as you walk)
+	Milestone 12: Traps - the 18 traps and rubble, found by searching
+		or magic, 'D' to disarm and 'T' to tunnel
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -142,6 +144,10 @@ dispatch:
 	jp z,.character
 	cp CMD_SAVE
 	jp z,.save
+	cp CMD_DISARM
+	jp z,.disarm
+	cp CMD_TUNNEL
+	jp z,.tunnel
 	cp CMD_INVEN
 	jr nc,.item_command
 	call try_move
@@ -184,6 +190,9 @@ dispatch:
 	jr z,.yanked
 	ld hl,msg_yanked_down
 	cp 2
+	jr z,.yanked
+	ld hl,msg_trap_door					; (said once the new level is up)
+	cp 4
 	jp nz,main_loop
 .yanked:
 	call show_message
@@ -207,6 +216,12 @@ dispatch:
 	ld a,1
 	ld (turn_taken),a
 	call search
+	jp .after
+.disarm:								; D, T: traps and digging
+	FARCALL PAGE_TRAP, cmd_disarm
+	jp .after
+.tunnel:
+	FARCALL PAGE_TRAP, cmd_tunnel
 	jp .after
 .character:
 	FARCALL PAGE_CREATE, show_character
@@ -329,6 +344,11 @@ spell_end:
 	include "src/mmelee.asm"
 mcast_end:
 	ASSERT mcast_end <= $6000, "Monster spell overlay is over 8K"
+
+	MMU 2, PAGE_TRAP, $4000
+	include "src/traps.asm"
+trap_end:
+	ASSERT trap_end <= $6000, "Trap overlay is over 8K"
 
 	MMU 2, PAGE_SAVE, $4000
 	include "src/save.asm"

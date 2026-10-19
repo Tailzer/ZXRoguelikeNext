@@ -1492,7 +1492,12 @@ ms_treasure:
 ms_objects:
 	OVCALL PAGE_SCROLL, sc_objects, PAGE_SPELL
 	ret
-ms_doors:
+ms_doors:								; (and traps)
+	call pr_doors
+pr_traps:
+	OVCALL PAGE_TRAP, detect_traps, PAGE_SPELL
+	ret
+pr_doors:
 	OVCALL PAGE_SCROLL, sc_doors, PAGE_SPELL
 	ret
 ms_td:
@@ -1792,7 +1797,7 @@ on_screen:								; IX = floor item -> carry if in view
 /* the prayers: PRIEST prayers 1-58 (PRAYER.C) */
 prayers:
 	dw ms_det_evil, pr_cure_light, pr_bless, pr_fear, ms_light			; 1-5
-	dw no_spell, ms_doors, pr_slow_poison, ms_confuse, pr_portal		; 6-10
+	dw pr_traps, pr_doors, pr_slow_poison, ms_confuse, pr_portal		; 6-10
 	dw pr_cure_serious, pr_chant, ms_sleep2, ms_food, pr_uncurse		; 11-15
 	dw pr_res_heat_cold, ms_cure_poison, pr_orb, pr_cure_critical, pr_sense_inv	; 16-20
 	dw pr_prot_evil, ms_quake, pr_map, pr_cure_mortal, pr_turn_undead	; 21-25

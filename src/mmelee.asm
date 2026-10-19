@@ -301,6 +301,13 @@ blow_light:								; 8
 blow_corrode:							; 9: corrode_gas, then the damage
 	ld hl,mb_red_gas
 	call mx_print
+	call corrode_gas
+	ld hl,(mb_dam)
+	call take_hit
+	jp blow_done
+/* corrode_gas - acid gas: unless immune, a piece of armour is eaten or
+	1d8 damage; then the pack (corrode_gas in MORIA1.C) */
+corrode_gas:
 	ld a,(p_eflags2+1)
 	and TR2_IM_ACID
 	jr nz,.pack
@@ -315,11 +322,9 @@ blow_corrode:							; 9: corrode_gas, then the damage
 	ld hl,set_corrodes
 	ld a,5
 	call inven_damage
+	ret z
 	ld hl,mb_acrid
-	call nz,mx_print
-	ld hl,(mb_dam)
-	call take_hit
-	jp blow_done
+	jp mx_print
 blow_blind:								; 10
 	call take_hit
 	call blind_resist

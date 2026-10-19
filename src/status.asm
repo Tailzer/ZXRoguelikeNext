@@ -752,7 +752,7 @@ new_rec:		ds ITEM_SIZE		; an item an overlay is having made in the misc
 									; overlay (OVCALL new_item): outside the window
 p_status:		dw 0				; PY_ and PY2_ bits
 p_update:		db 0				; PU_ bits
-p_new_level:	db 0				; set when word of recall fires
+p_new_level:	db 0				; a new level: 1 recall up, 2 down, 3 quietly, 4 trap door
 pending_magic:	db 0				; PM_ action for the magic overlay
 pending_arg:	db 0
 xc_target:		dw 0				; device_xcall's routine

@@ -20,6 +20,7 @@ PAGE_DEVICE			equ 54				; overlay: wands, staffs, rods
 PAGE_SPELL			equ 55				; overlay: spells, mana, learning
 PAGE_MCAST			equ 56				; overlay: monsters casting spells
 PAGE_SAVE			equ 57				; overlay: saving and restoring the game
+PAGE_TRAP			equ 58				; overlay: traps, rubble, disarming, tunnelling
 PAGE_SCREEN_HI		equ 11				; bank 5's upper half, normally in slot 3
 DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
 EGO_PAGE			equ 63				; ego names and flags (data/egos.asm)
@@ -132,6 +133,7 @@ T_DOOR_SECRET		equ 7				; looks like granite
 T_STAIR_DOWN		equ 8
 T_STAIR_UP			equ 9
 T_TMP1				equ 10				; pillar (generation only)
+T_RUBBLE			equ T_TMP1			; ... after it: rubble, dug out with T
 T_TMP2				equ 11				; wall a tunnel pierced (generation only)
 T_MAGMA				equ 12
 T_QUARTZ			equ 13
@@ -485,7 +487,17 @@ sp_entry			equ p_cmana_frac+2	; 16: an effect for the device overlay
 sp_name				equ sp_entry+16		; 32: its name
 p_spell				equ sp_name+32		; the class's spells: 0, 1 mage, 2 priest
 p_first_spell		equ p_spell+1		; the level it may first learn them
-HIGH_RAM_END		equ p_first_spell+1
+; the level's traps (MISC2.C place_trap): y, x, type 1-18 (0: none), TRF_ bits
+TRAP_LIST			equ p_first_spell+1
+TRAP_MAX			equ 32
+TRAP_SIZE			equ 4
+TR_Y				equ 0
+TR_X				equ 1
+TR_TYPE				equ 2
+TR_FLAGS			equ 3
+TRF_SEEN			equ 0				; found (the C's TV_VIS_TRAP)
+TRF_MADE			equ 1				; made by magic: no experience for disarming
+HIGH_RAM_END		equ TRAP_LIST+TRAP_MAX*TRAP_SIZE
 	ASSERT HIGH_RAM_END <= IM2_TABLE
 MIN_MALLOC_TD		equ 4				; townsfolk by day
 MIN_MALLOC_TN		equ 8				; and by night
@@ -619,6 +631,7 @@ KILLER_WOUND		equ $FE05
 KILLER_STRAIN		equ $FE06			; casting (mass) genocide
 KILLER_AURA			equ $FE07			; the One Ring
 KILLER_EARTHQUAKE	equ $FE08			; elemental force bringing the cave down
+KILLER_TRAPS		equ $FE09			; and on: what each trap kills with (traps.asm)
 ; object_ident flags (DESC.C) and the kinds that have flavours
 OD_TRIED_BIT		equ 0
 OD_KNOWN_BIT		equ 1
@@ -711,6 +724,8 @@ CMD_STUDY			equ 20				; G: learn new spells
 CMD_PRAY			equ 21				; p: recite a prayer
 CMD_SAVE			equ 22				; Symbol Shift + X: save and quit (^X)
 CMD_FUEL			equ 23				; F: refill a lamp
+CMD_DISARM			equ 24				; D: disarm a trap
+CMD_TUNNEL			equ 25				; T: tunnel (rubble, rock)
 ; key modifiers in key_table
 KM_ANY				equ 0
 KM_SYMBOL			equ 1

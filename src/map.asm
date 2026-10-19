@@ -73,7 +73,7 @@ terrain_table:
 	db '#',ATTR_GREY,REM,0								; T_DOOR_SECRET
 	db '>',ATTR_WHITE,1<<TF_PASSABLE|REM,0				; T_STAIR_DOWN
 	db '<',ATTR_WHITE,1<<TF_PASSABLE|REM,0				; T_STAIR_UP
-	db '#',ATTR_GREY,0,0								; T_TMP1
+	db ':',ATTR_UMBER,REM,0								; T_TMP1 (T_RUBBLE)
 	db '#',ATTR_GREY,0,0								; T_TMP2
 	db '%',ATTR_DARK,1<<TF_WALL|REM,0					; T_MAGMA
 	db '%',ATTR_WHITE,1<<TF_WALL|REM,0					; T_QUARTZ

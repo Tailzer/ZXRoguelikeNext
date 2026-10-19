@@ -261,7 +261,7 @@ CLASSES = {"TV_FOOD": 1, "TV_POTION1": 2, "TV_POTION2": 2,
            "TV_LIGHT": 20, "TV_FLASK": 19}       # (torches are 18: they stack)
 DEVICE_NOUN = {4: "Wand", 5: "Staff", 6: "Rod", 14: "Amulet", 15: "Ring"}
 # scroll effects that wait for later milestones: glyphs, traps, acquirement
-SCROLL_LATER = {"TV_SCROLL1": 0x00002000 | 0x00200000,
+SCROLL_LATER = {"TV_SCROLL1": 0x00002000,
                 "TV_SCROLL2": 0x00000400 | 0x00000800}
 # potion flag bits the game understands: Cure Light/Serious/Critical Wounds
 HEAL_DICE = {0x00001000: 2, 0x00002000: 4, 0x00004000: 6}

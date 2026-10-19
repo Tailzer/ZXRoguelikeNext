@@ -19,7 +19,7 @@ Created at the start of each game as in `CREATE.C`: choose a race (10), sex and 
 `h j k l y u b n` (Angband roguelike keys) or cursor keys `5 6 7 8`.
 Walk into a closed door to open it, or into a monster to attack it; walking onto an item picks it up; walking onto a store's number goes in (`p` purchase, `s` sell, at home `g` get and `d` drop, space leaves). `s` searches for a turn (staying still). `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
 
-`C` (Caps Shift+C) shows the character sheet. Symbol Shift+X (the C's `^X`) saves the game and goes back to the title; pressing a key there carries on from the save. `F` (Caps Shift+F) fills a lantern from a flask of oil.
+`C` (Caps Shift+C) shows the character sheet. Symbol Shift+X (the C's `^X`) saves the game and goes back to the title; pressing a key there carries on from the save. `F` (Caps Shift+F) fills a lantern from a flask of oil. `D` (Caps Shift+D) disarms a trap you've found, `T` (Caps Shift+T) tunnels through rubble or rock; both ask for a direction.
 
 Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `z` aim a wand, `Z` (Caps Shift+Z) use a staff, `a` activate a rod, `A` (Caps Shift+A) activate an artifact, `m` cast a spell, `p` recite a prayer, `P` (Caps Shift+P) browse a book, `G` (Caps Shift+G) learn new spells, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels. Directions: `1`-`9` or `hjklyubn`.
 
@@ -59,12 +59,12 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - overeating now slows you, and being fast burns food faster, as in the C
      - not yet: mana (Restore Mana does nothing), hallucination, prices above 65535 (they show as 65535), haggling
    - 9a-2: scrolls and the `r` command *(done)* — `SCROLLS.C`, `SPELLS.C`, `MISC2.C` teleport, `MISC1.C` summon_monster/summon_undead
-     - 30 scroll kinds: Identify, Light, Darkness, Phase Door, Teleport, Teleport Level, Word of Recall, Magic Mapping, Treasure/Object Detection, Door/Stair Location, Detect Invisible, Monster Confusion, Protection from Evil, Blessing/Holy Chant/Holy Prayer, Create Food, Summon Monster/Undead, Aggravate Monster, Genocide, Mass Genocide, Dispel Undead, Trap/Door Destruction, *Destruction*, Remove Curse and *Remove Curse* (nothing is cursed yet), Trap Detection (no traps yet)
+     - 30 scroll kinds: Identify, Light, Darkness, Phase Door, Teleport, Teleport Level, Word of Recall, Magic Mapping, Treasure/Object Detection, Door/Stair Location, Detect Invisible, Monster Confusion, Protection from Evil, Blessing/Holy Chant/Holy Prayer, Create Food, Summon Monster/Undead, Aggravate Monster, Genocide, Mass Genocide, Dispel Undead, Trap/Door Destruction, *Destruction*, Remove Curse and *Remove Curse* (nothing is cursed yet), Trap Detection, Trap Creation
      - unknown scrolls go by a title made up each game from `TABLES.C`'s syllables (`a Scroll titled "ha nagkli"`); identified like potions
      - can't read while blind or confused; Identify isn't used up if you choose nothing
      - monsters can be confused (Monster Confusion's glowing hands, on your next hit or theirs) and wander at random until it wears off (1 in 8 a turn); protection from evil repels evil monsters up to your level
      - item classes renumbered: food 1, potion 2, scroll 3, weapon 4 ... boots 10
-     - not yet: enchant/curse scrolls, Rune of Protection, Trap Creation, Recharging, Acquirement (not generated until their milestones)
+     - not yet: enchant/curse scrolls, Rune of Protection, Recharging, Acquirement (not generated until their milestones)
    - 9b: wands, staffs and rods *(done)* — `WANDS.C`, `STAFFS.C`, `RODS.C`, `SPELLS.C`
      - all 29 wands, 29 staffs and 26 rods; unknown ones go by metal (wands, rods) or wood (staffs), shuffled each game, drawn in that colour; identified by use like potions
      - charges (`magic_treasure`'s table per kind), shown once known: "a Wand of Magic Missile (7 charges)", "{empty}" when found dry; rods recharge over their C timeouts, a turn at a time while carried
@@ -73,7 +73,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - Stone to Mud, Polymorph, Clone, Teleport Away, Slow/Haste/Confuse/Sleep Monster, Drain Life, Disarming, Trap/Door Destruction, Wonder, the dragon wands; staffs of Earthquakes, Starlight, Holiness, Power, Probing, Detect Evil and the rest; rods of Healing, Restoration, Detection, Recall...
      - the Recharging scroll (may blow the wand up); the Magic shop stocks wands and staffs
      - item kinds are now 9 bits (270 kinds, room for 510): item records are 9 bytes with a word kind, store stock 5 bytes with charges
-     - not yet: traps (Trap Location finds none), mana (the Magi restore INT only), monsters escaping walls an earthquake drops on them (survivors keep their floor)
+     - not yet: mana (the Magi restore INT only), monsters escaping walls an earthquake drops on them (survivors keep their floor)
    - 9c-1: magical pluses *(done)* — `MISC1.C` magic_treasure/m_bonus/randnor, `SCROLLS.C`, `SPELLS.C` enchant/remove_curse, `DUNGEON.C` pseudo-identify, `STORE1.C` item_value
      - weapons and armour come with pluses or curses as magic_treasure gives them (chance 15 + level, at most 70; cursed 10/13 of that again), `m_bonus` using the C's normal table; dragon scale mail always enchanted; crowns more often; the stores' goods are made at level 5 (black market 40) and nothing cursed is stocked
      - names show pluses once known: "a Dagger (1d4) (+3,+2)", "Chain Mail (-2,+0) [32,+4]"; {cursed}, {blessed}, and {average}/{good}/{excellent}/{special} feelings
@@ -90,7 +90,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - names: "a Ring of Strength (+3)", "a Ring of Protection [+12]", "a Ring of Sustain Strength" (sustains don't show their number)
      - an amulet goes round the neck; rings on the right hand, then the left, then "Put ring on which hand (l/r/L/R)?"; `e` lists all ten slots
      - what they do: stats as used (the C's use_stat: current stat modified by equipment, 18/xx steps of 10) feed every bonus and the character sheet, while potions change the current stat; speed (two +1 Rings of Speed count once, the C's quirk); to-hit, to-dam and armour class; sustains (with the races' own); see invisible, free action (sleep potions), resist poison (poison potions, and it cures poisoning), slow digestion (half the food), aggravation (sleeping monsters near you wake), teleportation (1 in 100 a turn, teleport(40))
-     - resist fire, cold and acid, feather fall and searching are recorded and listed by Self Knowledge, which now lists what equipment does as the C does ("You resist fire exceptionally well.", "You have magical strength.", every sustain); nothing burns, freezes or melts you yet, there are no trap doors and no searching
+     - resist fire, cold and acid, feather fall and searching are recorded and listed by Self Knowledge, which now lists what equipment does as the C does ("You resist fire exceptionally well.", "You have magical strength.", every sustain); nothing burns, freezes or melts you yet
      - prices: unknown 45; known type, unknown number: the base cost; known: the cost plus magic_treasure's additions (100 a point for stats and pluses, 30 or 20 for searching), nothing if cursed; the Magic shop stocks them (never cursed ones)
      - no item feelings for rings and amulets (the C's pseudo-ID skips them)
      - `magic_items.asm` moved out of resident memory into the misc overlay (with the flavour shuffle); other overlays reach it with `OVCALL`
@@ -144,7 +144,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - priests and paladins learn from the Holy Books they carry, with WIS's stat_adj in place of INT's; `G` gives them a prayer at random ("You have learned the prayer of Remove Fear."); `p` recites one, `P` browses
      - the C's words for them: "You can't see to read your prayer!", "Use which Holy Book?", "Recite which prayer?", "You lost your concentration!", "You faint from fatigue!", and "Pray hard enough and your prayers may be answered." for anyone else
      - all 58 prayers: detect evil, the cures (3d3 to 16d4, cuts as the C has them), bless, chant and prayer, remove fear, light, find doors, slow and neutralize poison, scare (confusion), portal, sanctuary, satisfy hunger, remove curse, resist heat and cold, orb of draining, sense invisible, protection from evil, earthquake, sense surroundings, turn undead ("runs frantically!"), dispel undead and evil (3 or 4 x level), heal and healing, holy word, detect monsters, detection, perception, probing, clairvoyance, restoration, remembrance, banishment, word of destruction, annihilation, unbarring ways, recharging, dispel curse, enchant weapon and armour, elemental brand, blink, teleport, teleport away, teleport level, word of recall, alter reality
-     - not yet: glyph of warding (nothing can be placed on the floor yet), find traps (no traps)
+     - not yet: glyph of warding (nothing can be placed on the floor yet)
    - 9d-3a: monster spells *(done)* — `CREATURE.C` mon_cast_spell, `SPELLS.C` bolt/breath/teleport_away/teleport_to, `MORIA1.C` fire_dam/cold_dam/light_dam/acid_dam/poison_gas/minus_ac, `MISC2.C` inven_damage/player_saves, `MISC1.C` the summon_ functions, `SETS.C`
      - each race's spells (spells, spells2, spells3 and INTELLIGENT) are in a new data page (67, `data/mspells.asm`, 12 bytes a race); a bit in the race record says it has any, and only those monsters page in the new overlay (56, `src/mcast.asm`)
      - 1 in freq turns, within 18 squares and in line of sight, it casts one of its spells at random; an intelligent one below a tenth of its hit dice picks only its escapes half the time; unseen casters are "It"
@@ -158,7 +158,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - and then: chaos drains experience, confuses and turns every monster in sight but uniques into something else; shards cut (hp / 3); sound, plasma and gravity stun; confusion confuses; disenchantment takes 1d2 off each plus of one piece of armour ("There is a static feeling in the air."); nether drains experience unless hold life keeps it; nexus teleports the player far, to the monster, a level up or down, or swaps two stats ("Your body starts to scramble..."); elemental force 1 in 10 brings the cave down ("The cave ceiling collapses!": pushed aside, the square turns to rock, or 250 if there's nowhere to go, "Killed by an Earthquake"); inertia slows; light lights the room and blinds; time drains experience or takes a quarter off one stat or all six; gravity stuns, slows and teleports 5; darkness and the darkness storm darken the room
      - nether bolt and ball (experience, hold life), the whirlpool, arrows, the mana storm, gestures in shadow (darkness), blanking the mind (pluses unknown again, the map forgotten), teleport level ("You sink through the floor.")
      - summons: ringwraiths (uniques) then greater undead, reptiles, ants, uniques (not 'P') and jabberwocks; uniques come where the C lets them, if not dead or already on the level
-     - not yet: trap creation only says "casts a spell." (no traps); chaos's hallucination (none in the game)
+     - not yet: chaos's hallucination (none in the game)
    - 9d-4: monster melee side effects *(done)* — `CREATURE.C` make_attack, monster_critical, shatter_quake; `MORIA1.C` corrode_gas; `SPELLS.C` aggravate_monster (code in `src/mmelee.asm`, in the monster spell overlay, sharing its element, stat and teleport routines)
      - the to-hit (power + level x 3 against AC, or against the player's level for stealing; nothing to steal or drain is a miss), what each blow says (the C's nine insults, Farmer Maggot's five lines, "You've been slimed!") and what it does, all moved out of resident code into the overlay
      - all 25 blow types: armour absorbs normal blows; strength, dexterity, constitution, intelligence and wisdom drained unless sustained (strength half the time), or all six; confusion, fear (saving throw; mages shrug it off 1 in 3), blindness (dwarves and TR_RES_BLIND), paralysis (saving throw, free action), poison; fire, acid, cold, lightning as the spells' elements; corrosion eats armour or does 1d8, and the pack; experience drained unless hold life holds it; aggravation; disenchantment of one piece of equipment
@@ -190,7 +190,15 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - not yet: throwing flasks of oil (there's no throwing yet)
    - searching (`MORIA1.C` search, `MORIA2.C` move_char, `CREATE.C` srh/fos), so secret doors can be found without magic: `s` searches the 8 squares round you; walking, you search every step if your searching frequency is 1 or less, else 1 in that many
      - each square: 1d100 under the searching skill (race + class, plus Searching rings) finds a secret door ("You have found a secret door."), which becomes a closed door; a tenth of the chance when confused, blind or in the dark
-     - not yet: traps and chests to find; the character sheet doesn't show searching
+     - not yet: chests to find; the character sheet doesn't show searching
+12. **Traps** (`TREASURE.C` the 18 traps, `MISC2.C` place_trap/place_rubble, `MORIA2.C` hit_trap/disarm_trap/tunnel, `MORIA1.C` twall, `SPELLS.C` detect_trap/trap_creation/td_destroy) *(done)*
+   - each level (not the town) gets 1d(level / 3, 2 to 10) traps anywhere on the floor and as much rubble in the corridors; traps are hidden (all but open pits) until found by searching (as you walk, or `s`), by magic, or by stepping on one; found traps show as a red `^` (`;` for a loose rock), rubble as `:`
+   - stepping on one sets it off, as `hit_trap`: pits (feather fall floats you down) and covered pits (an open pit after), trap doors (down a level), arrows and darts against your AC (STR and CON drains unless sustained, slowing unless free action), gases (sleep unless free action, corrosion, poison, blindness unless resisted, confusion), the teleport rune, the summoning rune (2 + 1d3 monsters, then it's gone), fire and acid, a loose rock (something under it) and a rockfall (rubble where it was, and you're back where you stepped from); the death screen names the trap
+   - `D` disarms a trap you've found next to you: disarming skill (race + class), 2 x the DEX adjustment, the INT adjustment and class adjustment x level / 3, a tenth of it blind, in the dark or confused; skill + 100 - the trap's level over 1d100 removes it with its experience ("You have disarmed the trap.") and you step on; else "You failed to disarm the trap.", or with no skill "You set the trap off!"
+   - `T` tunnels: rubble against 1d180, magma 1d600+10, quartz 1d400+10, granite 1d1200+80, with a digging power of (STR + the weapon's dice x sides + its pluses) / 2 (STR + 25 + 50 per point of a TUNNEL weapon); rubble sometimes hides an object; permanent rock never; no weapon, "You dig with your hands, making no progress."
+   - magic: Trap Detection/Location (scroll, staff, rod, Detection), Find Traps/Doors (mage), Find Traps (priest) find the traps in view; Trap Creation (scroll, monster spell) puts traps on every floor square round you, no experience for disarming those; Trap/Door Destruction (scroll, wand, spell, Caspanion) and Disarming destroy them
+   - the trap list is 32 x 4 bytes of high RAM (saved with it), so saves from before this don't load; the trap code is its own overlay (58, `src/traps.asm`)
+   - not yet: chests and their traps; shovels and picks (TV_DIGGING isn't converted yet, so `T` digs with your weapon; the TUNNEL bonus is ready for them)
 
 ## Memory map
 
@@ -209,6 +217,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
 | `$B8D0-$B9FB` | the character's hit points per level (50 words) and experience needed per level (50 dwords) |
 | `$B9FC-$BA1B` | store owners, entry counts, door positions (the stock itself is in the store overlay) |
 | `$BA1C-$BB42` | dead uniques, the message buffer, what the player knows of spells, mana, and the spell-to-device effect buffer |
+| `$BB43-$BBC2` | traps, 32 x 4 bytes (y, x, type, found/made) |
 | `$BC00-$BDBF` | IM2 vector table + jump |
 | `$BEC0-$BFFF` | stack |
 | `$C000-$F30B` | dungeon map, 198x66 bytes (pages 32/33): low 4 bits terrain, bit 4 room, bit 5 lit/remembered, bit 6 player light, bit 7 monster here |
@@ -228,6 +237,7 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 | 52 `PAGE_MAGIC` | `potions.asm`, `effects.asm` | quaffing, stat changes, timed effects (every turn), the colour and title shuffle |
 | 53 `PAGE_SCROLL` | `scrolls.asm` | reading scrolls (summons go through `level_call` to the level overlay) |
 | 55 `PAGE_SPELL` | `spells.asm` | spells and prayers: learning, mana, browsing, casting |
+| 58 `PAGE_TRAP` | `traps.asm` | placing traps and rubble, setting them off, `D`, `T`, trap magic |
 | 54 `PAGE_DEVICE` | `devices.asm` | wands, staffs, rods and artifact activation: bolts, balls, beams (borrows scroll and potion effects through `device_xcall`) |
 
 Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 60-62 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page); the flavours (`data/flavours.asm`: potion colours, woods, metals, stones, amulets, the title syllables, the buffer this game's scroll titles are written into, normal_table) have their own page. 63 `EGO_PAGE` = `data/egos.asm` (ego and artifact names, flags and numbers, 24 bytes each); 64 `FLAVOUR_PAGE` = `data/flavours.asm`; 65 `ACT_PAGE` = `data/activate.asm`; 66 `SPELL_PAGE` = `data/spells.asm`. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.

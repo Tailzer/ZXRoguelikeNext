@@ -217,6 +217,92 @@ item_at:
 	or a
 	ret
 
+/* trap_at - D = y, E = x -> IX = the trap there, carry if there is one.
+	Preserves BC, DE, HL */
+trap_at:
+	push bc
+	ld ix,TRAP_LIST
+	ld b,TRAP_MAX
+.loop:
+	ld a,(ix+TR_TYPE)
+	or a
+	jr z,.next
+	ld a,(ix+TR_Y)
+	cp d
+	jr nz,.next
+	ld a,(ix+TR_X)
+	cp e
+	jr nz,.next
+	pop bc
+	scf
+	ret
+.next:
+	inc ix
+	inc ix
+	inc ix
+	inc ix
+	djnz .loop
+	pop bc
+	or a
+	ret
+
+/* trap_gone - D = y, E = x: the trap there is destroyed -> carry if there
+	was one. Preserves BC, DE, HL, IX */
+trap_gone:
+	push ix
+	call trap_at
+	jr nc,.none
+	ld (ix+TR_TYPE),0
+	scf
+.none:
+	pop ix
+	ret
+
+/* draw_traps - the traps that have been found, where they're in view:
+	'^', or ';' for a loose rock */
+draw_traps:
+	ld ix,TRAP_LIST
+	ld b,TRAP_MAX
+.loop:
+	push bc
+	ld a,(ix+TR_TYPE)
+	or a
+	jr z,.next
+	bit TRF_SEEN,(ix+TR_FLAGS)
+	jr z,.next
+	ld a,(view_y)
+	ld b,a
+	ld a,(ix+TR_Y)
+	sub b
+	cp VIEW_H
+	jr nc,.next
+	add a,VIEW_TOP
+	ld d,a
+	ld a,(view_x)
+	ld b,a
+	ld a,(ix+TR_X)
+	sub b
+	cp VIEW_W
+	jr nc,.next
+	ld e,a
+	call screen_addr
+	ld a,(ix+TR_TYPE)
+	cp 6
+	ld a,'^'
+	jr nz,$+4
+	ld a,';'
+	ld (hl),a
+	inc hl
+	ld (hl),ATTR_RED
+.next:
+	inc ix
+	inc ix
+	inc ix
+	inc ix
+	pop bc
+	djnz .loop
+	ret
+
 /* item_free_slot - IX = an empty floor slot, carry set if there is one */
 item_free_slot:
 	ld ix,ITEM_LIST

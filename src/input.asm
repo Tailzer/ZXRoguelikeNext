@@ -265,4 +265,6 @@ key_table:
 	db $FE,%00001000,KM_CAPS,CMD_CHARACTER,0,0	; C: character sheet
 	db $FE,%00000100,KM_SYMBOL,CMD_SAVE,0,0	; Symbol Shift + X: save (^X)
 	db $FD,%00001000,KM_CAPS,CMD_FUEL,0,0	; F: refill a lamp
+	db $FD,%00000100,KM_CAPS,CMD_DISARM,0,0	; D: disarm a trap
+	db $FB,%00010000,KM_CAPS,CMD_TUNNEL,0,0	; T: tunnel
 	db 0

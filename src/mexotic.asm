@@ -611,9 +611,13 @@ drain_exp:
 
 ; ---------------------------------------------------------------- the rest
 
-mc_traps:								; 42: no traps yet, so only words
+mc_traps:								; 42: trap creation
 	ld hl,mz_casts_spell
-	jp mx_say
+	call mx_say
+	push ix
+	OVCALL PAGE_TRAP, trap_creation, PAGE_MCAST
+	pop ix
+	ret
 mc_shadow:								; 53
 	ld hl,mz_shadow
 	call mx_say
