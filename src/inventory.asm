@@ -984,14 +984,15 @@ cmd_zap:
 	ld de,msg_no_rods
 	ld bc,IC_ROD*256+PM_ZAP
 use_device:
+	ld (ud_prompt),hl
 	ld (ud_none),de
 	ld (ud_class),bc
 	call pack_count
 	or a
 	ld hl,msg_pack_empty
 	jp z,msg_print
-	ld hl,(ud_class)					; (H = class)
-	ld a,h
+	ld hl,(ud_prompt)					; "Aim which wand?"
+	ld a,(ud_class+1)					; (the class)
 	call choose_pack
 	jr c,.chosen
 	ld a,(ud_class+1)
@@ -1306,6 +1307,7 @@ act_n:			db 0
 act_eq:			db 0
 act_slots:		ds EQ_SLOTS
 ud_none:		dw 0
+ud_prompt:		dw 0
 ud_class:		dw 0				; action, class
 msg_no_food:	db "You are not carrying any food.",0
 msg_no_room:	db "You have no room in your pack.",0

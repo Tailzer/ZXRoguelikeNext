@@ -70,6 +70,13 @@ shot = keyed(INV, " ", capture=True)
 line = next((l.strip() for l in shot if l.strip().startswith("a)")), "")
 print("  unknown wand:", repr(line))
 expect(re.fullmatch(r"a\) an? [A-Z][A-Za-z-]+ Wand", line), "an unknown wand goes by its metal")
+# ---- the prompts (they printed garbage from 9b to 13b)
+put(1, next(i for i, r in enumerate(KIND_RECS) if r["raw"][2] == 5)); put(2, next(i for i, r in enumerate(KIND_RECS) if r["raw"][2] == 6))
+for cmdno, want in ((AIM, "Aim which wand?"), (USE, "Use which staff?"), (ZAP, "Activate which rod?")):
+    shot = keyed1(cmdno, " ", capture=True)
+    print("  prompt:", repr(shot[0].strip()))
+    expect(shot[0].strip().startswith(want), f"'{want} (letter, or space)'")
+clear_pack(); put(0, mm, pval=5)
 # ---- magic missile: identified by use, a charge gone
 b = place(LIZ, y0, x0 + 4)
 keyed(AIM, "a6")
