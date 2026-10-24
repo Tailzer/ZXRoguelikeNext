@@ -101,14 +101,8 @@ try_move:
 	ld a,b
 	cp T_DOOR_CLOSED
 	jr nz,.wall
-	ld a,(hl)							; keep the square's flags
-	and ~TERRAIN_MASK
-	or T_DOOR_OPEN
-	ld (hl),a
-	ld a,1
-	ld (turn_taken),a
-	ld hl,msg_door_open
-	jp show_message
+	FARCALL PAGE_TRAP, bump_door		; open it (or pick its lock)
+	ret
 .wall:
 	ld hl,msg_wall
 	jp show_message

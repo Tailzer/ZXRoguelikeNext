@@ -77,6 +77,7 @@ place_monster:
 	ld (ix+M_SPEED),a
 	ld (ix+M_ML),0
 	ld (ix+M_CONFUSED),0
+	ld (ix+M_STUN),0
 	ld hl,0
 	ld a,(place_sleep)
 	or a

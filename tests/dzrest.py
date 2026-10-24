@@ -1,7 +1,7 @@
 import sys, re
 src = open("dzmonspell.py").read()
 exec(src.split("# a caster: not unique")[0])
-TRAP_PAGE = 58
+TRAP_PAGE = 59			# (resting and running: PAGE_RUN)
 CMD_MOVE, CMD_REST, CMD_REST_TURN = 0, 27, 28
 ASK = 99										# what the patched get_command says
 STUB = 0xBD40

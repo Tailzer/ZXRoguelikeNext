@@ -527,6 +527,8 @@ pack_carry:
 	cp IC_LIGHT							; arrows from the same pile
 	jr z,.pile
 	cp IC_AMMO
+	jr z,.pile
+	cp IC_SPIKE
 	jr nz,.same
 .pile:
 	ld hl,(carry_src)
@@ -577,6 +579,9 @@ pack_carry:
 	scrolls, books, torches (with the same fuel) and flasks of oil */
 stackable:
 	cp IC_AMMO
+	scf
+	ret z
+	cp IC_SPIKE
 	scf
 	ret z
 	cp IC_WAND
@@ -751,6 +756,8 @@ filter_ok:
 	ld a,c
 	cp IC_LIGHT
 	scf
+	ret z
+	cp IC_SPIKE							; (spikes are carried)
 	ret z
 	cp IC_LANTERN						; (and bows and arrows)
 	ccf

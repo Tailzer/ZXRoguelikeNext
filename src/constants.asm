@@ -21,6 +21,7 @@ PAGE_SPELL			equ 55				; overlay: spells, mana, learning
 PAGE_MCAST			equ 56				; overlay: monsters casting spells
 PAGE_SAVE			equ 57				; overlay: saving and restoring the game
 PAGE_TRAP			equ 58				; overlay: traps, rubble, disarming, tunnelling
+PAGE_RUN			equ 59				; overlay: resting and running (next_command)
 PAGE_SCREEN_HI		equ 11				; bank 5's upper half, normally in slot 3
 DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
 EGO_PAGE			equ 63				; ego names and flags (data/egos.asm)
@@ -203,6 +204,7 @@ M_CDIS				equ 10				; distance from player
 M_ML				equ 11				; 1 if the player can see it
 M_RACE_HI			equ 12				; race number, high byte ($FF = free slot)
 M_CONFUSED			equ 13				; 1 while confused
+M_STUN				equ 14				; turns stunned (a shield bash)
 ; race record (data/races.asm, made by tools/convert.py from MONSTERS.C)
 RACE_SIZE			equ 64				; 128 per 8K page
 R_CHAR				equ 0
@@ -437,6 +439,7 @@ IC_FLASK			equ 19				; Flasks of oil
 IC_LANTERN			equ 20				; lanterns and the light artifacts
 IC_BOW				equ 21				; slings, bows, crossbows (wielded)
 IC_AMMO				equ 22				; shots, arrows, bolts (they stack)
+IC_SPIKE			equ 23				; iron spikes (they stack; jam doors)
 OBJ_LAMP_MAX		equ 15000			; the most a lamp holds
 FILTER_CHARGED		equ $FE				; choose_pack filter: wand or staff
 TREAS_ROOM_ALLOC	equ 9				; mean objects in rooms
@@ -502,7 +505,10 @@ TR_FLAGS			equ 3
 TRF_SEEN			equ 0				; found (the C's TV_VIS_TRAP)
 TRF_MADE			equ 1				; made by magic: no experience for disarming
 MISSILE_CTR			equ TRAP_LIST+TRAP_MAX*TRAP_SIZE	; word: each new pile of
-HIGH_RAM_END		equ MISSILE_CTR+2	; ammunition's number (a pile stacks)
+DOOR_LIST			equ MISSILE_CTR+2	; the doors that are locked, stuck or
+DOORS_KEPT			equ 16				; broken: square address, number
+DOOR_SIZE			equ 3
+HIGH_RAM_END		equ DOOR_LIST+DOORS_KEPT*DOOR_SIZE
 	ASSERT HIGH_RAM_END <= IM2_TABLE
 MIN_MALLOC_TD		equ 4				; townsfolk by day
 MIN_MALLOC_TN		equ 8				; and by night
@@ -734,6 +740,10 @@ CMD_TUNNEL			equ 25				; T: tunnel (rubble, rock)
 CMD_THROW			equ 26				; v: throw
 CMD_REST			equ 27				; R: rest (taken by next_command)
 CMD_REST_TURN		equ 28				; a turn's rest (next_command makes it)
+CMD_OPEN			equ 29				; o: open (pick a lock)
+CMD_CLOSE			equ 30				; c: close a door
+CMD_BASH			equ 31				; f: force (bash) a door or monster
+CMD_SPIKE			equ 32				; S: spike a door shut
 ; key modifiers in key_table
 KM_ANY				equ 0
 KM_SYMBOL			equ 1

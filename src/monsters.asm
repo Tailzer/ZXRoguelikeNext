@@ -307,6 +307,12 @@ mon_turn:
 	ld (ix+M_SLEEP),0
 	ld (ix+M_SLEEP+1),0
 .act:
+	ld a,(ix+M_STUN)					; stunned: it may shake it off
+	or a
+	jr z,.unstunned
+	FARCALL PAGE_TRAP, mon_stun
+	jr nz,.done_move
+.unstunned:
 	call mon_move
 .done_move:
 	call update_mon
@@ -574,18 +580,9 @@ make_move:
 	jr z,.door
 	cp T_DOOR_SECRET
 	jr nz,.fail							; wall: try the next direction
-.door:
-	bit RM_OPEN_DOOR,(iy+R_MOVE)
-	jr nz,.open_door
-	ld a,(mm_terrain)					; can't open: a closed door gets
-	cp T_DOOR_CLOSED					; bashed (needs 20+ hp, so never yet),
-	ret z								; a secret one isn't noticed
-	jr .fail
-.open_door:
-	ld a,(hl)
-	and ~TERRAIN_MASK
-	or T_DOOR_OPEN
-	ld (hl),a
+.door:									; opened, unlocked, bashed (doors.asm)
+	FARCALL PAGE_TRAP, mon_door
+	jr c,.fail
 	ret
 .open:
 	ld a,(player_y)

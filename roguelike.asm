@@ -56,6 +56,7 @@
 	Milestone 13b: Bows - slings, bows and crossbows, their ammunition,
 		Beleg Cuthalion, Bard and Cubragol
 	Milestone 14a: Resting and running - 'R', and Caps Shift + a direction
+	Milestone 14b: Doors - locked, stuck and broken; o, c, f and S
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -128,7 +129,7 @@ main_loop:
 	ld (turn_taken),a
 	jr dispatch.after
 .awake:
-	FARCALL PAGE_TRAP, next_command		; D = command, B = dx, C = dy (or
+	FARCALL PAGE_RUN, next_command		; D = command, B = dx, C = dy (or
 										; resting, or running)
 	push bc
 	push de
@@ -255,6 +256,7 @@ item_commands:							; in CMD_INVEN order
 	dw cmd_cast, cmd_browse, cmd_study, cmd_pray
 	dw 0, cmd_fuel						; (CMD_SAVE is handled above)
 	dw 0, 0, 0, 0, cmd_rest_turn		; (disarm, tunnel, throw, rest: above)
+	dw cmd_open, cmd_close, cmd_bash, cmd_spike
 player_died:
 	FARCALL PAGE_SAVE, delete_save		; (a dead character's save goes)
 	FARCALL PAGE_CREATE, player_died_screen
@@ -359,9 +361,14 @@ mcast_end:
 	MMU 2, PAGE_TRAP, $4000
 	include "src/traps.asm"
 	include "src/throw.asm"
-	include "src/rest_run.asm"
+	include "src/doors.asm"
 trap_end:
 	ASSERT trap_end <= $6000, "Trap overlay is over 8K"
+
+	MMU 2, PAGE_RUN, $4000
+	include "src/rest_run.asm"
+run_end:
+	ASSERT run_end <= $6000, "Run overlay is over 8K"
 
 	MMU 2, PAGE_SAVE, $4000
 	include "src/save.asm"

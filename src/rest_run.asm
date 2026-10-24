@@ -1,4 +1,4 @@
-/* rest_run.asm - resting and running (overlay page PAGE_TRAP)
+/* rest_run.asm - resting and running (overlay page PAGE_RUN)
 	References: MORIA1.C rest/rest_off/disturb, find_init/find_run/end_find/
 	area_affect/see_wall/see_nothing (-CJS-), DUNGEON.C (resting until the
 	count runs out or hit points and mana are full; any key stops either).
@@ -263,7 +263,7 @@ rest_turn:
 	ld a,(mana_regen)
 	call z,regenhp
 	ld a,(mana_regen)
-	OVCALL PAGE_SPELL, regenmana, PAGE_TRAP
+	OVCALL PAGE_SPELL, regenmana, PAGE_RUN
 	ld hl,(p_food)
 	inc hl
 	ld (p_food),hl

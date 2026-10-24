@@ -795,6 +795,22 @@ cmd_rest_turn:
 	ld (turn_taken),a
 	ret
 
+/* cmd_open, cmd_close, cmd_bash, cmd_spike - the door commands (doors.asm) */
+cmd_open:
+	xor a
+	jr door_cmd
+cmd_close:
+	ld a,1
+	jr door_cmd
+cmd_bash:
+	ld a,2
+	jr door_cmd
+cmd_spike:
+	ld a,3
+door_cmd:
+	OVCALL PAGE_TRAP, door_command, PAGE_ITEMS
+	ret
+
 /* cmd_fuel - 'F': fill the lamp from a flask of oil (refill_lamp in
 	DUNGEON.C) */
 cmd_fuel:

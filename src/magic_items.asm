@@ -826,6 +826,9 @@ magic_treasure:
 	ld (ix+I_PVAL+1),h
 	ret
 .ammo_magic:
+	ld a,(iy+K_TVAL)					; (spikes: never magic)
+	cp 13
+	ret z
 	call .magical
 	jr nc,.ammo_cursed
 	ld bc,1*256+35						; + m_bonus(1, 35) each

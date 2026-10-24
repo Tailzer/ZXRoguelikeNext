@@ -244,7 +244,8 @@ key_table:
 	db $EF,%00000100,0,CMD_MOVE, 1, 0	; 8 cursor right
 	db $FB,%00010000,1,CMD_DOWN, 0, 0	; > (Symbol Shift + T)
 	db $FB,%00001000,1,CMD_UP,   0, 0	; < (Symbol Shift + R)
-	db $FD,%00000010,0,CMD_STAY, 0, 0	; s: search (and stay) for a turn
+	db $FD,%00000010,KM_NONE,CMD_STAY, 0, 0	; s: search (and stay) for a turn
+	db $FD,%00000010,KM_CAPS,CMD_SPIKE,0,0	; S: spike a door
 	db $DF,%00000100,KM_NONE,CMD_INVEN,0,0	; i: inventory
 	db $FB,%00000100,KM_CAPS,CMD_EAT,0,0	; E: eat
 	db $FB,%00000100,KM_NONE,CMD_EQUIP,0,0	; e: equipment
@@ -268,6 +269,8 @@ key_table:
 	db $FD,%00000100,KM_CAPS,CMD_DISARM,0,0	; D: disarm a trap
 	db $FB,%00010000,KM_CAPS,CMD_TUNNEL,0,0	; T: tunnel
 	db $FE,%00010000,KM_NONE,CMD_THROW,0,0	; v: throw
-	db $FD,%00001000,KM_NONE,CMD_THROW,0,0	; f: fire (the same)
+	db $FD,%00001000,KM_NONE,CMD_BASH,0,0	; f: force (bash) a door or monster
+	db $DF,%00000010,KM_NONE,CMD_OPEN,0,0	; o: open (pick a lock)
+	db $FE,%00001000,KM_NONE,CMD_CLOSE,0,0	; c: close a door
 	db $FB,%00001000,KM_CAPS,CMD_REST,0,0	; R: rest
 	db 0

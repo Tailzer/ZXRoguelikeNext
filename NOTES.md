@@ -17,9 +17,9 @@ Created at the start of each game as in `CREATE.C`: choose a race (10), sex and 
 ## Controls
 
 `h j k l y u b n` (Angband roguelike keys) or cursor keys `5 6 7 8`.
-Walk into a closed door to open it, or into a monster to attack it; walking onto an item picks it up; walking onto a store's number goes in (`p` purchase, `s` sell, at home `g` get and `d` drop, space leaves). `s` searches for a turn (staying still). `R` (Caps Shift+R) rests: a number of turns, or Enter for as long as needed. Caps Shift with a movement letter (`HJKLYUBN`) runs that way. `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
+Walk into a closed door to open it (picking its lock if it has one), or into a monster to attack it; walking onto an item picks it up; walking onto a store's number goes in (`p` purchase, `s` sell, at home `g` get and `d` drop, space leaves). `s` searches for a turn (staying still). `R` (Caps Shift+R) rests: a number of turns, or Enter for as long as needed. Caps Shift with a movement letter (`HJKLYUBN`) runs that way. `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
 
-`C` (Caps Shift+C) shows the character sheet. Symbol Shift+X (the C's `^X`) saves the game and goes back to the title; pressing a key there carries on from the save. `F` (Caps Shift+F) fills a lantern from a flask of oil. `D` (Caps Shift+D) disarms a trap you've found, `T` (Caps Shift+T) tunnels through rubble or rock; both ask for a direction. `v` (or `f`) throws or fires something from the pack in a direction.
+`C` (Caps Shift+C) shows the character sheet. Symbol Shift+X (the C's `^X`) saves the game and goes back to the title; pressing a key there carries on from the save. `F` (Caps Shift+F) fills a lantern from a flask of oil. `D` (Caps Shift+D) disarms a trap you've found, `T` (Caps Shift+T) tunnels through rubble or rock; both ask for a direction. `v` throws or fires something from the pack in a direction. Doors: `o` opens (picks a lock), `c` closes, `f` forces (bashes) a door or a monster with your shield, `S` (Caps Shift+S) jams a closed door with an iron spike; each asks for a direction.
 
 Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `z` aim a wand, `Z` (Caps Shift+Z) use a staff, `a` activate a rod, `A` (Caps Shift+A) activate an artifact, `m` cast a spell, `p` recite a prayer, `P` (Caps Shift+P) browse a book, `G` (Caps Shift+G) learn new spells, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels. Directions: `1`-`9` or `hjklyubn`.
 
@@ -222,6 +222,16 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - either stops for a key (which isn't taken as a command), anything said, any hurt, a monster coming into view, or a new level (the C calls disturb() from everywhere; here those cover it)
    - the main loop asks `next_command` (trap overlay, `src/rest_run.asm`) instead of `get_command`
    - not yet: the status line doesn't show "Rest", and there's no repeat count (the C's `0` prefix)
+14b. **Doors** (`MORIA2.C` openobject/closeobject/bash/py_bash, `DUNGEON.C` jamdoor, `GENERATE.C` place_door, `CREATURE.C` make_move and mon_move's stun) *(done)*
+   - doors are made as the C's place_door: of 8, 3 open (1 in 4 of them broken), 3 closed (24% locked by 11-20, 1% stuck by 11-20) and 2 secret
+   - `o` opens a closed door; a locked one is picked with the disarming skill (skill - lock > 1d100: "You have picked the lock.", 1 experience; else "You failed to pick the lock."; confused: "You are too confused to pick the lock."); a stuck one: "It appears to be stuck."; walking into a closed door does the same, and "You open the door."
+   - `c` closes an open door ("The door appears to be broken." if it is; "I do not see anything you can close there.")
+   - `f` shoulders a closed door: 1d((STR + weight/2) x (20 + |lock|)) < 10 x (STR + weight/2 - |lock|): "The door crashes open!" (broken half the time) and you go through; else maybe "You are off-balance." (1 + 1d2 turns), or "The door holds firm."; at a monster, a shield bash (py_bash: STR, shield and body weight, DEX for the pluses; "You hit the Orc.", "The Orc appears stunned!" / "ignores your bash!", and maybe "You are off balance.")
+   - `S` jams a closed door with an Iron Spike (a new item, sold in the General Store, 7d6 to a pile): locked becomes stuck, each spike sticking it more (0, 20, 30, 37...); "The door must be closed first.", "That isn't a door!", "But you have no spikes."
+   - monsters: those that open doors pick locks and burst stuck doors (1d((hp+1)(50+n)) < 40(hp-10-n)); the rest bash closed doors (1d((hp+1)(80+n)) < 40(hp-20-n)): "You hear a door burst open!"; a stunned monster recovers (level^2 > 1d5000) or waits: "The Orc recovers and glares at you."
+   - doors with a number (locked, stuck, broken) are kept in high RAM, 16 a level (any more are plain); the door code is in the trap overlay (`src/doors.asm`), and resting and running moved to their own overlay (59, `src/rest_run.asm`) to make room
+   - `f` was a second fire key (13b); it's force now, as the roguelike keyset has it
+   - not yet: chests (open and bash work on doors only), monsters that tunnel or pass walls
 
 ## Memory map
 

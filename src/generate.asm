@@ -96,6 +96,7 @@ next_to_walls:
 
 /* generate_level - build a new level for dun_level */
 generate_level:
+	OVCALL PAGE_TRAP, doors_clear, PAGE_LEVEL
 	ld a,3								; stairs like corridor ends
 	ld (stair_wall_start),a
 	; blank cave
@@ -763,8 +764,9 @@ sign_to:
 rand_dir_table:
 	db -1,0, 1,0, 0,-1, 0,1
 
-/* place_door - HL = square. 3/8 open, 3/8 closed, 2/8 secret.
-	(Broken, locked and stuck doors come later.) Clobbers A, DE */
+/* place_door - HL = square. 3/8 open (1 in 4 of them broken), 3/8 closed
+	(of those, 1 in 100 stuck, 24 in 100 locked, by 11-20), 2/8 secret.
+	Clobbers A, DE */
 place_door:
 	push hl
 	ld a,8
@@ -773,11 +775,40 @@ place_door:
 	cp 4
 	jr nc,.not_open
 	ld (hl),T_DOOR_OPEN
-	ret
+	push hl
+	ld a,4
+	call randint
+	pop hl
+	dec a
+	ret nz
+	ld a,1								; broken
+	jr .number
 .not_open:
 	cp 7
 	jr nc,.secret
 	ld (hl),T_DOOR_CLOSED
+	push hl
+	ld a,100
+	call randint
+	pop hl
+	cp 26
+	ret nc								; plain
+	ld e,a
+	push hl
+	ld a,10
+	call randint
+	pop hl
+	add a,10
+	ld d,a
+	ld a,e
+	cp 3								; 1 in 100 stuck, else locked
+	ld a,d
+	jr nz,.number
+	neg
+.number:
+	push bc
+	OVCALL PAGE_TRAP, door_set, PAGE_LEVEL
+	pop bc
 	ret
 .secret:
 	ld (hl),T_DOOR_SECRET
@@ -1108,6 +1139,7 @@ boundary_rects:
 	same on every visit. By day everything is lit; by night only the
 	buildings */
 town_gen:
+	OVCALL PAGE_TRAP, doors_clear, PAGE_LEVEL
 	ld hl,(rng_state)
 	ld (saved_rng),hl
 	ld hl,(town_seed)

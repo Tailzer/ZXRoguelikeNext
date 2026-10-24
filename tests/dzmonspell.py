@@ -254,6 +254,7 @@ calm()
 # ---- teleported away; an exotic breath (9d-3b) leaves it to move
 set_spells(R, [45]); place(0, R, cy, cx)
 m = turn(); p = py()
+print("  teleport away:", repr(m), (y0, x0), "->", p)
 expect("teleports you away." in m and max(abs(p[0] - y0), abs(p[1] - x0)) > 3, "teleport away: the player goes")
 calm(); wr(A["PLAYER_Y"], bytes([y0])); wr(A["PLAYER_X"], bytes([x0])); call(A["UPDATE_VIEW"])
 calm()

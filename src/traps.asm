@@ -581,6 +581,9 @@ disarm_skill:
 	call threshold
 	pop hl
 	call .signed
+	ld a,(ds_lock)						; (picking a lock: no less for the
+	or a								; dark, as openobject)
+	ret nz
 	ld de,(p_blind)						; a tenth blind or in the dark
 	ld a,d
 	or e
@@ -611,6 +614,16 @@ disarm_skill:
 ; todis_adj (MISC2.C), as (stat below this, value) pairs - the C's 3 is 0
 todis_adj:	db 3,-8, 4,0, 5,-6, 6,-4, 7,-2, 8,-1, 13,0, 16,1, 18,2
 			db 59,4, 94,5, 117,6, 255,8
+
+/* lock_skill -> HL = the disarming skill as openobject has it */
+lock_skill:
+	ld a,1
+	ld (ds_lock),a
+	call disarm_skill
+	xor a
+	ld (ds_lock),a
+	ret
+ds_lock:		db 0
 
 /* dir_square - A = direction 1-9 -> D, E = the square that way, and
 	(tr_dy), (tr_dx) */

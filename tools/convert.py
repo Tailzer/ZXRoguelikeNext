@@ -259,7 +259,8 @@ CLASSES = {"TV_FOOD": 1, "TV_POTION1": 2, "TV_POTION2": 2,
            "TV_CLOAK": 11, "TV_GLOVES": 12, "TV_BOOTS": 13,
            "TV_AMULET": 14, "TV_RING": 15, "TV_MAGIC_BOOK": 16, "TV_PRAYER_BOOK": 17,
            "TV_LIGHT": 20, "TV_FLASK": 19,       # (torches are 18: they stack)
-           "TV_BOW": 21, "TV_SLING_AMMO": 22, "TV_BOLT": 22, "TV_ARROW": 22}
+           "TV_BOW": 21, "TV_SLING_AMMO": 22, "TV_BOLT": 22, "TV_ARROW": 22,
+           "TV_SPIKE": 23}
 # launchers by p1 (facts in MORIA2.C, objdes in DESC.C): multiplier, range,
 # the tval of the ammunition they fire
 BOWS = {1: (2, 20, "TV_SLING_AMMO"), 2: (2, 25, "TV_ARROW"), 3: (3, 30, "TV_ARROW"),
@@ -395,7 +396,7 @@ def magic_class(o):
     return {"TV_HAFTED": 3, "TV_POLEARM": 3, "TV_SWORD": 3, "TV_GLOVES": 4,
             "TV_BOOTS": 5, "TV_HELM": 6, "TV_CLOAK": 7, "TV_RING": 9,
             "TV_AMULET": 10, "TV_BOW": 11, "TV_SLING_AMMO": 12, "TV_BOLT": 12,
-            "TV_ARROW": 12}.get(t, 0)
+            "TV_ARROW": 12, "TV_SPIKE": 12}.get(t, 0)
 
 
 def main():
