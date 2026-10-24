@@ -258,7 +258,12 @@ CLASSES = {"TV_FOOD": 1, "TV_POTION1": 2, "TV_POTION2": 2,
            "TV_SOFT_ARMOR": 8, "TV_HARD_ARMOR": 8, "TV_SHIELD": 9, "TV_HELM": 10,
            "TV_CLOAK": 11, "TV_GLOVES": 12, "TV_BOOTS": 13,
            "TV_AMULET": 14, "TV_RING": 15, "TV_MAGIC_BOOK": 16, "TV_PRAYER_BOOK": 17,
-           "TV_LIGHT": 20, "TV_FLASK": 19}       # (torches are 18: they stack)
+           "TV_LIGHT": 20, "TV_FLASK": 19,       # (torches are 18: they stack)
+           "TV_BOW": 21, "TV_SLING_AMMO": 22, "TV_BOLT": 22, "TV_ARROW": 22}
+# launchers by p1 (facts in MORIA2.C, objdes in DESC.C): multiplier, range,
+# the tval of the ammunition they fire
+BOWS = {1: (2, 20, "TV_SLING_AMMO"), 2: (2, 25, "TV_ARROW"), 3: (3, 30, "TV_ARROW"),
+        4: (4, 35, "TV_ARROW"), 5: (3, 25, "TV_BOLT"), 6: (4, 35, "TV_BOLT")}
 DEVICE_NOUN = {4: "Wand", 5: "Staff", 6: "Rod", 14: "Amulet", 15: "Ring"}
 # scroll effects that wait for later milestones: glyphs, traps, acquirement
 SCROLL_LATER = {"TV_SCROLL1": 0x00002000,
@@ -357,6 +362,8 @@ def kind_record(o, cls):
     rec[18:22] = flags.to_bytes(4, "little")         # effects: bit n = case n+1
     rec[22] = o["subval"] & 63                       # flavour slot
     rec[23] = 1 if o["tval_name"] in ("TV_POTION2", "TV_SCROLL2") else 0
+    if cls == 21:
+        rec[22] = value(BOWS[o["p1"]][2])
     if o["tval_name"] in ("TV_WAND", "TV_STAFF"):     # p1: charge range, base
         rng, base, lev = CHARGES[o["tval_name"]][o["subval"] & 63]
         rec[12:14] = bytes([rng, base])
@@ -366,6 +373,9 @@ def kind_record(o, cls):
         rec[12:14] = bytes([0, 0])
     elif cls in (14, 15):                            # p1: a stat, or -5 if cursed
         rec[12:14] = bytes([o["p1"] & 255, 255 if o["p1"] < 0 else 0])
+    elif cls == 21:                                  # p1: multiplier, range; and
+        mult, rng, ammo = BOWS[o["p1"]]              # the ammunition's tval
+        rec[12:14] = bytes([mult, rng])
     rec[24] = o["toac"] & 255                        # base magical AC
     rec[25] = magic_class(o)                         # how magic_treasure treats it
     rec[26:30] = (o["flags2"] & 0xFFFFFFFF).to_bytes(4, "little")
@@ -384,7 +394,8 @@ def magic_class(o):
         return 8                                     # crowns: more often magical
     return {"TV_HAFTED": 3, "TV_POLEARM": 3, "TV_SWORD": 3, "TV_GLOVES": 4,
             "TV_BOOTS": 5, "TV_HELM": 6, "TV_CLOAK": 7, "TV_RING": 9,
-            "TV_AMULET": 10}.get(t, 0)
+            "TV_AMULET": 10, "TV_BOW": 11, "TV_SLING_AMMO": 12, "TV_BOLT": 12,
+            "TV_ARROW": 12}.get(t, 0)
 
 
 def main():
@@ -542,8 +553,15 @@ EGOS = {
     "SN_IRRITATION": ("AGGRAVATE", "", 0, 0, "H"),
     "SN_VULNERABILITY": ("", "", 0, 0, ""),
     "SN_ENVELOPING": ("", "", 0, 0, "H"),
+    "SN_ACCURACY": ("", "", 0, 0, ""),                 # bows
+    "SN_MIGHT_BOW": ("", "", 0, 0, ""),
+    "SN_SLAY_EVIL": ("SLAY_EVIL", "", 25, 0, ""),      # ammunition
+    "SN_SLAY_ANIMAL": ("SLAY_ANIMAL", "", 30, 0, ""),
+    "SN_DRAGON_SLAYING": ("SLAY_DRAGON", "", 35, 0, ""),
+    "SN_WOUNDING": ("", "", 100, 0, ""),
+    "SN_BACKBITING": ("", "", 0, 0, ""),
 }
-EGO_EXTRA = {"SN_MAGI_ROBE": "SN_MAGI", "SN_FIRE2": "SN_FIRE"}   # ids past the C's, same names
+EGO_EXTRA = {"SN_MAGI_ROBE": "SN_MAGI", "SN_FIRE2": "SN_FIRE", "SN_MIGHT_BOW": "SN_MIGHT"}   # ids past the C's, same names
 EGO_DICE = {"SN_FIRE2": 2}                                         # the whip of fire with 2d3
 
 
@@ -612,8 +630,14 @@ def ego_tables(note, objs, kinds, kind_of, specials):
         return out
     lines = [note, f"MAX_OBJECTS\t\tequ {value('MAX_OBJECTS')}", f"SPECIAL_OBJ\t\tequ {value('SPECIAL_OBJ')}", "",
              "; kind, then 1d(first byte) chooses among (weight, 1 in keep, artifact)"]
-    lines += table("art_table", [(k, v) for k, v in choices.items() if not k.startswith("cloak:")])
+    lines += table("art_table", [(k, v) for k, v in choices.items() if not k.startswith(("cloak:", "bow:"))])
     lines += table("art_cloak_table", [(k[6:], v) for k, v in choices.items() if k.startswith("cloak:")])
+    lines += ["", "; the bow artifacts (magic_treasure's TV_BOW): which, then to-hit and to-dam added",
+              "bow_arts:"]
+    for k, v in choices.items():
+        if k.startswith("bow:"):
+            a = v[0][0]
+            lines.append(f"\tdb {sn[a['sn']]},{a['add'][0]},{a['add'][1]}\t; {k[4:]}")
     n = sum(1 for idx in specials if (objs[idx]["name"], objs[idx]["tval"]) in kind_of)
     lines += [f"NUM_ART_BITS\tequ {len(names) + n}"]
     # its 12 cases in order: the kind, or $FFFF for the lights the game hasn't
@@ -746,6 +770,15 @@ def artifacts():
         k = src.index("switch", j)
         sw = src[k:src.index("{", k)] + "{" + brace_block(src, src.index("{", k))[0] + "}"
         choices["cloak:" + name] = art_choices(sw)
+    # the bows: Beleg Cuthalion and Bard (long bows), Cubragol (light
+    # crossbows); their pluses are added to the bow's (bow_arts)
+    i = src.index("case TV_BOW:", src.index("void magic_treasure"))
+    for name in ("BELEG", "BARD", "CUBRAGOL"):
+        j = src.index(f"t_ptr->name2 = SN_{name};", i)
+        stmts = src[j:src.index(f"{name} = 1;", j)]
+        a = art_fields(stmts)
+        a["add"] = [int(re.search(r"->" + f + r"\s*\+=\s*(\d+)", stmts).group(1)) for f in ("tohit", "todam")]
+        choices["bow:" + name] = [(a, Fraction(1))]
     return choices
 
 
@@ -800,6 +833,7 @@ ACTS = [
     ("SN_ULMO", "Your trident glows deep red...", "", "TELE_MON", "MM", 0, "", 150, 0),
     ("SN_COLLUIN", "Your cloak glows many colours...", "You feel you can resist anything.", "RESIST", "MM", 0, "", 111, 0),
     ("SN_HOLCOLLETH", "You momentarily disappear...", "", "SLEEP", "MM", 0, "", 55, 0),
+    ("SN_CUBRAGOL", "", "", "FIRE_BOLTS", "MM", 0, "", 999, 0),
     ("SN_THINGOL", "You hear a low humming noise...", "", "RECHARGE", "MM", 0, "", 70, 0),
     ("SN_COLANNON", "", "", "TELEPORT", "MM", 100, "", 45, 0),
     ("SN_TOTILA", "Your Flail glows in scintillating colours...", "", "CONF_MON", "MM", 0, "", 15, 0),
@@ -843,7 +877,7 @@ AE = ["BOLT", "BALL", "DRAIN", "MUD", "TELE_MON", "CONF_MON", "FAST", "FAST0", "
       # (spells use these too, through do_effect)
       "SLEEP_ONE", "POLY", "SLOW_ONE", "LIGHT_LINE", "SLEEP_ADJ", "EARTHQUAKE", "DETECT_EVIL", "DETECT_MON",
       "TURN_UNDEAD", "BANISH", "DISPEL", "DETECT_ALL", "PROBE_ALL",
-      "LIGHT_AREA", "MAP_AREA", "WIZ_LIGHT"]
+      "LIGHT_AREA", "MAP_AREA", "WIZ_LIGHT", "FIRE_BOLTS"]
 
 
 def activate_tables(note, kinds):

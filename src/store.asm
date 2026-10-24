@@ -618,6 +618,8 @@ item_cost:
 	jp .offer
 .known:
 	ld a,(iy+K_CLASS)
+	cp IC_BOW							; bows and arrows: as weapons
+	jp nc,.arms
 	cp IC_MAGIC_BOOK
 	jp nc,.offer						; (books: just their cost)
 	cp IC_AMULET
@@ -692,6 +694,8 @@ item_cost:
 	ld a,(iy+K_CLASS)
 	cp IC_WEAPON
 	jr z,.weapon
+	cp IC_BOW
+	jr nc,.weapon
 	bit 7,b
 	jr nz,.worthless
 	ld a,b
@@ -706,9 +710,13 @@ item_cost:
 	ld a,(ix+I_TOHIT)
 	add a,(ix+I_TODAM)
 	add a,(ix+I_TOAC)
-.plus:									; + 100 per plus
-	ld e,a
+.plus:									; + 100 per plus (arrows 5: they
+	ld e,a								; come 20 at a time)
+	ld a,(iy+K_CLASS)
+	cp IC_AMMO
 	ld d,100
+	jr nz,$+4
+	ld d,5
 	mul d,e
 	add hl,de
 	ret nc

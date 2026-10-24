@@ -102,6 +102,9 @@ calc_bonuses:
 	ld a,(p_tohit)
 	add a,(ix+I_TOHIT)
 	ld (p_tohit),a
+	ld a,(iy+K_CLASS)					; bows can't damage
+	cp IC_BOW
+	jr z,.next
 	ld a,(p_todam)
 	add a,(ix+I_TODAM)
 	ld (p_todam),a
@@ -314,6 +317,13 @@ calc_bonuses:
 	ld hl,blows_table
 	add hl,de
 	ld a,(hl)
+	ld (p_blows),a
+	ld ix,EQUIP+EQ_WEAPON*ITEM_SIZE		; arrows in hand: one blow
+	call item_kind_addr
+	ld a,(iy+K_CLASS)
+	cp IC_AMMO
+	ret nz
+	ld a,1
 	ld (p_blows),a
 	ret
 
@@ -606,6 +616,8 @@ cmd_wield:
 	ld (cmd_slot),a
 	call item_kind_addr
 	ld a,(iy+K_CLASS)
+	cp IC_BOW							; bows and arrows are wielded
+	jr nc,.wielded
 	cp IC_LIGHT							; lights go in the light slot
 	jr z,.light
 	cp IC_LANTERN
@@ -613,6 +625,9 @@ cmd_wield:
 	cp IC_RING
 	call z,ring_hand					; (A = the slot)
 	ret nc
+	jr .slot
+.wielded:
+	ld a,IC_WEAPON
 	jr .slot
 .light:
 	ld a,IC_WEAPON+EQ_LIGHT
@@ -635,9 +650,13 @@ cmd_wield:
 .free:
 	pop hl
 	jp nz,stuck_on
+	ld a,(iy+K_CLASS)					; (arrows: the whole stack)
+	cp IC_AMMO
+	jr z,.whole
 	ld a,(ix+I_NUMBER)					; one from a stack (torches)
 	cp 2
 	jr nc,.one_of
+.whole:
 	push ix
 	pop de								; DE = pack slot
 	ld b,ITEM_SIZE

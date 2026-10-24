@@ -384,6 +384,9 @@ critical_blow:
 .plus:
 	add hl,de
 	djnz .plus
+	bit 7,h								; (a chance below 0: never, as the
+	jr z,$+5							; C's signed compare)
+	ld hl,0
 	pop de
 	or a
 	sbc hl,de							; chance - roll

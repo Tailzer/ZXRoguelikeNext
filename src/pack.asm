@@ -122,6 +122,10 @@ objdes_msg:
 	jr z,.light
 	cp IC_LANTERN
 	jr z,.light
+	cp IC_AMMO							; arrows: their dice, like weapons
+	jr z,.weapon
+	cp IC_BOW							; bows: " (x3)"
+	jr z,.bow
 	cp IC_MAGIC_BOOK
 	jp nc,.notes
 	cp IC_WEAPON
@@ -154,6 +158,14 @@ objdes_msg:
 	ld hl,txt_turns_light
 	call msg_add
 	jp .notes
+.bow:
+	ld hl,txt_open_x
+	call msg_add
+	ld a,(iy+K_P1)
+	call msg_add_u8
+	ld hl,txt_close_br
+	call msg_add
+	jr .armour
 .weapon:								; " (2d5)"
 	ld hl,txt_open_br
 	call msg_add
@@ -221,8 +233,11 @@ objdes_msg:
 	call msg_add
 .p1:									; rings and amulets: " (+2)" once
 	ld a,(iy+K_CLASS)					; known, unless 0 or a sustain
+	cp IC_BOW							; (bows and arrows: as egos)
+	jr nc,.ego_p1
 	cp IC_AMULET						; (ID_NOSHOW_P1)
 	jr nc,.jewel_p1
+.ego_p1:
 	bit ID_KNOWN2_BIT,(ix+I_IDENT)		; egos: " (+2)" if they show it,
 	jr z,.notes							; weapons " (+2 to stealth)"
 	ld a,(ix+I_NAME2)
@@ -508,9 +523,12 @@ pack_carry:
 	ld hl,carry_known
 	cp (hl)
 	jr nz,.not_same
-	ld a,(iy+K_CLASS)					; torches: only with the same fuel
-	cp IC_LIGHT
+	ld a,(iy+K_CLASS)					; torches: only with the same fuel;
+	cp IC_LIGHT							; arrows from the same pile
+	jr z,.pile
+	cp IC_AMMO
 	jr nz,.same
+.pile:
 	ld hl,(carry_src)
 	ld de,I_PVAL
 	add hl,de
@@ -558,6 +576,9 @@ pack_carry:
 /* stackable - A = class -> carry if things of it stack: food, potions,
 	scrolls, books, torches (with the same fuel) and flasks of oil */
 stackable:
+	cp IC_AMMO
+	scf
+	ret z
 	cp IC_WAND
 	ret c
 	cp IC_MAGIC_BOOK
@@ -731,9 +752,9 @@ filter_ok:
 	cp IC_LIGHT
 	scf
 	ret z
-	cp IC_LANTERN
-	scf
-	ret z
+	cp IC_LANTERN						; (and bows and arrows)
+	ccf
+	ret c
 	cp IC_MAGIC_BOOK
 	ret nc
 	cp IC_WEAPON
@@ -830,6 +851,7 @@ txt_space_:		db " ",0
 txt_open_sq:	db " [",0
 txt_close_sq:	db "]",0
 txt_open_br:	db " (",0
+txt_open_x:		db " (x",0
 txt_d:			db "d",0
 txt_close_br:	db ")",0
 txt_no_more_:	db "no more ",0

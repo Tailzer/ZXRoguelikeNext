@@ -185,6 +185,47 @@ facts:
 	rr e
 	djnz .align
 	ld (th_slays),de
+/* (facts, then) launcher - fired from the bow it needs: the full missile
+	skill, the bow's to-hit twice, its to-dam added and all of it times its
+	multiplier, and its range */
+launcher:
+	ld ix,th_obj
+	call item_kind_addr
+	ld a,(iy+K_TVAL)
+	ld (th_tval),a
+	ld ix,EQUIP+EQ_WEAPON*ITEM_SIZE
+	ld a,(ix+I_KIND_HI)
+	cp ITEM_EMPTY
+	ret z
+	call item_kind_addr
+	ld a,(iy+K_CLASS)
+	cp IC_BOW
+	ret nz
+	ld a,(th_tval)						; (shots for slings, arrows for
+	cp (iy+K_FLAVOUR)					; bows, bolts for crossbows)
+	ret nz
+	ld a,(iy+K_P1+1)
+	ld (th_range),a
+	ld a,(p_bthb)
+	ld l,a
+	ld h,0
+	ld (th_bth),hl
+	ld hl,(th_pth)
+	ld a,(ix+I_TOHIT)
+	call add_signed
+	call add_signed
+	ld (th_pth),hl
+	ld hl,(th_dam)
+	ld a,(ix+I_TODAM)
+	call add_signed
+	ld b,(iy+K_P1)
+	dec b
+	ld d,h
+	ld e,l
+.times:
+	add hl,de
+	djnz .times
+	ld (th_dam),hl
 	ret
 ; (inventory.asm's slay_flags: which byte of it_flags, which bit)
 th_slay_flags:
@@ -425,6 +466,52 @@ drop_throw:
 	call msg_add
 	jp msg_end
 
+/* fire_bolts - Cubragol: the first bolts in the pack, if they're plain,
+	become bolts of Fire (+3+1d3, +3+1d3) (activate in DUNGEON.C) */
+fire_bolts:
+	ld ix,PACK
+	ld b,PACK_MAX
+.each:
+	ld a,(ix+I_KIND_HI)
+	cp ITEM_EMPTY
+	jr z,.fails
+	push bc
+	call item_kind_addr
+	pop bc
+	ld a,(iy+K_TVAL)
+	cp 11								; (TV_BOLT)
+	jr z,.bolts
+	ld de,ITEM_SIZE
+	add ix,de
+	djnz .each
+.fails:
+	ld hl,mt_enchant_fails
+	jp msg_print
+.bolts:
+	ld a,(ix+I_NAME2)
+	or a
+	jr nz,.fails
+	ld hl,mt_fiery_shield
+	call msg_print
+	ld (ix+I_NAME2),SN_FIRE
+	res ID_CURSED_BIT,(ix+I_IDENT)
+	call .three
+	add a,(ix+I_TOHIT)
+	ld (ix+I_TOHIT),a
+	call .three
+	add a,(ix+I_TODAM)
+	ld (ix+I_TODAM),a
+	ld hl,p_update
+	set PU_BONUS,(hl)
+	ret
+.three:
+	ld a,3
+	call randint
+	add a,3
+	ret
+
+mt_fiery_shield: db "Your bolts are covered in a fiery shield!",0
+mt_enchant_fails: db "The fiery enchantment fails.",0
 mt_carrying_nothing: db "But you are not carrying anything.",0
 mt_throw_which:	db "Fire/Throw which one?",0
 txt_the_t:		db "The ",0
@@ -451,4 +538,5 @@ th_try_y:		db 0
 th_try_x:		db 0
 th_dist:		db 0
 th_seen:		db 0
+th_tval:		db 0
 th_oldhp:		dw 0

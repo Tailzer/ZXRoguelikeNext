@@ -1,0 +1,4 @@
+level*.txt
+screen*.txt
+sd/
+__pycache__/

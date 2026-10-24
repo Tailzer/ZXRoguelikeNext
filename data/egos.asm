@@ -6,7 +6,7 @@
 ; not for profit purposes provided that this copyright and statement are
 ; included in all such copies.
 
-; 179 ego names: SN_ numbers as in CONSTANT.H, then SN_MAGI_ROBE 177, SN_FIRE2 178
+; 180 ego names: SN_ numbers as in CONSTANT.H, then SN_MAGI_ROBE 177, SN_FIRE2 178, SN_MIGHT_BOW 179
 ; 24 bytes each: flags, flags2, cost added (an artifact's: its cost), cost per
 ; point of p1, EO_ options, dice (0 = the kind's), name; then an artifact's
 ; sides, weight, to-hit, to-dam, AC, p1 and which of those it sets (EA_)
@@ -190,7 +190,8 @@ SN_RAZORBACK		equ 175
 SN_BLADETURNER		equ 176
 SN_MAGI_ROBE		equ 177
 SN_FIRE2		equ 178
-NUM_EGOS		equ 179
+SN_MIGHT_BOW		equ 179
+NUM_EGOS		equ 180
 
 ego_table:
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
@@ -325,10 +326,10 @@ ego_table:
 	db 0,0,4,0,0,0,0,0,0,0,0,0,0,0
 	dw egn_43
 	db 0,0,0,0,0,0,0,0	; of Fire
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db 0,128,0,0,0,0,0,0,25,0,0,0,0,0
 	dw egn_44
 	db 0,0,0,0,0,0,0,0	; of Slay Evil
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db 0,32,0,0,0,0,0,0,35,0,0,0,0,0
 	dw egn_45
 	db 0,0,0,0,0,0,0,0	; of Dragon Slaying
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
@@ -358,7 +359,7 @@ ego_table:
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
 	dw egn_54
 	db 0,0,0,0,0,0,0,0	; (Unlocked)
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db 0,64,0,0,0,0,0,0,30,0,0,0,0,0
 	dw egn_55
 	db 0,0,0,0,0,0,0,0	; of Slay Animal
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
@@ -424,7 +425,7 @@ ego_table:
 	db 1,64,12,2,18,16,4,2,255,255,0,0,24,0
 	dw egn_76
 	db 0,0,0,5,18,0,4,19	; named Thunderfist
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db 0,0,0,0,0,0,0,0,100,0,0,0,0,0
 	dw egn_77
 	db 0,0,0,0,0,0,0,0	; of Wounding
 	db 128,129,34,0,16,4,0,2,64,156,0,0,24,0
@@ -496,9 +497,9 @@ ego_table:
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
 	dw egn_100
 	db 0,0,0,0,0,0,0,0	; of Morgoth
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db 8,1,0,0,0,0,0,2,168,97,0,0,9,0
 	dw egn_101
-	db 0,0,0,0,0,0,0,0	; of Beleg Cuthalion
+	db 0,0,0,0,0,0,3,16	; of Beleg Cuthalion
 	db 8,0,208,0,0,8,0,2,64,156,0,0,9,0
 	dw egn_102
 	db 0,0,0,0,0,15,5,20	; named Dal-i-thalion
@@ -571,12 +572,12 @@ ego_table:
 	db 6,128,0,1,0,12,2,2,32,78,0,0,24,0
 	dw egn_125
 	db 0,0,0,3,5,0,4,19	; named Eriril
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db 0,16,8,0,0,8,0,2,112,148,0,0,9,0
 	dw egn_126
-	db 0,0,0,0,0,0,0,0	; named Cubragol
-	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	db 0,0,0,0,0,0,1,16	; named Cubragol
+	db 8,0,128,0,0,0,0,2,32,78,0,0,8,0
 	dw egn_127
-	db 0,0,0,0,0,0,0,0	; of Bard
+	db 0,0,0,0,0,0,3,16	; of Bard
 	db 0,0,56,2,0,8,0,2,16,39,0,0,8,0
 	dw egn_128
 	db 0,0,0,0,0,15,0,4	; named Colluin
@@ -730,6 +731,9 @@ ego_table:
 	db 0,0,4,0,0,0,0,0,0,0,0,0,0,2
 	dw egn_178
 	db 0,0,0,0,0,0,0,0	; of Fire
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dw egn_179
+	db 0,0,0,0,0,0,0,0	; of Might
 egn_1:	db "of Resistance",0
 egn_2:	db "of Resist Acid",0
 egn_3:	db "of Resist Fire",0
@@ -908,3 +912,4 @@ egn_175:	db "named Razorback",0
 egn_176:	db "named Bladeturner",0
 egn_177:	db "of the Magi",0
 egn_178:	db "of Fire",0
+egn_179:	db "of Might",0

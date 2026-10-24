@@ -19,7 +19,7 @@ Created at the start of each game as in `CREATE.C`: choose a race (10), sex and 
 `h j k l y u b n` (Angband roguelike keys) or cursor keys `5 6 7 8`.
 Walk into a closed door to open it, or into a monster to attack it; walking onto an item picks it up; walking onto a store's number goes in (`p` purchase, `s` sell, at home `g` get and `d` drop, space leaves). `s` searches for a turn (staying still). `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
 
-`C` (Caps Shift+C) shows the character sheet. Symbol Shift+X (the C's `^X`) saves the game and goes back to the title; pressing a key there carries on from the save. `F` (Caps Shift+F) fills a lantern from a flask of oil. `D` (Caps Shift+D) disarms a trap you've found, `T` (Caps Shift+T) tunnels through rubble or rock; both ask for a direction. `v` throws something from the pack in a direction.
+`C` (Caps Shift+C) shows the character sheet. Symbol Shift+X (the C's `^X`) saves the game and goes back to the title; pressing a key there carries on from the save. `F` (Caps Shift+F) fills a lantern from a flask of oil. `D` (Caps Shift+D) disarms a trap you've found, `T` (Caps Shift+T) tunnels through rubble or rock; both ask for a direction. `v` (or `f`) throws or fires something from the pack in a direction.
 
 Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `z` aim a wand, `Z` (Caps Shift+Z) use a staff, `a` activate a rod, `A` (Caps Shift+A) activate an artifact, `m` cast a spell, `p` recite a prayer, `P` (Caps Shift+P) browse a book, `G` (Caps Shift+G) learn new spells, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels. Directions: `1`-`9` or `hjklyubn`.
 
@@ -120,7 +120,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - Remove Curse can't lift the curses of Morgul, Calris and Mormegil; *Remove Curse* can, but "The One Ring resists all attempts to remove it!"
      - value: an artifact's own cost (at most 65535), plus its known pluses; warriors feel it's "special"
      - the flavour tables moved to their own page (64), so the kinds can fill three pages
-     - not yet: activation (9c-3c), the lights (the Phial, the Star of Elendil, the Arkenstone: no light sources yet), the bows (Beleg Cuthalion, Bard, Cubragol: no missile weapons yet); Razorback and Bladeturner can't appear (dragon scale mail never reaches unique_armour in 1.2)
+     - not yet: activation (9c-3c), the lights (the Phial, the Star of Elendil, the Arkenstone: no light sources yet), the bows (Beleg Cuthalion, Bard, Cubragol: no missile weapons yet) (all since done); Razorback and Bladeturner can't appear (dragon scale mail never reaches unique_armour in 1.2)
    - 9c-3c: activation *(done)* — `DUNGEON.C` activate() and its timeout loop
      - `A` lists what you wear that can be activated (and is known to be an artifact), then does it: "You activate it...", the artifact's own message and effect, and then it needs so many turns to recharge, counted down while it's worn ("It whines, glows and fades..." until then)
      - it can fail: INT below 1d18 and 1d(its kind's level) above your level ("You fail to activate it properly.")
@@ -206,7 +206,16 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - what hits is used up; what misses or falls short lands on the floor where it stopped or next to it, or 1 in 10 "The Flask of oil disappears."
    - the missile skill is new character data, so saves from before this don't load
    - throwing lives in the trap overlay (58, `src/throw.asm`); the pain words are the device overlay's (`pain_add`)
-13b. **Bows** (slings, bows and crossbows with their ammunition: the multipliers and ranges in `facts`; Beleg Cuthalion, Bard, Cubragol)
+13b. **Bows** (`MORIA2.C` facts, `MISC1.C` magic_treasure's TV_BOW and missiles, `DESC.C`, `STORE1.C`, `DUNGEON.C` Cubragol's activation) *(done)*
+   - Slings, Short and Long Bows, Light and Heavy Crossbows, and Rounded Pebbles, Iron Shots, Arrows, Seeker Arrows, Bolts and Seeker Bolts are items now: in the dungeon, the Weaponsmith, and the Ranger's kit (a Long Bow)
+   - a launcher is wielded in the weapon's hand, as in 1.2 (there is no separate bow slot): "a Long Bow (x3) (+5,+6)"; its to-hit counts, its to-dam doesn't ("Bows can't damage."); hitting things with it does its dice (none, or 1d1)
+   - `v`/`f` with the ammunition the wielded launcher takes (shots for slings, arrows for bows, bolts for crossbows): the full missile skill, the launcher's to-hit twice, its to-dam added, all of it times its multiplier (x2 sling and short bow, x3 long bow and light crossbow, x4 heavy crossbow), and a range of 20 to 35; other things thrown as before
+   - ammunition: "23 Arrows (1d4) (+2,+3)"; magic_treasure gives it m_bonus(1,35) pluses and 1 in 11 egos (Slaying, Fire, Slay Evil, Slay Animal, Dragon Slaying, Wounding), or cursed ones (Backbiting); 7d6 to a pile; each pile has its own number (the C's missile_ctr, saved), and arrows only stack with the pile they came from; wielded, arrows give one blow
+   - bows: m_bonus(1,30) and m_bonus(1,20), or cursed; of Might (+7,+13) and Accuracy (+15,+5); Beleg Cuthalion and Bard (long bows) and Cubragol (light crossbows), which activates: "Your bolts are covered in a fiery shield!" (the first bolts in the pack become bolts of Fire, +3+1d3 each) or "The fiery enchantment fails."
+   - prices: launchers as weapons (100 a plus), ammunition 5 a plus (it comes 20 at a time); they're felt by pseudo-ID and found by Detect Enchantment; fire and acid burn them as in the C
+   - a fix on the way: a critical hit's chance below zero (light things with poor to-hit, bare hands at low level) always made a critical; now never, as the C's signed compare
+   - new kinds and the pile counter: saves from before this don't load
+   - not yet: wielded ammunition used up in melee (the C uses one per hit)
 
 ## Memory map
 

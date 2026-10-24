@@ -53,6 +53,8 @@
 	Milestone 12: Traps - the 18 traps and rubble, found by searching
 		or magic, 'D' to disarm and 'T' to tunnel
 	Milestone 13a: Throwing - 'v' throws anything, flasks of oil burn
+	Milestone 13b: Bows - slings, bows and crossbows, their ammunition,
+		Beleg Cuthalion, Bard and Cubragol
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)

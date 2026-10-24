@@ -66,12 +66,12 @@ pcn_5:	db "Paladin",0
 
 ; starting kit for each class: 5 kinds, $FFFF = nothing the game can use yet
 kit_table:
-	dw 0,45,8,63,196	; Warrior
-	dw 0,45,3,264,161	; Mage
-	dw 0,45,24,268,181	; Priest
-	dw 0,45,17,57,264	; Rogue
-	dw 0,45,8,264,65535	; Ranger
-	dw 0,45,8,268,151	; Paladin
+	dw 0,56,8,74,207	; Warrior
+	dw 0,56,3,275,172	; Mage
+	dw 0,56,24,279,192	; Priest
+	dw 0,56,17,68,275	; Rogue
+	dw 0,56,8,275,45	; Ranger
+	dw 0,56,8,279,162	; Paladin
 
 ; title for each class and level
 title_table:

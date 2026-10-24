@@ -385,6 +385,8 @@ MC_CLOAK			equ 7
 MC_CROWN			equ 8
 MC_RING				equ 9
 MC_AMULET			equ 10
+MC_BOW				equ 11
+MC_AMMO				equ 12
 OBJ_TOWN_LEVEL		equ 5				; what level store goods are made at
 ; ego items: SN_ numbers come with data/egos.asm, 16 bytes each in EGO_PAGE
 EGO_SIZE			equ 24
@@ -433,6 +435,8 @@ IC_PRAYER_BOOK		equ 17
 IC_LIGHT			equ 18				; Wooden Torches (they stack, by fuel)
 IC_FLASK			equ 19				; Flasks of oil
 IC_LANTERN			equ 20				; lanterns and the light artifacts
+IC_BOW				equ 21				; slings, bows, crossbows (wielded)
+IC_AMMO				equ 22				; shots, arrows, bolts (they stack)
 OBJ_LAMP_MAX		equ 15000			; the most a lamp holds
 FILTER_CHARGED		equ $FE				; choose_pack filter: wand or staff
 TREAS_ROOM_ALLOC	equ 9				; mean objects in rooms
@@ -497,7 +501,8 @@ TR_TYPE				equ 2
 TR_FLAGS			equ 3
 TRF_SEEN			equ 0				; found (the C's TV_VIS_TRAP)
 TRF_MADE			equ 1				; made by magic: no experience for disarming
-HIGH_RAM_END		equ TRAP_LIST+TRAP_MAX*TRAP_SIZE
+MISSILE_CTR			equ TRAP_LIST+TRAP_MAX*TRAP_SIZE	; word: each new pile of
+HIGH_RAM_END		equ MISSILE_CTR+2	; ammunition's number (a pile stacks)
 	ASSERT HIGH_RAM_END <= IM2_TABLE
 MIN_MALLOC_TD		equ 4				; townsfolk by day
 MIN_MALLOC_TN		equ 8				; and by night

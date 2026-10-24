@@ -268,4 +268,5 @@ key_table:
 	db $FD,%00000100,KM_CAPS,CMD_DISARM,0,0	; D: disarm a trap
 	db $FB,%00010000,KM_CAPS,CMD_TUNNEL,0,0	; T: tunnel
 	db $FE,%00010000,KM_NONE,CMD_THROW,0,0	; v: throw
+	db $FD,%00001000,KM_NONE,CMD_THROW,0,0	; f: fire (the same)
 	db 0

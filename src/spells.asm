@@ -1743,10 +1743,13 @@ ms_det_ench:							; detect_enchantment: magical
 	jr nc,.next
 	call item_kind_addr
 	ld a,(iy+K_CLASS)					; weapons and armour with pluses, an
-	cp IC_WEAPON						; ego, and not cursed
-	jr c,.next
+	cp IC_WEAPON						; ego, and not cursed (bows and
+	jr c,.next							; arrows too)
+	cp IC_BOW
+	jr nc,.arms
 	cp IC_AMULET
 	jr nc,.next
+.arms:
 	bit ID_CURSED_BIT,(ix+I_IDENT)
 	jr nz,.next
 	ld a,(ix+I_NAME2)

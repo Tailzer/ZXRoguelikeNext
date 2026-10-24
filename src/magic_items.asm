@@ -143,6 +143,10 @@ magic_treasure:
 	jp z,.helm
 	cp MC_CLOAK
 	jp z,.cloak
+	cp MC_BOW
+	jp z,.bow
+	cp MC_AMMO
+	jp z,.ammo
 	; body armour and shields
 	call .magical
 	jp nc,.armour_cursed
@@ -690,6 +694,194 @@ magic_treasure:
 	ld bc,10*256+100
 	jp .ac_minus
 
+.bow:									; which bow it is, while the kind's
+	ld b,0								; in: 1 a long bow, 2 a light crossbow
+	ld a,(iy+K_P1+1)					; (by range: 30, or 25 for bolts)
+	cp 30
+	jr nz,$+4
+	ld b,1
+	cp 25
+	jr nz,.which
+	ld a,(iy+K_FLAVOUR)					; (the ammunition's tval)
+	cp 11
+	jr nz,.which
+	ld b,2
+.which:
+	ld a,b
+	ld (mt_bow),a
+	set ID_SHOWHD_BIT,(ix+I_IDENT)		; (always shows both)
+	call .magical
+	jp nc,.bow_cursed
+	ld bc,1*256+30						; + m_bonus(1, 30), m_bonus(1, 20)
+	call m_bonus
+	call .add_hit
+	ld bc,1*256+20
+	call m_bonus
+	call .add_dam
+	ld a,(mt_special)					; special: magik(3 * special / 2)
+	ld b,a
+	srl a
+	add a,b
+	call magik
+	ret nc
+	ld a,15
+	call randint
+	cp 9
+	jr nc,.accuracy						; 9-15
+	cp 1
+	jr nz,.might						; 2-8
+	ld a,(mt_nounique)					; 1: maybe an artifact
+	or a
+	jr nz,.might
+	ld a,(mt_bow)
+	cp 1
+	jr nz,.crossbow
+	ld a,3								; a long bow, 1 in 3: Beleg
+	call randint						; Cuthalion or Bard (if made
+	dec a								; already, nothing)
+	jr nz,.might
+	ld a,2
+	call randint
+	dec a
+	ld a,SN_BELEG
+	jr z,.bow_art
+	ld a,SN_BARD
+	jr .bow_art
+.crossbow:								; a light crossbow, 1 in 5: Cubragol
+	cp 2
+	jr nz,.might
+	ld a,5
+	call randint
+	dec a
+	jr nz,.might
+	ld a,SN_CUBRAGOL
+.bow_art:								; A = which: made, with its number,
+	ld b,a								; and its pluses added
+	call art_bit
+	and (hl)
+	ret nz
+	ld a,c
+	or (hl)
+	ld (hl),a
+	ld (ix+I_NAME2),b
+	ld a,b
+	call ego_addr
+	ld a,(iy+E_P1)
+	ld (ix+I_PVAL),a
+	ld hl,bow_arts
+.find_bow:
+	ld a,(hl)
+	inc hl
+	cp b
+	jr z,.bow_pluses
+	inc hl
+	inc hl
+	jr .find_bow
+.bow_pluses:
+	ld b,(hl)
+	inc hl
+	ld c,(hl)
+	jp .hit_dam
+.might:
+	ld a,SN_MIGHT_BOW
+	call .ego
+	ld bc,7*256+13
+	jp .hit_dam
+.accuracy:
+	ld a,SN_ACCURACY
+	call .ego
+	ld bc,15*256+5
+	jp .hit_dam
+.bow_cursed:							; - m_bonus(1, 50), m_bonus(1, 30)
+	call .is_cursed
+	ret nc
+	ld bc,1*256+50
+	call m_bonus
+	neg
+	call .add_hit
+	ld bc,1*256+30
+	call m_bonus
+	neg
+	jp .add_dam
+
+.ammo:									; shots, arrows and bolts: pluses,
+	set ID_SHOWHD_BIT,(ix+I_IDENT)		; then 7d6 of them, a new pile
+	call .ammo_magic
+	ld b,7
+	xor a
+.seven:
+	push af
+	push bc
+	ld a,6
+	call randint
+	pop bc
+	pop de
+	add a,d
+	djnz .seven
+	ld (ix+I_NUMBER),a
+	ld hl,(MISSILE_CTR)
+	inc hl
+	ld (MISSILE_CTR),hl
+	ld (ix+I_PVAL),l
+	ld (ix+I_PVAL+1),h
+	ret
+.ammo_magic:
+	call .magical
+	jr nc,.ammo_cursed
+	ld bc,1*256+35						; + m_bonus(1, 35) each
+	call m_bonus
+	call .add_hit
+	ld bc,1*256+35
+	call m_bonus
+	call .add_dam
+	ld a,(mt_special)					; an ego: magik(5 * special / 2)
+	ld b,a
+	srl a
+	add a,b
+	add a,b
+	call magik
+	ret nc
+	ld a,11
+	call randint
+	ld hl,ammo_egos
+.ammo_ego:
+	cp (hl)								; (1d11 against each limit)
+	jr z,.this_ego
+	jr c,.this_ego
+	inc hl
+	inc hl
+	inc hl
+	inc hl
+	jr .ammo_ego
+.this_ego:
+	inc hl
+	ld a,(hl)
+	call .ego
+	inc hl
+	ld b,(hl)
+	inc hl
+	ld c,(hl)
+	jp .hit_dam
+.ammo_cursed:							; - m_bonus(5, 55) each, 1 in 5 of
+	call .is_cursed						; Backbiting (-20 more)
+	ret nc
+	ld bc,5*256+55
+	call m_bonus
+	neg
+	call .add_hit
+	ld bc,5*256+55
+	call m_bonus
+	neg
+	call .add_dam
+	ld a,5
+	call randint
+	dec a
+	ret nz
+	ld a,SN_BACKBITING
+	call .ego
+	ld bc,$ECEC							; (-20, -20)
+	jp .hit_dam
+
 ; small helpers (A = amount unless said)
 .ac_plus:								; AC + m_bonus(B, C)
 	call m_bonus
@@ -883,6 +1075,11 @@ magic_treasure:
 	set ID_CURSED_BIT,(ix+I_IDENT)
 	scf
 	ret
+
+; ammunition egos by 1d11: up to, ego, to-hit, to-dam
+ammo_egos:
+	db 3,SN_SLAYING,5,5, 5,SN_FIRE,2,4, 7,SN_SLAY_EVIL,3,3
+	db 9,SN_SLAY_ANIMAL,2,2, 10,SN_DRAGON_SLAYING,3,3, 11,SN_WOUNDING,15,15
 
 ; weapon egos by 1d27: ego, to-hit, to-dam, 1 if it may be an artifact
 weapon_egos:
@@ -1205,4 +1402,5 @@ mt_special:		db 0
 mt_crown:		db 0
 mt_ego:			db 0
 mt_kego:		db 0
+mt_bow:			db 0				; 1 a long bow, 2 a light crossbow
 mt_nounique:	db 0				; 1: in a shop (no artifacts)

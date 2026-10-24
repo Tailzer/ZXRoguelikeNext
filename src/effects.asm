@@ -475,10 +475,13 @@ unfelt:
 arms:
 	call item_kind_addr
 	ld a,(iy+K_CLASS)
+	cp IC_BOW							; (bows and arrows too)
+	jr nc,.yes
 	cp IC_AMULET						; (not rings and amulets)
 	jr nc,.no
 	cp IC_WEAPON
 	jr c,.no
+.yes:
 	or 1
 	ret
 .no:
