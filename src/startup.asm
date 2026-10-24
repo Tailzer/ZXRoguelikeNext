@@ -5,8 +5,24 @@
 	(paper) and 2c+1 (ink).
  */
 
-video_init:
+/* hold_loading - the loading screen (still on Layer 2 from the NEX
+	loader) stays up for 5 seconds, or until a key is pressed */
+hold_loading:
+	ld b,250
+.frame:
+	halt
 	xor a
+	in a,($FE)
+	cpl
+	and %00011111
+	ret nz
+	djnz .frame
+	ret
+
+video_init:
+	ld bc,$123B							; Layer 2 off (the loading screen
+	xor a								; was showing on it)
+	out (c),a
 	out ($FE),a							; black border
 	nextreg NR_ULA_CONTROL,%10000000	; ULA off, tilemap only
 

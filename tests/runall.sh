@@ -5,7 +5,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 for t in "$@"; do
   pkill -f CSpect.exe; sleep 3
   (cd "$GAME" && mono "$HOME/CSpect3_0_15_2/CSpect.exe" -w2 -zxnext -s28 -esc -map=build/roguelike.map build/roguelike.nex > build/cspect.log 2>&1 &)
-  for i in $(seq 1 40); do sleep 1; lsof -iTCP:11000 -sTCP:LISTEN >/dev/null 2>&1 && break; done; sleep 2
+  for i in $(seq 1 40); do sleep 1; lsof -iTCP:11000 -sTCP:LISTEN >/dev/null 2>&1 && break; done; sleep 7	# (5 of them: the loading screen)
   echo "===== $t"
   (cd "$HERE" && python3 -I "$t" "$GAME/build/roguelike.map" 2>&1)
 done
