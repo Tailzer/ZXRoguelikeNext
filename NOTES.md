@@ -19,7 +19,7 @@ Created at the start of each game as in `CREATE.C`: choose a race (10), sex and 
 `h j k l y u b n` (Angband roguelike keys) or cursor keys `5 6 7 8`.
 Walk into a closed door to open it (picking its lock if it has one), or into a monster to attack it; walking onto an item picks it up; walking onto a store's number goes in (`p` purchase, `s` sell, at home `g` get and `d` drop, space leaves). `s` searches for a turn (staying still). `R` (Caps Shift+R) rests: a number of turns, or Enter for as long as needed. Caps Shift with a movement letter (`HJKLYUBN`) runs that way. `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
 
-`C` (Caps Shift+C) shows the character sheet. Symbol Shift+X (the C's `^X`) saves the game and goes back to the title; pressing a key there carries on from the save. `F` (Caps Shift+F) fills a lantern from a flask of oil. `D` (Caps Shift+D) disarms a trap you've found, `T` (Caps Shift+T) tunnels through rubble or rock; both ask for a direction. `v` throws or fires something from the pack in a direction. Doors: `o` opens (picks a lock), `c` closes, `f` forces (bashes) a door or a monster with your shield, `S` (Caps Shift+S) jams a closed door with an iron spike; each asks for a direction.
+`C` (Caps Shift+C) shows the character sheet. Symbol Shift+X (the C's `^X`) saves the game and goes back to the title; pressing a key there carries on from the save. `F` (Caps Shift+F) fills a lantern from a flask of oil. `D` (Caps Shift+D) disarms a trap you've found, `T` (Caps Shift+T) tunnels through rubble or rock; both ask for a direction. `v` throws or fires something from the pack in a direction. Doors: `o` opens (picks a lock), `c` closes, `f` forces (bashes) a door or a monster with your shield, `S` (Caps Shift+S) jams a closed door with an iron spike; each asks for a direction. `x` looks around (a direction, or 5 all round), `M` (Caps Shift+M) shows the whole map, `W` (Caps Shift+W) moves the view about (locate), Symbol Shift+P shows the last messages (^P), `/` (Symbol Shift+V) identifies a symbol, `%` (Symbol Shift+5) is Self Knowledge.
 
 Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r` read, `z` aim a wand, `Z` (Caps Shift+Z) use a staff, `a` activate a rod, `A` (Caps Shift+A) activate an artifact, `m` cast a spell, `p` recite a prayer, `P` (Caps Shift+P) browse a book, `G` (Caps Shift+G) learn new spells, `E` (Caps Shift+E) eat, `d` drop, `g` pick up. Choose items by letter; space cancels. Directions: `1`-`9` or `hjklyubn`.
 
@@ -232,6 +232,16 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - doors with a number (locked, stuck, broken) are kept in high RAM, 16 a level (any more are plain); the door code is in the trap overlay (`src/doors.asm`), and resting and running moved to their own overlay (59, `src/rest_run.asm`) to make room
    - `f` was a second fire key (13b); it's force now, as the roguelike keyset has it
    - not yet: chests (open and bash work on doors only), monsters that tunnel or pass walls
+14c. **Looking around** (`MORIA2.C` look/look_see/look_mon_desc, `IO.C` screen_map, `DUNGEON.C` locate and ^P, `HELP.C` ident_char) *(done)*
+   - `x` (the roguelike keys' look): "Look which direction?", then every monster you can see and every object on a lit or remembered square in sight, in that 45-degree cone (5: all round), nearest first, each until a key, space stopping it ("--Aborting look--"): "You see a Kobold (unhurt).", "You see a Dagger (1d4) ---pause---", "It is on a down staircase ---pause---"; then "That's all you see in that direction." or "You see nothing of interest."; the C's ray scan is done with the game's line of sight; no monster recall (there's no monster memory)
+   - `M`: the level a third the size in a border, each 3 x 3 showing its most important thing (you, stairs, items and monsters, doors, walls, floor), until a key
+   - `W`: "Map sector [y,x], which is north-east of your sector. Look which direction?" - the view moves half a screen each way, until another key, then comes back
+   - Symbol Shift+P (^P): the last 30 messages, oldest at the top; every message is kept as it's printed, the last 32 of them, in a RAM page of their own
+   - `/`: "Enter character to be identified :" and the C's list ("k - Kobold.", "# - A stone wall.", '@' your name); Symbol Shift gives the Spectrum's symbols, but [ ] { } | ~ \ need extended mode and can't be asked about
+   - `%`: Self Knowledge, as the potion
+   - none of them takes a turn
+   - the key table, scan_keys and get_command moved into the run overlay (only next_command reads commands) to make resident room; the look code is its own overlay (69, `src/look.asm`)
+   - not yet: inscriptions (`{`): an item's record has no room left for one, nor the save for a list of them
 
 ## Memory map
 

@@ -9,6 +9,7 @@ def patch_get(d=ASK, b=0, c=0):
     """get_command answers D = d once, then ASK"""
     code = bytes([0x16, d, 0x01, c, b, 0x3E, ASK, 0x32]) + struct.pack("<H", STUB + 1) + bytes([0xC9])
     wr(STUB, code)							# ld d,n : ld bc,cb : ld a,ASK : ld (STUB+1),a : ret
+    cmd(10, bytes([2, TRAP_PAGE]))			# (get_command is in the run overlay)
     wr(A["GET_COMMAND"], bytes([0xC3]) + struct.pack("<H", STUB))
 def regs_dbc():
     pc, sp, af, bc, de, hl = regs(); return de >> 8, (bc >> 8) & 255, bc & 255

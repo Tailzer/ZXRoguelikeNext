@@ -22,6 +22,11 @@ PAGE_MCAST			equ 56				; overlay: monsters casting spells
 PAGE_SAVE			equ 57				; overlay: saving and restoring the game
 PAGE_TRAP			equ 58				; overlay: traps, rubble, disarming, tunnelling
 PAGE_RUN			equ 59				; overlay: resting and running (next_command)
+PAGE_LOOK			equ 69				; overlay: look, the map, locate, ^P, symbols
+PAGE_LOG			equ 70				; RAM: the message history, at LOG_BASE
+LOG_BASE			equ $E000			; (paged into slot 7 over the map for a moment)
+LOG_LINES			equ 32
+LOG_LEN				equ 80
 PAGE_SCREEN_HI		equ 11				; bank 5's upper half, normally in slot 3
 DATA_WINDOW			equ $2000			; MMU slot 1: race and kind data pages
 EGO_PAGE			equ 63				; ego names and flags (data/egos.asm)
@@ -744,6 +749,12 @@ CMD_OPEN			equ 29				; o: open (pick a lock)
 CMD_CLOSE			equ 30				; c: close a door
 CMD_BASH			equ 31				; f: force (bash) a door or monster
 CMD_SPIKE			equ 32				; S: spike a door shut
+CMD_LOOK			equ 33				; x: look
+CMD_MAP				equ 34				; M: the whole map, reduced
+CMD_LOCATE			equ 35				; W: where - move the view about
+CMD_MESSAGES		equ 36				; Symbol Shift + P (^P): old messages
+CMD_SYMBOL			equ 37				; / (Symbol Shift + V): identify a symbol
+CMD_KNOWLEDGE		equ 38				; % (Symbol Shift + 5): self knowledge
 ; key modifiers in key_table
 KM_ANY				equ 0
 KM_SYMBOL			equ 1

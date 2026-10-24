@@ -811,6 +811,28 @@ door_cmd:
 	OVCALL PAGE_TRAP, door_command, PAGE_ITEMS
 	ret
 
+/* cmd_look, cmd_map, cmd_locate, cmd_messages, cmd_symbol - look.asm; no
+	turn. cmd_knowledge - '%': Self Knowledge (knowledge.asm) */
+cmd_look:
+	xor a
+	jr look_cmd
+cmd_map:
+	ld a,1
+	jr look_cmd
+cmd_locate:
+	ld a,2
+	jr look_cmd
+cmd_messages:
+	ld a,3
+	jr look_cmd
+cmd_symbol:
+	ld a,4
+look_cmd:
+	OVCALL PAGE_LOOK, look_command, PAGE_ITEMS
+	ret
+cmd_knowledge:
+	jp self_knowledge
+
 /* cmd_fuel - 'F': fill the lamp from a flask of oil (refill_lamp in
 	DUNGEON.C) */
 cmd_fuel:

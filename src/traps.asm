@@ -160,6 +160,13 @@ tr_rec:
 	add iy,de
 	ret
 
+/* trap_name_add - IX = trap: its name added to the message (look) */
+trap_name_add:
+	call tr_rec
+	ld l,(iy+0)
+	ld h,(iy+1)
+	jp msg_add
+
 /* say_found_trap - IX = trap: "You have found an arrow trap." */
 say_found_trap:
 	call msg_begin

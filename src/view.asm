@@ -54,6 +54,8 @@ update_view:
 draw_view:
 	call update_stuff
 	call update_view
+/* draw_map - draw_view without moving the view (locate) */
+draw_map:
 	ld a,(p_status)						; blind: nothing but yourself
 	bit PY_BLIND,a
 	jr z,.sighted
@@ -165,18 +167,22 @@ draw_view:
 	pop bc
 	djnz .monster
 
-	; player
+	; player (if the view shows them: locate moves it)
 .player:
 	ld a,(view_y)
 	ld b,a
 	ld a,(player_y)
 	sub b
+	cp VIEW_H
+	ret nc
 	add a,VIEW_TOP
 	ld d,a
 	ld a,(view_x)
 	ld b,a
 	ld a,(player_x)
 	sub b
+	cp VIEW_W
+	ret nc
 	ld e,a
 	call screen_addr
 	ld (hl),'@'

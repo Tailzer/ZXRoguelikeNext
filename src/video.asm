@@ -148,6 +148,7 @@ msg_end:
 	when the next one won't fit, -more- waits for a key first */
 msg_print:
 show_message:
+	call log_msg
 	push hl
 	call strlen
 	ld b,a
@@ -186,6 +187,44 @@ show_message:
 	ld a,(msg_col)
 	add a,b
 	ld (msg_col),a
+	ret
+
+/* log_msg - HL = a message: copied into the history (LOG_PAGE, paged
+	over the map's second half for the moment). Preserves everything */
+log_msg:
+	push af
+	push bc
+	push de
+	push hl
+	nextreg NR_MMU7,PAGE_LOG
+	ld a,(log_next)
+	ld e,a
+	ld d,LOG_LEN
+	mul d,e
+	ld a,d
+	add a,high LOG_BASE
+	ld d,a
+	ld b,LOG_LEN-1
+.copy:
+	ld a,(hl)
+	ld (de),a
+	or a
+	jr z,.done
+	inc hl
+	inc de
+	djnz .copy
+	xor a
+	ld (de),a
+.done:
+	nextreg NR_MMU7,MAP_PAGE+1
+	ld a,(log_next)
+	inc a
+	and LOG_LINES-1
+	ld (log_next),a
+	pop hl
+	pop de
+	pop bc
+	pop af
 	ret
 
 /* msg_clear - empty the message line */

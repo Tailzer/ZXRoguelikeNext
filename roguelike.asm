@@ -57,6 +57,7 @@
 		Beleg Cuthalion, Bard and Cubragol
 	Milestone 14a: Resting and running - 'R', and Caps Shift + a direction
 	Milestone 14b: Doors - locked, stuck and broken; o, c, f and S
+	Milestone 14c: Looking around - look, the map, locate, ^P, symbols
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -87,6 +88,7 @@ start:
 
 	call memory_init
 	FARCALL PAGE_MISC, video_init
+	FARCALL PAGE_LOOK, log_clear		; (no messages yet)
 	call interrupt_init
 
 	ld hl,msg_press_key
@@ -257,6 +259,7 @@ item_commands:							; in CMD_INVEN order
 	dw 0, cmd_fuel						; (CMD_SAVE is handled above)
 	dw 0, 0, 0, 0, cmd_rest_turn		; (disarm, tunnel, throw, rest: above)
 	dw cmd_open, cmd_close, cmd_bash, cmd_spike
+	dw cmd_look, cmd_map, cmd_locate, cmd_messages, cmd_symbol, cmd_knowledge
 player_died:
 	FARCALL PAGE_SAVE, delete_save		; (a dead character's save goes)
 	FARCALL PAGE_CREATE, player_died_screen
@@ -365,8 +368,14 @@ mcast_end:
 trap_end:
 	ASSERT trap_end <= $6000, "Trap overlay is over 8K"
 
+	MMU 2, PAGE_LOOK, $4000
+	include "src/look.asm"
+look_end:
+	ASSERT look_end <= $6000, "Look overlay is over 8K"
+
 	MMU 2, PAGE_RUN, $4000
 	include "src/rest_run.asm"
+	include "src/keys.asm"
 run_end:
 	ASSERT run_end <= $6000, "Run overlay is over 8K"
 
