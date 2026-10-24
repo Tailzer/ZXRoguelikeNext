@@ -732,6 +732,8 @@ CMD_FUEL			equ 23				; F: refill a lamp
 CMD_DISARM			equ 24				; D: disarm a trap
 CMD_TUNNEL			equ 25				; T: tunnel (rubble, rock)
 CMD_THROW			equ 26				; v: throw
+CMD_REST			equ 27				; R: rest (taken by next_command)
+CMD_REST_TURN		equ 28				; a turn's rest (next_command makes it)
 ; key modifiers in key_table
 KM_ANY				equ 0
 KM_SYMBOL			equ 1

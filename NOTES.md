@@ -17,7 +17,7 @@ Created at the start of each game as in `CREATE.C`: choose a race (10), sex and 
 ## Controls
 
 `h j k l y u b n` (Angband roguelike keys) or cursor keys `5 6 7 8`.
-Walk into a closed door to open it, or into a monster to attack it; walking onto an item picks it up; walking onto a store's number goes in (`p` purchase, `s` sell, at home `g` get and `d` drop, space leaves). `s` searches for a turn (staying still). `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
+Walk into a closed door to open it, or into a monster to attack it; walking onto an item picks it up; walking onto a store's number goes in (`p` purchase, `s` sell, at home `g` get and `d` drop, space leaves). `s` searches for a turn (staying still). `R` (Caps Shift+R) rests: a number of turns, or Enter for as long as needed. Caps Shift with a movement letter (`HJKLYUBN`) runs that way. `>` (Symbol Shift+T) / `<` (Symbol Shift+R) take stairs.
 
 `C` (Caps Shift+C) shows the character sheet. Symbol Shift+X (the C's `^X`) saves the game and goes back to the title; pressing a key there carries on from the save. `F` (Caps Shift+F) fills a lantern from a flask of oil. `D` (Caps Shift+D) disarms a trap you've found, `T` (Caps Shift+T) tunnels through rubble or rock; both ask for a direction. `v` (or `f`) throws or fires something from the pack in a direction.
 
@@ -216,6 +216,12 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - a fix on the way: a critical hit's chance below zero (light things with poor to-hit, bare hands at low level) always made a critical; now never, as the C's signed compare
    - new kinds and the pile counter: saves from before this don't load
    - not yet: wielded ammunition used up in melee (the C uses one per hit)
+14a. **Resting and running** (`MORIA1.C` rest/rest_off/disturb, find_init/find_run/area_affect/see_wall/see_nothing, `DUNGEON.C`) *(done)*
+   - `R` asks "Rest for how long?": a number (up to 30000) rests that many turns, Enter alone rests until hit points and mana are full (the C's `*`, which a Spectrum can't type without Symbol Shift), space gives up; resting heals twice as fast and digests a little less, as in the C
+   - Caps Shift + h j k l y u b n runs (the cursor keys are Caps Shift + 5-8 already, so they still walk): along corridors round their bends, through open rooms until a side opens or closes, stopping beside anything new in view (a monster, an item, a door, stairs, rubble, a trap you know of) and where a corridor branches (the C's find_examine and find_cut, both on); at most 100 steps ("You stop running to catch your breath."); confused, just a step
+   - either stops for a key (which isn't taken as a command), anything said, any hurt, a monster coming into view, or a new level (the C calls disturb() from everywhere; here those cover it)
+   - the main loop asks `next_command` (trap overlay, `src/rest_run.asm`) instead of `get_command`
+   - not yet: the status line doesn't show "Rest", and there's no repeat count (the C's `0` prefix)
 
 ## Memory map
 

@@ -55,6 +55,7 @@
 	Milestone 13a: Throwing - 'v' throws anything, flasks of oil burn
 	Milestone 13b: Bows - slings, bows and crossbows, their ammunition,
 		Beleg Cuthalion, Bard and Cubragol
+	Milestone 14a: Resting and running - 'R', and Caps Shift + a direction
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -127,7 +128,8 @@ main_loop:
 	ld (turn_taken),a
 	jr dispatch.after
 .awake:
-	call get_command					; D = command, B = dx, C = dy
+	FARCALL PAGE_TRAP, next_command		; D = command, B = dx, C = dy (or
+										; resting, or running)
 	push bc
 	push de
 	call msg_clear						; old messages go once you act
@@ -252,6 +254,7 @@ item_commands:							; in CMD_INVEN order
 	dw cmd_aim, cmd_use, cmd_zap, cmd_activate
 	dw cmd_cast, cmd_browse, cmd_study, cmd_pray
 	dw 0, cmd_fuel						; (CMD_SAVE is handled above)
+	dw 0, 0, 0, 0, cmd_rest_turn		; (disarm, tunnel, throw, rest: above)
 player_died:
 	FARCALL PAGE_SAVE, delete_save		; (a dead character's save goes)
 	FARCALL PAGE_CREATE, player_died_screen
@@ -356,6 +359,7 @@ mcast_end:
 	MMU 2, PAGE_TRAP, $4000
 	include "src/traps.asm"
 	include "src/throw.asm"
+	include "src/rest_run.asm"
 trap_end:
 	ASSERT trap_end <= $6000, "Trap overlay is over 8K"
 

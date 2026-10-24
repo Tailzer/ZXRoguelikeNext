@@ -789,6 +789,12 @@ stuck_on:
 	call msg_add
 	jp msg_end
 
+/* cmd_rest_turn - a turn spent resting (rest_run.asm has done the rest) */
+cmd_rest_turn:
+	ld a,1
+	ld (turn_taken),a
+	ret
+
 /* cmd_fuel - 'F': fill the lamp from a flask of oil (refill_lamp in
 	DUNGEON.C) */
 cmd_fuel:

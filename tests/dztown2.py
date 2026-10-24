@@ -197,7 +197,7 @@ def buy_price(store, kind, disc, prace, chr_, pval=0, e=None):
     cls = KIND_RECS[kind]["raw"][2]
     if cls in (4, 5): c += (c // 20) * pval				# charges (item_value)
     sat = lambda v: min(v, 65535)
-    if e and cls >= 14:									# rings, amulets
+    if e and cls in (14, 15):							# rings, amulets
         f = JEWEL.get((cls, KIND_RECS[kind]["raw"][22]))
         if f:
             n = e["tohit"] + e["todam"] if f[0] == "hd" else {6: e["pval"], 9: e["tohit"], 10: e["todam"], 11: e["toac"]}[f[0]]
@@ -209,7 +209,8 @@ def buy_price(store, kind, disc, prace, chr_, pval=0, e=None):
             if 0 < e["pval"] < 128:
                 for _ in range(e["pval"]): c = sat(c + (g[10] | g[11] << 8))
             if g[12] & 4: c = sat(c * 2)
-        if cls == 7: c = 0 if min(e["tohit"], e["todam"], e["toac"]) < 0 else c + (e["tohit"] + e["todam"] + e["toac"]) * 100
+        if cls in (7, 21, 22):							# weapons and bows 100 a plus, ammunition 5
+            c = 0 if min(e["tohit"], e["todam"], e["toac"]) < 0 else c + (e["tohit"] + e["todam"] + e["toac"]) * (5 if cls == 22 else 100)
         else: c = 0 if e["toac"] < 0 else c + e["toac"] * 100
         c = sat(c)
     if c == 0: return 0

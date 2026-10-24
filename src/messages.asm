@@ -9,10 +9,7 @@ msg_down:		db "You enter a maze of down staircases.",0
 msg_up:			db "You enter a maze of up staircases.",0
 msg_no_down:	db "I see no down staircase here.",0
 msg_no_up:		db "I see no up staircase here.",0
-msg_something:	db "Something is in the way.",0
 txt_the:		db "The ",0
-txt_in_way:		db " is in the way.",0
-txt_threatens:	db " is next to you!",0
 
 txt_the_lc:		db "the ",0
 txt_it:			db "It",0
