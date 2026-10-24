@@ -351,6 +351,11 @@ mod16_8:
 /* mon_move - IX = monster, IY = race. Random wandering for erratic
 	movers, otherwise head for the player; stationary ones only attack */
 mon_move:
+	bit RM_MULTIPLY,(iy+R_MOVE)			; it may breed first (populate.asm)
+	jr z,.no_breed
+	FARCALL PAGE_LEVEL, mon_breed
+	call mon_race
+.no_breed:
 	ld a,(ix+M_CONFUSED)				; confused: stumbles at random, and
 	or a								; 1 in 8 comes round
 	jr z,.clear_headed

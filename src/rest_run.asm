@@ -44,6 +44,17 @@ next_command:
 	ret c
 	jp start_run
 
+/* rest_state -> A = 0 not resting; else 1, HL = the turns of rest left
+	($FFFF: till hit points and mana are full) (mon_breed asks) */
+rest_state:
+	ld a,(rr_mode)
+	cp RR_REST
+	ld a,0
+	ret nz
+	ld hl,(rr_count)
+	inc a
+	ret
+
 /* rr_off - resting or running stops */
 rr_off:
 	xor a

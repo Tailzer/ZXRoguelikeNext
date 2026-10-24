@@ -165,11 +165,15 @@ ln_turn:
 	ld a,MR_CMOVE
 	call rc_field
 	ld a,c
-	and $3F
+	and $3B								; (CM_ATTACK_ONLY... CM_75_RANDOM)
 	or (hl)
 	ld (hl),a
 	inc hl
 	inc hl
+	ld a,(rc_wake)
+	bit RC_BRED,a
+	jr z,$+4
+	set 5,(hl)							; CM_MULTIPLY
 	bit RC_OPEN_DOOR,c
 	jr z,.door
 	set 1,(hl)							; CM_OPEN_DOOR
@@ -201,7 +205,7 @@ ln_turn:
 	set 1,(hl)
 .warm:
 	ld a,(rc_wake)						; woke, or slept on
-	or a
+	and $7F
 	ret z
 	add a,MR_WAKE-1
 	call rc_field

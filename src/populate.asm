@@ -10,6 +10,8 @@ MAX_OBJ_LEVEL		equ 255
 
 /* mon_clear_all - empty the monster list */
 mon_clear_all:
+	xor a								; (none bred yet)
+	ld (MON_MULT),a
 	ld hl,MON_LIST+M_RACE_HI
 	ld de,MON_SIZE
 	ld b,MON_MAX
@@ -849,6 +851,78 @@ poly_at:
 	pop de
 	jp place_monster
 
+/* mon_breed - IX = a monster that breeds (MULTIPLY), IY its race, at the
+	start of its move (mon_move in CREATURE.C): while fewer than
+	MAX_MON_MULT have bred on the level, and you aren't resting (but every
+	8th turn of a count, or 1 in 8 resting till you're better), with fewer
+	than 4 monsters in the 9 squares round it (itself too, k), 1 in 8k
+	another appears beside it, awake */
+mon_breed:
+	ld a,(MON_MULT)
+	cp MAX_MON_MULT+1
+	ret nc
+	OVCALL PAGE_RUN, rest_state, PAGE_LEVEL	; A = 0 not resting, else HL
+	or a								; the count ($FFFF: till better)
+	jr z,.count
+	ld a,h
+	and l
+	inc a
+	jr z,.needed
+	ld a,l
+	and MON_MULT_ADJ-1
+	ret nz
+	jr .count
+.needed:
+	ld a,MON_MULT_ADJ
+	call randint
+	dec a
+	ret nz
+.count:
+	ld a,(ix+M_Y)						; k: monsters in the 3 x 3 round it
+	dec a
+	ld d,a
+	ld a,(ix+M_X)
+	dec a
+	ld e,a
+	call map_addr
+	ld c,0
+	ld b,3
+.row:
+	push bc
+	ld b,3
+.col:
+	bit F_MON_BIT,(hl)
+	jr z,$+3
+	inc c
+	inc hl
+	djnz .col
+	ld de,MAP_W-3
+	add hl,de
+	ld a,c
+	pop bc
+	ld c,a
+	djnz .row
+	ld a,c
+	cp 4
+	ret nc
+	add a,a								; 1 in 8k
+	add a,a
+	add a,a
+	call randint
+	dec a
+	ret nz
+	ld d,(ix+M_Y)
+	ld e,(ix+M_X)
+	push ix
+	call clone_spot
+	pop ix
+	ret nc
+	ld hl,MON_MULT
+	inc (hl)
+	ld hl,rc_wake						; (seen, it's known to breed)
+	set RC_BRED,(hl)
+	ret
+
 /* clone_at - D = y, E = x: another of the monster there appears beside it
 	(multiply_monster in CREATURE.C) -> carry if one did */
 clone_at:
@@ -858,6 +932,9 @@ clone_at:
 	ret nc
 	ld (ix+M_SLEEP),0
 	ld (ix+M_SLEEP+1),0
+/* clone_spot - IX = a monster at D, E: another of it appears beside it,
+	awake -> carry if one did */
+clone_spot:
 	ld l,(ix+M_RACE)
 	ld h,(ix+M_RACE_HI)
 	ld (place_race),hl

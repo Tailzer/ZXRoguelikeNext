@@ -31,6 +31,7 @@ lv_special:		db 0				; something special on it (good_item_flag)
 lv_old_turn:	dw 0				; the turn the last level began
 rc_move:		db 0				; how a monster moved this move (the C's
 										;  rcmove: CM_ bits, bit 7 a door opened)
-rc_wake:		db 0				; 1 it woke this move, 2 it slept on
+rc_wake:		db 0				; 1 it woke this move, 2 it slept on;
+										;  bit 7: it bred (RC_BRED)
 town_seed:		dw 0				; the town is built from this each visit
 town_night:		db 0

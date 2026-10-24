@@ -223,7 +223,7 @@ def mspell_record(r):
 def race_record(r):
     move = 0
     for bit, flag in ((0, "MV_ONLY_ATT"), (1, "MV_ATT_NORM"), (2, "MV_20"), (3, "MV_40"),
-                      (4, "MV_75"), (6, "THRO_DR")):
+                      (4, "MV_75"), (6, "THRO_DR"), (7, "MULTIPLY")):
         if r["cmove"] & value(flag):
             move |= 1 << bit
     if r["cdefense"] & value("GROUP"):

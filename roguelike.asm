@@ -67,6 +67,7 @@
 	Milestone 19: Monsters in the walls - passing through rock, and boring
 		through it and through doors
 	Milestone 20: Shovels, picks and the level feeling
+	Milestone 21: Breeding - worm masses and lice multiply
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)

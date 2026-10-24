@@ -68,6 +68,9 @@ CM_40_RANDOM		equ $10
 CM_75_RANDOM		equ $20
 RC_OPEN_DOOR		equ 7				; (bit: the C's CM_OPEN_DOOR)
 RC_PHASE			equ 6				; (bit: the C's CM_PHASE)
+RC_BRED				equ 7				; (rc_wake's bit: the C's CM_MULTIPLY)
+MAX_MON_MULT		equ 75				; the most that breed on a level
+MON_MULT_ADJ		equ 8				; (higher: slower)
 LOG_BASE			equ $E000			; (paged into slot 7 over the map for a moment)
 LOG_LINES			equ 32
 LOG_LEN				equ 80
@@ -348,6 +351,7 @@ RM_40				equ 3
 RM_75				equ 4
 RM_GROUP			equ 5				; GROUP: appears in packs
 RM_OPEN_DOOR		equ 6				; THRO_DR: opens doors
+RM_MULTIPLY			equ 7				; MULTIPLY: breeds (mon_breed)
 MAX_SIGHT			equ 20
 MIN_MALLOC_LEVEL	equ 14				; minimum monsters per level
 
@@ -581,7 +585,9 @@ MISSILE_CTR			equ TRAP_LIST+TRAP_MAX*TRAP_SIZE	; word: each new pile of
 DOOR_LIST			equ MISSILE_CTR+2	; the doors that are locked, stuck or
 DOORS_KEPT			equ 16				; broken: square address, number
 DOOR_SIZE			equ 3
-HIGH_RAM_END		equ DOOR_LIST+DOORS_KEPT*DOOR_SIZE
+MON_MULT			equ DOOR_LIST+DOORS_KEPT*DOOR_SIZE	; how many have bred on
+										; this level (the C's mon_tot_mult)
+HIGH_RAM_END		equ MON_MULT+1
 	ASSERT HIGH_RAM_END <= IM2_TABLE
 MIN_MALLOC_TD		equ 4				; townsfolk by day
 MIN_MALLOC_TN		equ 8				; and by night

@@ -281,7 +281,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - `/`: after what the symbol is, "You recall those details? [y/n]" and each race of that symbol you know something of, the deepest first (space stops)
    - the memory outlives the character, as the C's: it's kept as roguelike.mem on the SD card, written when you save and when a character dies (the race that killed you remembered for it), and read at start-up
    - the memory is three RAM pages (74-76, 32 bytes a race); the code is its own overlay (73, `src/recall.asm`), reached through the resident `learn` (and `recall_call`, as `chest_call`); `pack_combine` moved there too, and the device overlay's copy of `msg_add_u16` went, to make room
-   - not yet: a few of the C's learning points with no port counterpart yet (breeding, eating others, picking up objects); cold blood and invisibility are learnt while it's in view rather than exactly where `update_mon` finds them
+   - not yet: a few of the C's learning points with no port counterpart yet (eating others, picking up objects); cold blood and invisibility are learnt while it's in view rather than exactly where `update_mon` finds them
 19. **Monsters in the walls** (`CREATURE.C` make_move's CM_PHASE and BREAK_WALL, `MORIA2.C` twall and move_char) *(done)*
    - those that pass through walls (CM_PHASE: ghosts, elementals, xorns...) step into granite, magma, quartz, rubble and closed doors as if they were floor, and leave them as they were; permanent rock (the outer wall, the greater vaults) stops them
    - those that bore (BREAK_WALL: umber hulks, Morgoth...) dig through rock and rubble as they come, the square becoming floor (in a room, like the room floor beside it, lit or not; else a corridor), and burst closed and secret doors open, broken ("You hear a door burst open!"); permanent rock stops them too
@@ -296,7 +296,15 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - each level is rated as it's made: things deeper than the level (objects by how much, special objects twice that, monsters half that up to 15, and a unique as much again; a group counts its leader), a vault's template (5 to 35), a pit (10); an artifact or special object (or a pit, 1 in ~(level^2)/650) makes it "special"
    - arriving, if you spent more than 1d50 turns on the last level: "You feel there is something special about this level.", or by its rating "You have a superb feeling about this level." (over 100) down to "You like the look of this place." (over 10)
    - the kinds are renumbered: save version 3
-   - resident code ends at `$AFE2`: about 30 bytes left
+   - resident code ends at `$AFE2`: about 30 bytes left (6 after 21)
+21. **Breeding** (`CREATURE.C` mon_move's CM_MULTIPLY and multiply_monster, `MORIA2.C` delete_monster's count, `DUNGEON.C`) *(done)*
+   - the 19 MULTIPLY races (worm masses, lice, giant white mice, fruit flies...) breed: at the start of each move, while fewer than 75 have bred on the level, with fewer than 4 monsters in the 9 squares round it (itself counted), 1 in 8 x that another appears beside it, awake, on clear floor
+   - resting slows them as the C: not resting, any turn; resting a count, only on every 8th turn of it; resting till you're better, 1 in 8
+   - the level's count goes down whenever any monster dies or goes, and starts again on each new level; it's kept in high RAM (saved with the level: save version 4)
+   - monster memory: "It can breed explosively" once one's seen breeding
+   - the breeding is the level overlay's (`mon_breed`, `src/populate.asm`; it asks the run overlay whether you're resting), reached from mon_move by a bit in the race's move flags (RM_MULTIPLY)
+   - resident code ends at `$AFFA`: 6 bytes left - the next resident change must move something out first
+   - not yet: a breeder that eats what's beside it (CM_EATS_OTHER) breeds only onto clear floor; it doesn't mind objects there (the C's must be bare)
 
 ## Memory map
 

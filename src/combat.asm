@@ -519,6 +519,11 @@ mon_take_hit:
 
 /* mon_remove - IX = monster to take off the map and out of the list */
 mon_remove:
+	ld hl,MON_MULT						; (one fewer bred, as the C counts)
+	ld a,(hl)
+	or a
+	jr z,$+3
+	dec (hl)
 	ld d,(ix+M_Y)
 	ld e,(ix+M_X)
 	call map_addr
