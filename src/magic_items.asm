@@ -1319,11 +1319,14 @@ try_special:
 	ld de,SPECIAL_OBJ+1
 	or a
 	sbc hl,de
-	jp c,.none
+	jp c,try_special_now.none
 	ld a,10
 	call randint
 	cp 1
-	jp nz,.none
+	jp nz,try_special_now.none
+/* try_special_now - the same without the 1 in 10 of 1d513 > 502 first
+	(special_place_object itself) */
+try_special_now:
 	xor a
 	ld (sp_done),a
 .again:

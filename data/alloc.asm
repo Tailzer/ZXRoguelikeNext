@@ -22,21 +22,21 @@ mon_level_table:
 ; t_level[]: how many dungeon objects have level <= n (n = 0-255)
 obj_level_table:
 	dw 17,40,52,64,67,94,98,112,117,118,138,139,152,153,160,172
-	dw 173,174,175,175,205,205,207,208,211,221,225,225,231,232,255,255
-	dw 258,259,260,264,265,266,267,267,288,288,289,289,291,296,296,298
-	dw 300,302,334,334,334,334,334,340,340,340,340,340,349,349,349,350
-	dw 350,355,355,355,355,355,366,366,366,366,366,370,370,371,371,371
-	dw 377,377,377,377,377,377,377,377,377,377,378,378,378,378,378,378
-	dw 378,378,378,379,383,383,383,383,383,383,383,383,383,383,384,384
-	dw 384,384,384,384,384,384,384,384,384,384,384,384,384,384,384,384
-	dw 384,384,384,384,384,384,384,384,384,384,384,384,384,384,384,384
-	dw 384,384,384,384,384,384,384,384,384,384,384,384,384,384,384,384
-	dw 384,384,384,384,384,384,384,384,384,384,384,384,384,384,384,384
-	dw 384,384,384,384,384,384,384,384,384,384,384,384,384,384,384,384
-	dw 384,384,384,384,384,384,384,384,384,384,384,384,384,384,384,384
-	dw 384,384,384,384,384,384,384,384,384,384,384,384,384,384,384,384
-	dw 384,384,384,384,384,384,384,384,384,384,384,384,384,384,384,384
-	dw 384,384,384,384,384,384,384,384,384,384,384,384,384,384,384,384
+	dw 173,174,175,175,206,206,208,209,212,222,226,226,232,233,256,256
+	dw 259,260,261,265,266,267,268,268,289,289,290,290,292,297,297,299
+	dw 301,303,335,335,335,335,335,341,341,341,341,341,352,352,352,353
+	dw 353,358,358,358,358,358,369,369,369,369,369,373,373,374,374,374
+	dw 380,380,380,380,380,380,380,380,380,380,382,382,382,382,382,382
+	dw 382,382,382,383,387,387,387,387,387,387,387,387,387,387,388,388
+	dw 388,388,388,388,388,388,388,388,388,388,388,388,388,388,388,388
+	dw 388,388,388,388,388,388,388,388,388,388,388,388,388,388,388,388
+	dw 388,388,388,388,388,388,388,388,388,388,388,388,388,388,388,388
+	dw 388,388,388,388,388,388,388,388,388,388,388,388,388,388,388,388
+	dw 388,388,388,388,388,388,388,388,388,388,388,388,388,388,388,388
+	dw 388,388,388,388,388,388,388,388,388,388,388,388,388,388,388,388
+	dw 388,388,388,388,388,388,388,388,388,388,388,388,388,388,388,388
+	dw 388,388,388,388,388,388,388,388,388,388,388,388,388,388,388,388
+	dw 388,388,388,388,388,388,388,388,388,388,388,388,388,388,388,388
 
 ; sorted_objects[]: kind (word), rarity and level of each dungeon object
 obj_alloc_table:
@@ -52,27 +52,27 @@ obj_alloc_table:
 	db 0,0		; & Rounded Pebble~
 	dw 146
 	db 0,0		; Light
-	dw 153
-	db 0,0		; Treasure Detection
 	dw 154
+	db 0,0		; Treasure Detection
+	dw 155
 	db 0,0		; Object Detection
-	dw 179
-	db 0,0		; Slime Mold Juice
 	dw 180
-	db 0,0		; Apple Juice
+	db 0,0		; Slime Mold Juice
 	dw 181
+	db 0,0		; Apple Juice
+	dw 182
 	db 0,0		; Water
-	dw 194
+	dw 195
 	db 0,0		; Cure Light Wounds
-	dw 200
-	db 0,0		; Sleep
 	dw 201
-	db 0,0		; Blindness
+	db 0,0		; Sleep
 	dw 202
+	db 0,0		; Blindness
+	dw 203
 	db 0,0		; Confusion
-	dw 210
+	dw 211
 	db 0,0		; Salt Water
-	dw 294
+	dw 295
 	db 0,0		; some filthy rags
 	dw 1
 	db 0,1		; & Slime Mold~
@@ -96,29 +96,29 @@ obj_alloc_table:
 	db 0,1		; Summon Monster
 	dw 148
 	db 0,1		; Phase Door
-	dw 159
+	dw 160
 	db 0,1		; Detect Invisible
-	dw 166
+	dw 167
 	db 0,1		; Darkness
-	dw 174
+	dw 175
 	db 0,1		; Blessing
-	dw 194
+	dw 195
 	db 0,1		; Cure Light Wounds
-	dw 204
-	db 0,1		; Speed
 	dw 205
+	db 0,1		; Speed
+	dw 206
 	db 0,1		; Slowness
-	dw 211
+	dw 212
 	db 0,1		; Heroism
-	dw 213
+	dw 214
 	db 0,1		; Boldness
-	dw 215
-	db 0,1		; Resist Heat
 	dw 216
+	db 0,1		; Resist Heat
+	dw 217
 	db 0,1		; Resist Cold
-	dw 218
+	dw 219
 	db 0,1		; Slow Poison
-	dw 222
+	dw 223
 	db 0,1		; & Flask~ of oil
 	dw 2
 	db 0,2		; & Main Gauche
@@ -128,21 +128,21 @@ obj_alloc_table:
 	db 0,2		; & Bolt~
 	dw 73
 	db 0,2		; Soft Leather Armour
-	dw 194
+	dw 195
 	db 0,2		; Cure Light Wounds
-	dw 223
+	dw 224
 	db 0,2		; Light
-	dw 229
-	db 0,2		; Heal Monster
 	dw 230
-	db 0,2		; Haste Monster
+	db 0,2		; Heal Monster
 	dw 231
-	db 0,2		; Slow Monster
+	db 0,2		; Haste Monster
 	dw 232
+	db 0,2		; Slow Monster
+	dw 233
 	db 0,2		; Confuse Monster
-	dw 236
+	dw 237
 	db 0,2		; Magic Missile
-	dw 245
+	dw 246
 	db 0,2		; Wonder
 	dw 20
 	db 0,3		; & Whip
@@ -156,17 +156,17 @@ obj_alloc_table:
 	db 0,3		; & Small Leather Shield
 	dw 146
 	db 0,3		; Light
-	dw 183
+	dw 184
 	db 0,3		; Weakness
-	dw 195
+	dw 196
 	db 0,3		; Cure Serious Wounds
-	dw 203
+	dw 204
 	db 0,3		; Poison
-	dw 212
+	dw 213
 	db 0,3		; Berserk Strength
-	dw 217
+	dw 218
 	db 0,3		; Detect Invisible
-	dw 221
+	dw 222
 	db 0,3		; Infra-vision
 	dw 15
 	db 0,4		; & Rapier
@@ -192,39 +192,39 @@ obj_alloc_table:
 	db 0,5		; Monster Confusion
 	dw 152
 	db 0,5		; Magic Mapping
-	dw 155
-	db 0,5		; Trap Detection
 	dw 156
-	db 0,5		; Trap Location
+	db 0,5		; Trap Detection
 	dw 157
+	db 0,5		; Trap Location
+	dw 158
 	db 0,5		; Door/Stair Location
-	dw 160
+	dw 161
 	db 0,5		; Aggravate Monster
-	dw 168
+	dw 169
 	db 0,5		; Create Food
-	dw 177
+	dw 178
 	db 0,5		; Word of Recall
-	dw 196
+	dw 197
 	db 0,5		; Cure Critical Wounds
-	dw 219
+	dw 220
 	db 0,5		; Neutralize Poison
-	dw 243
+	dw 244
 	db 0,5		; Stinking Cloud
-	dw 246
+	dw 247
 	db 0,5		; Light
-	dw 254
-	db 0,5		; Treasure Location
 	dw 255
+	db 0,5		; Treasure Location
+	dw 256
 	db 0,5		; Object Location
-	dw 264
-	db 0,5		; Cure Light Wounds
 	dw 265
+	db 0,5		; Cure Light Wounds
+	dw 266
 	db 0,5		; Detect Invisible
-	dw 272
+	dw 273
 	db 0,5		; Darkness
-	dw 280
+	dw 281
 	db 0,5		; [Magic for Beginners]
-	dw 284
+	dw 285
 	db 0,5		; [Beginners Handbook]
 	dw 3
 	db 0,5		; & Dagger
@@ -234,7 +234,7 @@ obj_alloc_table:
 	db 0,6		; & Mace
 	dw 63
 	db 0,6		; & Pair of Hard Leather Boots
-	dw 334
+	dw 335
 	db 0,6		; & Short sword
 	dw 11
 	db 0,7		; & Cutlass
@@ -260,9 +260,9 @@ obj_alloc_table:
 	db 0,7		; Remove Curse
 	dw 146
 	db 0,7		; Light
-	dw 233
+	dw 234
 	db 0,7		; Sleep Monster
-	dw 288
+	dw 289
 	db 0,7		; & Small wooden chest
 	dw 6
 	db 0,8		; & Scimitar
@@ -272,7 +272,7 @@ obj_alloc_table:
 	db 0,8		; & Awl-Pike
 	dw 36
 	db 0,8		; & Trident
-	dw 155
+	dw 156
 	db 0,8		; Trap Detection
 	dw 8
 	db 0,9		; & Broadsword
@@ -292,27 +292,27 @@ obj_alloc_table:
 	db 0,10		; Identify
 	dw 149
 	db 0,10		; Teleport
-	dw 157
+	dw 158
 	db 0,10		; Door/Stair Location
-	dw 209
+	dw 210
 	db 0,10		; Lose Memories
-	dw 252
-	db 0,10		; Door/Stair Location
 	dw 253
+	db 0,10		; Door/Stair Location
+	dw 254
 	db 0,10		; Trap Location
-	dw 258
+	dw 259
 	db 0,10		; Summoning
-	dw 261
-	db 0,10		; Haste Monsters
 	dw 262
-	db 0,10		; Slow Monsters
+	db 0,10		; Haste Monsters
 	dw 263
+	db 0,10		; Slow Monsters
+	dw 264
 	db 0,10		; Sleep Monsters
-	dw 276
+	dw 277
 	db 0,10		; Perceptions
-	dw 281
+	dw 282
 	db 0,10		; [Conjurings and Tricks]
-	dw 285
+	dw 286
 	db 0,10		; [Words of Wisdom]
 	dw 3
 	db 0,10		; & Dagger
@@ -330,19 +330,19 @@ obj_alloc_table:
 	db 0,12		; Enchant Weapon To-Dam
 	dw 143
 	db 0,12		; Enchant Armour
-	dw 161
-	db 0,12		; Trap Creation
 	dw 162
+	db 0,12		; Trap Creation
+	dw 163
 	db 0,12		; Trap/Door Destruction
-	dw 175
+	dw 176
 	db 0,12		; Holy Chant
-	dw 197
+	dw 198
 	db 0,12		; Healing
-	dw 227
+	dw 228
 	db 0,12		; Stone to Mud
-	dw 235
+	dw 236
 	db 0,12		; Trap/Door Destruction
-	dw 295
+	dw 296
 	db 0,12		; Light
 	dw 39
 	db 0,13		; & Battle Axe
@@ -374,15 +374,15 @@ obj_alloc_table:
 	db 0,15		; & Large Leather Shield
 	dw 49
 	db 0,15		; & Arrow~
-	dw 157
+	dw 158
 	db 0,15		; Door/Stair Location
-	dw 173
+	dw 174
 	db 0,15		; Summon Undead
-	dw 224
+	dw 225
 	db 0,15		; Lightning Bolts
-	dw 237
+	dw 238
 	db 0,15		; Clone Monster
-	dw 289
+	dw 290
 	db 0,15		; & Large wooden chest
 	dw 138
 	db 0,16		; Adornment
@@ -414,81 +414,83 @@ obj_alloc_table:
 	db 0,20		; Charisma
 	dw 150
 	db 0,20		; Teleport Level
-	dw 186
+	dw 187
 	db 0,20		; Stupidity
-	dw 189
+	dw 190
 	db 0,20		; Naivety
-	dw 191
-	db 0,20		; Charisma
 	dw 192
-	db 0,20		; Ugliness
+	db 0,20		; Charisma
 	dw 193
+	db 0,20		; Ugliness
+	dw 194
 	db 0,20		; Restore Charisma
-	dw 225
+	dw 226
 	db 0,20		; Frost Bolts
-	dw 228
+	dw 229
 	db 0,20		; Polymorph
-	dw 238
-	db 0,20		; Teleport Away
 	dw 239
+	db 0,20		; Teleport Away
+	dw 240
 	db 0,20		; Disarming
-	dw 256
+	dw 257
 	db 0,20		; Teleportation
-	dw 260
+	dw 261
 	db 0,20		; Starlight
-	dw 269
+	dw 270
 	db 0,20		; Detect Evil
-	dw 282
+	dw 283
 	db 0,20		; [Incantations and Illusions]
-	dw 286
+	dw 287
 	db 0,20		; [Chants and Blessings]
-	dw 296
+	dw 297
 	db 0,20		; Lightning Bolts
 	dw 3
 	db 0,20		; & Dagger
-	dw 341
+	dw 342
 	db 5,20		; Illumination
 	dw 93
 	db 0,20		; & Cloak
+	dw 348
+	db 10,20		; Acquirement
 	dw 32
 	db 0,22		; & Halberd
-	dw 278
+	dw 279
 	db 0,22		; Enlightenment
-	dw 297
+	dw 298
 	db 0,23		; Frost Bolts
 	dw 78
 	db 0,24		; Metal Scale Mail
 	dw 137
 	db 0,24		; Resist Acid
-	dw 176
+	dw 177
 	db 0,24		; Holy Prayer
 	dw 51
 	db 0,25		; & Bolt~
-	dw 184
+	dw 185
 	db 0,25		; Restore Strength
-	dw 207
-	db 0,25		; Restore Dexterity
 	dw 208
+	db 0,25		; Restore Dexterity
+	dw 209
 	db 0,25		; Restore Constitution
-	dw 220
+	dw 221
 	db 0,25		; Restore Mana
-	dw 270
+	dw 271
 	db 0,25		; Curing
-	dw 283
+	dw 284
 	db 0,25		; [Sorcery and Evocations]
-	dw 287
+	dw 288
 	db 0,25		; [Exorcism and Dispelling]
-	dw 290
+	dw 291
 	db 0,25		; & Small iron chest
-	dw 353
+	dw 356
 	db 0,25		; Enlightenment
 	dw 79
 	db 0,26		; Chain Mail
 	dw 80
 	db 0,26		; Rusty Chain Mail
-	dw 187
+	dw 188
 	db 0,26		; Restore Intelligence
-	dw 190
+	dw 191
 	db 0,26		; Restore Wisdom
 	dw 125
 	db 0,28		; Sustain Strength
@@ -502,7 +504,7 @@ obj_alloc_table:
 	db 0,28		; Sustain Dexterity
 	dw 130
 	db 0,28		; Sustain Charisma
-	dw 298
+	dw 299
 	db 0,29		; Fire Bolts
 	dw 10
 	db 0,30		; & Two-Handed Sword
@@ -526,53 +528,53 @@ obj_alloc_table:
 	db 0,30		; See Invisible
 	dw 144
 	db 0,30		; Identify
-	dw 167
+	dw 168
 	db 0,30		; Protection from Evil
-	dw 182
+	dw 183
 	db 0,30		; Strength
-	dw 198
+	dw 199
 	db 0,30		; Constitution
-	dw 206
+	dw 207
 	db 0,30		; Dexterity
-	dw 226
+	dw 227
 	db 0,30		; Fire Bolts
-	dw 247
+	dw 248
 	db 0,30		; Acid Bolts
-	dw 314
+	dw 315
 	db 11,30		; Detection
-	dw 318
+	dw 319
 	db 0,30		; [Resistance of Scarabtarices]
-	dw 323
+	dw 324
 	db 0,30		; [Ethereal Openings]
-	dw 343
+	dw 344
 	db 1,30		; Probing
-	dw 346
-	db 4,30		; Recall
 	dw 347
+	db 4,30		; Recall
+	dw 350
 	db 0,30		; Free Action
-	dw 185
+	dw 186
 	db 0,32		; Intelligence
-	dw 188
+	dw 189
 	db 0,32		; Wisdom
-	dw 300
-	db 0,32		; Slow Monster
 	dw 301
+	db 0,32		; Slow Monster
+	dw 302
 	db 0,33		; Sleep Monster
 	dw 82
 	db 0,34		; Bar Chain Mail
-	dw 240
+	dw 241
 	db 0,35		; Lightning Balls
-	dw 291
+	dw 292
 	db 0,35		; & Large iron chest
-	dw 299
+	dw 300
 	db 0,35		; Polymorph
-	dw 304
+	dw 305
 	db 0,35		; Disarming
 	dw 83
 	db 0,36		; Metal Brigandine Armour
-	dw 165
+	dw 166
 	db 3,37		; Genocide
-	dw 309
+	dw 310
 	db 0,38		; Acid Bolts
 	dw 10
 	db 0,40		; & Two-Handed Sword
@@ -586,35 +588,35 @@ obj_alloc_table:
 	db 0,40		; & Steel Helm
 	dw 131
 	db 0,40		; Slaying
-	dw 164
+	dw 165
 	db 0,40		; Recharging
-	dw 169
+	dw 170
 	db 0,40		; Dispel Undead
-	dw 178
+	dw 179
 	db 0,40		; *Destruction*
-	dw 204
+	dw 205
 	db 0,40		; Speed
-	dw 214
+	dw 215
 	db 0,40		; Restore Life Levels
-	dw 241
+	dw 242
 	db 0,40		; Cold Balls
-	dw 257
+	dw 258
 	db 0,40		; Earthquakes
-	dw 266
-	db 0,40		; Speed
 	dw 267
+	db 0,40		; Speed
+	dw 268
 	db 0,40		; Slowness
-	dw 328
+	dw 329
 	db 8,40		; Blue Dragon Scale Mail
-	dw 339
-	db 12,40		; Augmentation
 	dw 340
+	db 12,40		; Augmentation
+	dw 341
 	db 12,40		; Ruination
-	dw 342
+	dw 343
 	db 4,40		; Probing
-	dw 354
+	dw 357
 	db 0,40		; Self Knowledge
-	dw 355
+	dw 358
 	db 3,40		; *Healing*
 	dw 84
 	db 0,42		; Partial Plate Armour
@@ -628,21 +630,21 @@ obj_alloc_table:
 	db 0,45		; & Lochaber Axe
 	dw 42
 	db 0,45		; & Scythe
-	dw 292
+	dw 293
 	db 0,45		; & Small steel chest
-	dw 303
+	dw 304
 	db 2,45		; Teleport Away
 	dw 70
 	db 0,47		; & Golden Crown
-	dw 268
+	dw 269
 	db 0,47		; Remove Curse
 	dw 86
 	db 0,48		; Full Plate Armour
-	dw 244
+	dw 245
 	db 0,48		; Acid Balls
-	dw 271
+	dw 272
 	db 0,49		; Dispel Evil
-	dw 311
+	dw 312
 	db 8,49		; Perceptions
 	dw 59
 	db 0,50		; & Dwarven Pick
@@ -666,47 +668,47 @@ obj_alloc_table:
 	db 0,50		; the Magi
 	dw 140
 	db 0,50		; Doom
-	dw 158
+	dw 159
 	db 4,50		; Mass Genocide
-	dw 163
+	dw 164
 	db 0,50		; *Enchant Armour*
-	dw 170
-	db 0,50		; *Enchant Weapon*
 	dw 171
-	db 0,50		; Curse Weapon
-	dw 163
-	db 0,50		; *Enchant Armour*
+	db 0,50		; *Enchant Weapon*
 	dw 172
+	db 0,50		; Curse Weapon
+	dw 164
+	db 0,50		; *Enchant Armour*
+	dw 173
 	db 0,50		; Curse Armour
-	dw 234
+	dw 235
 	db 0,50		; Drain Life
-	dw 237
+	dw 238
 	db 0,50		; Clone Monster
-	dw 242
+	dw 243
 	db 0,50		; Fire Balls
-	dw 248
-	db 3,50		; Dragon's Flame
 	dw 249
-	db 3,50		; Dragon's Frost
+	db 3,50		; Dragon's Flame
 	dw 250
-	db 2,50		; Dragon's Breath
+	db 3,50		; Dragon's Frost
 	dw 251
+	db 2,50		; Dragon's Breath
+	dw 252
 	db 4,50		; Annihilation
-	dw 258
-	db 0,50		; Summoning
 	dw 259
+	db 0,50		; Summoning
+	dw 260
 	db 0,50		; *Destruction*
-	dw 272
+	dw 273
 	db 0,50		; Darkness
-	dw 293
+	dw 294
 	db 0,50		; & Large steel chest
-	dw 317
+	dw 318
 	db 2,50		; *Remove Curse*
-	dw 319
+	dw 320
 	db 0,50		; [Mordenkainen's Escapes]
-	dw 324
+	dw 325
 	db 0,50		; [Godly Insights]
-	dw 329
+	dw 330
 	db 8,50		; White Dragon Scale Mail
 	dw 50
 	db 2,55		; & Seeker Arrow~
@@ -714,11 +716,11 @@ obj_alloc_table:
 	db 4,55		; Mithril Chain Mail
 	dw 113
 	db 0,55		; Poison Resistance
-	dw 305
+	dw 306
 	db 0,55		; Lightning Balls
-	dw 337
+	dw 338
 	db 2,55		; Death
-	dw 344
+	dw 345
 	db 8,55		; Bronze Dragon Scale Mail
 	dw 43
 	db 4,60		; & Scythe of Slicing
@@ -726,85 +728,91 @@ obj_alloc_table:
 	db 5,60		; Mithril Plate Mail
 	dw 94
 	db 3,60		; & Shadow Cloak
-	dw 306
+	dw 153
+	db 2,60		; Rune of Protection
+	dw 307
 	db 0,60		; Cold Balls
-	dw 320
+	dw 321
 	db 0,60		; [Kelek's Grimoire of Power]
-	dw 325
+	dw 326
 	db 0,60		; [Purifications and Healing]
-	dw 330
+	dw 331
 	db 8,60		; Black Dragon Scale Mail
-	dw 336
+	dw 337
 	db 6,60		; Detonations
-	dw 338
+	dw 339
 	db 3,60		; Life
-	dw 310
+	dw 349
+	db 15,60		; *Acquirement*
+	dw 311
 	db 4,63		; Enlightenment
 	dw 52
 	db 3,65		; & Seeker Bolt~
-	dw 199
+	dw 200
 	db 0,65		; Experience
-	dw 312
+	dw 313
 	db 8,65		; Curing
-	dw 345
+	dw 346
 	db 8,65		; Gold Dragon Scale Mail
-	dw 351
+	dw 354
 	db 12,65		; Shining Dragon Scale Mail
 	dw 9
 	db 5,70		; & Blade of Chaos
 	dw 92
 	db 6,70		; Shield of Deflection
-	dw 259
+	dw 260
 	db 0,70		; *Destruction*
-	dw 273
-	db 4,70		; Genocide
 	dw 274
-	db 2,70		; Power
+	db 4,70		; Genocide
 	dw 275
+	db 2,70		; Power
+	dw 276
 	db 2,70		; the Magi
-	dw 277
+	dw 278
 	db 2,70		; Holiness
-	dw 279
+	dw 280
 	db 2,70		; Healing
-	dw 308
+	dw 309
 	db 0,70		; Acid Balls
-	dw 331
+	dw 332
 	db 10,70		; Green Dragon Scale Mail
-	dw 335
+	dw 336
 	db 4,70		; *Enlightenment*
 	dw 88
 	db 7,75		; Adamantite Plate Mail
-	dw 302
+	dw 303
 	db 3,75		; Drain Life
-	dw 307
+	dw 308
 	db 0,75		; Fire Balls
-	dw 348
+	dw 351
 	db 20,75		; Chaos Dragon Scale Mail
-	dw 313
+	dw 314
 	db 13,77		; Healing
 	dw 28
 	db 4,80		; & Mace of Disruption
-	dw 315
-	db 15,80		; Restoration
-	dw 321
-	db 2,80		; [Tenser's Transformations]
-	dw 326
-	db 3,80		; [Holy Infusions]
-	dw 332
-	db 8,80		; Red Dragon Scale Mail
-	dw 349
-	db 20,80		; Law Dragon Scale Mail
-	dw 350
-	db 20,90		; Balance Dragon Scale Mail
 	dw 316
+	db 15,80		; Restoration
+	dw 322
+	db 2,80		; [Tenser's Transformations]
+	dw 327
+	db 3,80		; [Holy Infusions]
+	dw 333
+	db 8,80		; Red Dragon Scale Mail
+	dw 352
+	db 20,80		; Law Dragon Scale Mail
+	dw 153
+	db 3,90		; Rune of Protection
+	dw 353
+	db 20,90		; Balance Dragon Scale Mail
+	dw 317
 	db 9,99		; Speed
 	dw 106
 	db 2,100		; Speed
-	dw 322
+	dw 323
 	db 4,100		; [Raal's Tome of Destruction]
-	dw 327
+	dw 328
 	db 4,100		; [Wrath of God]
-	dw 333
+	dw 334
 	db 20,100		; Multi-Hued Dragon Scale Mail
-	dw 352
+	dw 355
 	db 40,110		; Power Dragon Scale Mail

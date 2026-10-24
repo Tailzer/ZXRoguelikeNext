@@ -128,7 +128,7 @@ cmd(10, bytes([2, PAGE_MISC]))
 for t in range(150):
     wr(SCR, raw(0)); wr(A["SP_DONE"], bytes([0]))
     cmd(4, bytes([6]) + struct.pack("<H", SCR))
-    r = call(A["TRY_SPECIAL@AGAIN"])
+    r = call(A["TRY_SPECIAL_NOW@AGAIN"])
     if r[2] & 1: specials.append(KINDS[rec(SCR)["kind"]])
 print("  special objects at 4950 ft:", specials)
 expect(len(specials) >= 3 and len(specials) == len(set(specials)) and all(s.startswith(("Ring of", "Amulet of", "The Phial", "The Star", "The Arkenstone")) for s in specials),

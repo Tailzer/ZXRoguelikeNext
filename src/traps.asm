@@ -34,7 +34,8 @@ trap_table:
 	TRAP tn_gas, 1,8, 105, 5, $FF				; 16: confusing gas
 	TRAP tn_dart, 1,8, 110, 5, 4				; 17: slowing dart
 	TRAP tn_dart, 1,8, 110, 5, 4				; 18: constitution dart
-NUM_TRAPS	equ 18
+	TRAP tn_rune, 0,0, 10, 0, $FF				; 19: a glyph of warding (only
+NUM_TRAPS	equ 18								;  ever made by magic)
 
 ; ---------------------------------------------------------------- a new level
 
@@ -169,6 +170,86 @@ trap_name_add:
 	ld h,(iy+1)
 	jp msg_add
 
+/* search - each square round the player, 1d100 under the searching
+	skill (a tenth of it when confused, blind or in the dark) finds a secret
+	door or a hidden trap there, or a chest's trap (search in MORIA1.C) */
+search:
+	ld a,(p_srh)
+	bit 7,a
+	jr z,$+3
+	xor a
+	ld c,a
+	ld hl,(p_confused)
+	ld a,h
+	or l
+	call nz,.tenth
+	ld hl,(p_blind)
+	ld a,h
+	or l
+	jr nz,.dim
+	push bc
+	call no_light
+	pop bc
+	jr nz,.lit
+.dim:
+	call .tenth
+.lit:
+	ld a,c
+	ld (sr_chance),a
+	ld a,(player_y)
+	dec a
+	ld d,a
+	ld b,3
+.row:
+	push bc
+	ld a,(player_x)
+	dec a
+	ld e,a
+	ld b,3
+.col:
+	push bc
+	push de
+	ld a,100
+	call randint
+	ld hl,sr_chance
+	cp (hl)
+	jr nc,.next
+	pop de								; a hidden trap is found, or a
+	push de								; trap on a chest
+	push ix
+	call search_square
+	pop ix
+	pop de
+	push de
+	call map_addr
+	ld a,(hl)
+	and TERRAIN_MASK
+	cp T_DOOR_SECRET
+	jr nz,.next
+	ld a,(hl)							; a door, closed
+	and $FF-TERRAIN_MASK
+	or T_DOOR_CLOSED
+	ld (hl),a
+	ld hl,msg_secret_door
+	call msg_print
+.next:
+	pop de
+	pop bc
+	inc e
+	djnz .col
+	pop bc
+	inc d
+	djnz .row
+	ret
+.tenth:
+	ld a,c
+	ld c,10
+	call div8
+	ld c,a
+	ret
+sr_chance:		db 0
+msg_secret_door: db "You have found a secret door.",0
+
 /* search_square - D, E = a square searching has noticed: a hidden trap
 	there is found, or the trap on a chest (search in MORIA1.C) */
 search_square:
@@ -247,7 +328,7 @@ trap_effects:
 	dw tp_open_pit, tp_arrow, tp_covered_pit, tp_trap_door, tp_sleep
 	dw tp_loose_rock, tp_str_dart, tp_teleport, tp_rockfall, tp_corrode
 	dw tp_summon, tp_fire, tp_acid, tp_poison, tp_blind, tp_confuse
-	dw tp_slow_dart, tp_con_dart
+	dw tp_slow_dart, tp_con_dart, tp_glyph
 
 tp_open_pit:
 	ld hl,mt_pit
@@ -430,6 +511,8 @@ tp_rockfall:							; rubble where it was, and the
 	call monsters_see_all
 	ld hl,mt_falling_rock
 	jp msg_print
+tp_glyph:								; (it keeps monsters off, not you)
+	ret
 tp_corrode:
 	OVCALL PAGE_MCAST, corrode_gas, PAGE_TRAP
 	ld hl,mt_red_gas
@@ -1095,6 +1178,88 @@ traps_around_gone:
 	ld a,(tr_any)
 	rra
 	ret
+
+; ---------------------------------------------------------------- glyphs
+
+/* warding_glyph - a glyph of warding where you stand, if nothing's there
+	(warding_glyph in SPELLS.C: the Rune of Protection, the prayer) */
+warding_glyph:
+	ld a,(player_y)
+	ld d,a
+	ld a,(player_x)
+	ld e,a
+	call item_at
+	ret c
+	call trap_at
+	ret c
+	push de
+	call map_addr
+	pop de
+	ld a,(hl)							; (not on stairs or a door)
+	and TERRAIN_MASK
+	cp T_FLOOR
+	jr z,.put
+	cp T_CORRIDOR
+	jr z,.put
+	cp T_FLOOR_LIT
+	ret nz
+.put:
+	ld a,TRAP_GLYPH
+	call place_trap
+	ret nc
+	ld (ix+TR_FLAGS),1<<TRF_SEEN|1<<TRF_MADE
+	ret
+
+/* mon_glyph - IX = a monster (IY its race) about to step onto D, E
+	(make_move): a glyph of warding there holds it back, unless 1d550 <
+	its level and it breaks ("The rune of protection is broken!" if it's
+	under you) -> carry if it holds. Preserves IX, IY, DE, HL */
+mon_glyph:
+	push ix
+	call trap_at
+	jr nc,.none
+	ld a,(ix+TR_TYPE)
+	cp TRAP_GLYPH
+	jr nz,.none
+	ld (mg_trap),ix
+	pop ix
+	push hl
+	push de
+	ld hl,550
+	call randint16
+	ld e,(iy+R_LEVEL)
+	ld d,0
+	or a
+	sbc hl,de
+	pop de
+	pop hl
+	ccf
+	ret c								; it holds
+	push hl
+	ld hl,(mg_trap)
+	inc hl
+	inc hl
+	ld (hl),0							; (TR_TYPE: gone)
+	ld a,(player_y)
+	cp d
+	jr nz,.gone
+	ld a,(player_x)
+	cp e
+	jr nz,.gone
+	push de
+	ld hl,mt_rune_broken
+	call msg_print
+	pop de
+.gone:
+	pop hl
+	or a
+	ret
+.none:
+	pop ix
+	or a
+	ret
+mg_trap:		dw 0
+mt_rune_broken:	db "The rune of protection is broken!",0
 
 ; ---------------------------------------------------------------- words
 

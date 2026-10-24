@@ -271,8 +271,7 @@ BOWS = {1: (2, 20, "TV_SLING_AMMO"), 2: (2, 25, "TV_ARROW"), 3: (3, 30, "TV_ARRO
         4: (4, 35, "TV_ARROW"), 5: (3, 25, "TV_BOLT"), 6: (4, 35, "TV_BOLT")}
 DEVICE_NOUN = {4: "Wand", 5: "Staff", 6: "Rod", 14: "Amulet", 15: "Ring"}
 # scroll effects that wait for later milestones: glyphs, traps, acquirement
-SCROLL_LATER = {"TV_SCROLL1": 0x00002000,
-                "TV_SCROLL2": 0x00000400 | 0x00000800}
+SCROLL_LATER = {"TV_SCROLL1": 0, "TV_SCROLL2": 0}       # (all read now)
 # potion flag bits the game understands: Cure Light/Serious/Critical Wounds
 HEAL_DICE = {0x00001000: 2, 0x00002000: 4, 0x00004000: 6}
 

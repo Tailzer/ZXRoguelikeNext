@@ -551,6 +551,33 @@ vault_mon:
 	ld a,1
 	jr vault_place
 
+/* acquire_at - D = y, E = x: something great there (place_special(..,
+	SPECIAL)); A = 1: 1 in 5 a special object instead, if one can be
+	(*Acquirement*). Preserves DE */
+acquire_at:
+	or a
+	jr z,.great
+	ld a,5
+	push de
+	call randint
+	pop de
+	dec a
+	jr nz,.great
+	push de
+	call item_free_slot
+	pop de
+	jr nc,.great
+	ld (ix+I_Y),d
+	ld (ix+I_X),e
+	OVCALL PAGE_MISC, try_special_now, PAGE_LEVEL
+	ret c
+.great:
+	push de
+	ld a,2
+	call place_special
+	pop de
+	ret
+
 /* place_special - D = y, E = x, A = 1 good, 2 great: a good weapon or
 	armour from 10 levels deeper (place_special in MISC2.C) */
 place_special:

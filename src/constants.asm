@@ -581,6 +581,7 @@ TR_TYPE				equ 2
 TR_FLAGS			equ 3
 TRF_SEEN			equ 0				; found (the C's TV_VIS_TRAP)
 TRF_MADE			equ 1				; made by magic: no experience for disarming
+TRAP_GLYPH			equ 19				; a glyph of warding (traps.asm)
 MISSILE_CTR			equ TRAP_LIST+TRAP_MAX*TRAP_SIZE	; word: each new pile of
 DOOR_LIST			equ MISSILE_CTR+2	; the doors that are locked, stuck or
 DOORS_KEPT			equ 16				; broken: square address, number

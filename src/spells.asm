@@ -1811,7 +1811,7 @@ prayers:
 	dw pr_cure_serious, pr_chant, ms_sleep2, ms_food, pr_uncurse		; 11-15
 	dw pr_res_heat_cold, ms_cure_poison, pr_orb, pr_cure_critical, pr_sense_inv	; 16-20
 	dw pr_prot_evil, ms_quake, pr_map, pr_cure_mortal, pr_turn_undead	; 21-25
-	dw pr_prayer, pr_dispel_undead3, pr_heal, pr_dispel_evil3, no_spell	; 26-30
+	dw pr_prayer, pr_dispel_undead3, pr_heal, pr_dispel_evil3, pr_glyph	; 26-30
 	dw pr_holy_word, ms_det_mons, pr_detection, ms_identify, pr_probing	; 31-35
 	dw pr_clairvoyance, pr_cure_critical, pr_cure_mortal, pr_healing, pr_restoration	; 36-40
 	dw pr_remembrance, pr_dispel_undead4, pr_dispel_evil4, pr_banish, ms_destruction	; 41-45
@@ -2003,6 +2003,9 @@ pr_detection:
 pr_probing:
 	ld a,AE_PROBE_ALL
 	jp sp_effect
+pr_glyph:								; Glyph of Warding
+	OVCALL PAGE_TRAP, warding_glyph, PAGE_SPELL
+	ret
 pr_dispel_undead3:						; dispel undead 3 x lev
 	ld b,1<<RF_UNDEAD
 	ld c,3

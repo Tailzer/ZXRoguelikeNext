@@ -68,6 +68,8 @@
 		through it and through doors
 	Milestone 20: Shovels, picks and the level feeling
 	Milestone 21: Breeding - worm masses and lice multiply
+	Milestone 22: The Rune of Protection (glyphs of warding) and the
+		Acquirement scrolls
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -241,7 +243,7 @@ dispatch:
 .stay:									; 's': search for a turn
 	ld a,1
 	ld (turn_taken),a
-	call search
+	FARCALL PAGE_TRAP, search			; (traps.asm)
 	jp .after
 .disarm:								; D, T: traps and digging
 	FARCALL PAGE_TRAP, cmd_disarm

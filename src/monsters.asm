@@ -603,7 +603,7 @@ make_move:
 	jr nz,.open
 	ld a,(mm_terrain)
 	cp T_STORE
-	jr z,.fail
+	jp z,.fail
 	bit RF2_PHASE,(iy+R_FLAGS2)			; through it (CM_PHASE)
 	jr nz,.phase
 	bit RF2_BREAK_WALL,(iy+R_FLAGS2)	; or through it, digging
@@ -617,6 +617,8 @@ make_move:
 	jr c,.fail
 	ret
 .open:
+	FARCALL PAGE_TRAP, mon_glyph		; a glyph of warding holds it?
+	jr c,.held
 	ld a,(player_y)
 	cp d
 	jr nz,.not_player
@@ -650,6 +652,10 @@ make_move:
 	call mon_distance
 	ld (ix+M_CDIS),a
 	ret
+.held:									; (one that only attacks: its turn
+	bit RM_ONLY_ATT,(iy+R_MOVE)			;  is spent; else it tries another
+	ret nz								;  way)
+	jp .fail
 .phase:
 	push hl
 	ld hl,rc_move

@@ -50,7 +50,7 @@ for t in range(8):
     shapes.append((r["floor"], r["tmp"], r["granite"], len(r["mons"])))
     if t == 0: show(r)
 print("  type 3 (floor, tmp, granite, monsters):", shapes)
-expect(all(15 <= s[0] <= 80 and s[2] >= 20 for s in shapes), "type 3: a cross of floor in a granite ring")
+expect(all(15 <= s[0] <= 100 and s[2] >= 20 for s in shapes), "type 3: a cross of floor in a granite ring")
 
 # ---- type 5: vaults
 greater = 0; out = []

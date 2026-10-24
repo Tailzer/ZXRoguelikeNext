@@ -144,7 +144,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - priests and paladins learn from the Holy Books they carry, with WIS's stat_adj in place of INT's; `G` gives them a prayer at random ("You have learned the prayer of Remove Fear."); `p` recites one, `P` browses
      - the C's words for them: "You can't see to read your prayer!", "Use which Holy Book?", "Recite which prayer?", "You lost your concentration!", "You faint from fatigue!", and "Pray hard enough and your prayers may be answered." for anyone else
      - all 58 prayers: detect evil, the cures (3d3 to 16d4, cuts as the C has them), bless, chant and prayer, remove fear, light, find doors, slow and neutralize poison, scare (confusion), portal, sanctuary, satisfy hunger, remove curse, resist heat and cold, orb of draining, sense invisible, protection from evil, earthquake, sense surroundings, turn undead ("runs frantically!"), dispel undead and evil (3 or 4 x level), heal and healing, holy word, detect monsters, detection, perception, probing, clairvoyance, restoration, remembrance, banishment, word of destruction, annihilation, unbarring ways, recharging, dispel curse, enchant weapon and armour, elemental brand, blink, teleport, teleport away, teleport level, word of recall, alter reality
-     - not yet: glyph of warding (nothing can be placed on the floor yet)
+     - (the glyph of warding came in 22)
    - 9d-3a: monster spells *(done)* — `CREATURE.C` mon_cast_spell, `SPELLS.C` bolt/breath/teleport_away/teleport_to, `MORIA1.C` fire_dam/cold_dam/light_dam/acid_dam/poison_gas/minus_ac, `MISC2.C` inven_damage/player_saves, `MISC1.C` the summon_ functions, `SETS.C`
      - each race's spells (spells, spells2, spells3 and INTELLIGENT) are in a new data page (67, `data/mspells.asm`, 12 bytes a race); a bit in the race record says it has any, and only those monsters page in the new overlay (56, `src/mcast.asm`)
      - 1 in freq turns, within 18 squares and in line of sight, it casts one of its spells at random; an intelligent one below a tenth of its hit dice picks only its escapes half the time; unseen casters are "It"
@@ -305,6 +305,13 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - the breeding is the level overlay's (`mon_breed`, `src/populate.asm`; it asks the run overlay whether you're resting), reached from mon_move by a bit in the race's move flags (RM_MULTIPLY)
    - resident code ends at `$AFFA`: 6 bytes left - the next resident change must move something out first
    - not yet: a breeder that eats what's beside it (CM_EATS_OTHER) breeds only onto clear floor; it doesn't mind objects there (the C's must be bare)
+22. **The Rune of Protection and Acquirement** (`SPELLS.C` warding_glyph, `CREATURE.C` make_move's glyph, `SCROLLS.C`, `PRAYER.C`, `MISC2.C` special_random_object/place_special) *(done)*
+   - a glyph of warding (the Rune of Protection scroll, the Glyph of Warding prayer) goes where you stand, if nothing's there (not on stairs or a door, nor over an object or a trap): "a strange rune", shown as a found trap
+   - no monster steps onto it, so standing on one stops anything hitting you in melee, unless 1d550 < its level and it breaks it ("The rune of protection is broken!"); one that only attacks loses its turn, others try another way
+   - it does nothing to you; `D` clears it (level 10, no experience), and trap/door destruction takes it
+   - Acquirement: something great (place_special's weapons and armour from 10 levels deeper, an ego likely) where you stand, in place of anything there: "You feel something roll beneath your feet."; *Acquirement*: one on bare floor up to 2 away up or down and 3 across, 1 in 5 a special object instead (a Phial, a Ring of Power...) if one can still be made
+   - every scroll in the game is read now; the kinds are renumbered (save version 5)
+   - to make resident room, `search` moved to the trap overlay (resident code ends at `$AF7C`, about 130 bytes left)
 
 ## Memory map
 

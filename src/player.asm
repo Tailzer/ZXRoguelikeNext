@@ -69,7 +69,7 @@ try_move:
 	call z,search
 	jr .searched
 .search:
-	call search
+	FARCALL PAGE_TRAP, search			; (traps.asm)
 .searched:
 	ld a,(player_y)						; a trap here goes off
 	ld d,a
@@ -132,86 +132,6 @@ try_move:
 	ld a,1
 	ld (turn_taken),a
 	ret
-
-/* search - each square round the player, 1d100 under the searching
-	skill (a tenth of it when confused, blind or in the dark) finds a secret
-	door or a hidden trap there, or a chest's trap (search in MORIA1.C) */
-search:
-	ld a,(p_srh)
-	bit 7,a
-	jr z,$+3
-	xor a
-	ld c,a
-	ld hl,(p_confused)
-	ld a,h
-	or l
-	call nz,.tenth
-	ld hl,(p_blind)
-	ld a,h
-	or l
-	jr nz,.dim
-	push bc
-	call no_light
-	pop bc
-	jr nz,.lit
-.dim:
-	call .tenth
-.lit:
-	ld a,c
-	ld (sr_chance),a
-	ld a,(player_y)
-	dec a
-	ld d,a
-	ld b,3
-.row:
-	push bc
-	ld a,(player_x)
-	dec a
-	ld e,a
-	ld b,3
-.col:
-	push bc
-	push de
-	ld a,100
-	call randint
-	ld hl,sr_chance
-	cp (hl)
-	jr nc,.next
-	pop de								; a hidden trap is found, or a
-	push de								; trap on a chest
-	push ix
-	FARCALL PAGE_TRAP, search_square
-	pop ix
-	pop de
-	push de
-	call map_addr
-	ld a,(hl)
-	and TERRAIN_MASK
-	cp T_DOOR_SECRET
-	jr nz,.next
-	ld a,(hl)							; a door, closed
-	and $FF-TERRAIN_MASK
-	or T_DOOR_CLOSED
-	ld (hl),a
-	ld hl,msg_secret_door
-	call msg_print
-.next:
-	pop de
-	pop bc
-	inc e
-	djnz .col
-	pop bc
-	inc d
-	djnz .row
-	ret
-.tenth:
-	ld a,c
-	ld c,10
-	call div8
-	ld c,a
-	ret
-sr_chance:		db 0
-msg_secret_door: db "You have found a secret door.",0
 
 /* store_here - A = the store whose door the player is on */
 store_here:

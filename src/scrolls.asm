@@ -4,8 +4,8 @@
 	td_destroy, protect_evil, create_food, dispel_creature, destroy_area),
 	MISC2.C teleport, MORIA1.C darken_room, MISC1.C summon_* (level overlay).
 	As with potions, each flag bit is an effect, from 1 (33 for TV_SCROLL2).
-	Not yet: enchanting and cursing (9c), runes, traps, recharging and
-	acquirement - those scrolls aren't generated.
+	Every scroll is read now (runes of protection and acquirement came in
+	milestone 22).
  */
 
 /* read_scroll - A = pack slot of the scroll to read */
@@ -80,18 +80,99 @@ scroll_effects:
 	dw sc_enchant_hit, sc_enchant_dam, sc_enchant_ac, sc_identify		; 1-4
 	dw sc_remove_curse, sc_light										; 5-6
 	dw sc_summon, sc_phase, sc_teleport, sc_tele_level, sc_confuse	; 7-11
-	dw sc_map, sc_none, sc_none, sc_treasure, sc_objects, sc_traps	; 12-17
+	dw sc_map, sc_none, sc_rune, sc_treasure, sc_objects, sc_traps	; 12-17
 	dw sc_doors, sc_mass_genocide, sc_det_inv, sc_aggravate, sc_trap_create	; 18-22
 	dw sc_td_destroy, sc_none, sc_recharge, sc_genocide, sc_darkness	; 23-27
 	dw sc_protevil, sc_food, sc_dispel_undead, sc_star_remove, sc_none	; 28-32
 	dw sc_star_weapon, sc_curse_weapon, sc_star_armour, sc_curse_armour	; 33-36
 	dw sc_summon_undead													; 37
 	dw sc_bless, sc_chant, sc_prayer, sc_recall, sc_destruction		; 38-42
+	dw sc_acquire, sc_star_acquire										; 43-44
 NUM_SCROLL_EFFECTS	equ ($-scroll_effects)/2
 ; 5: remove curse and 17: trap detection find nothing yet (no curses or
 ; traps); 31: *remove curse* identifies itself regardless
 
 sc_none:
+	ret
+
+/* sc_rune - Rune of Protection: a glyph of warding where you stand */
+sc_rune:
+	call ident
+	OVCALL PAGE_TRAP, warding_glyph, PAGE_SCROLL
+	ret
+
+/* sc_acquire - Acquirement: something great where you stand (in place of
+	anything there) */
+sc_acquire:
+	call ident
+	ld a,(player_y)
+	ld d,a
+	ld a,(player_x)
+	ld e,a
+	push de
+	call item_at
+	jr nc,$+6
+	ld (ix+I_KIND_HI),ITEM_EMPTY
+	pop de
+	xor a
+	OVCALL PAGE_LEVEL, acquire_at, PAGE_SCROLL
+	ld hl,msg_roll_beneath
+	jp msg_print
+
+/* sc_star_acquire - *Acquirement*: something great near you (11 tries at
+	a bare floor 2 up or down, 3 across), 1 in 5 a special object first
+	(special_random_object in MISC2.C) */
+sc_star_acquire:
+	call ident
+	ld b,11
+.try:
+	push bc
+	ld a,5
+	call randint
+	ld hl,player_y
+	add a,(hl)
+	sub 3
+	ld d,a
+	push de
+	ld a,7
+	call randint
+	pop de
+	ld hl,player_x
+	add a,(hl)
+	sub 4
+	ld e,a
+	call in_bounds
+	jr nc,.next
+	push de
+	call map_addr
+	pop de
+	ld a,(hl)
+	and TERRAIN_MASK
+	cp T_FLOOR
+	jr z,.floor
+	cp T_CORRIDOR
+	jr z,.floor
+	cp T_FLOOR_LIT
+	jr nz,.next
+.floor:
+	call item_at
+	jr c,.next
+	call trap_at
+	jr c,.next
+	pop bc
+	ld a,1
+	OVCALL PAGE_LEVEL, acquire_at, PAGE_SCROLL
+	ld a,(player_y)
+	cp d
+	ret nz
+	ld a,(player_x)
+	cp e
+	ret nz
+	ld hl,msg_roll_beneath
+	jp msg_print
+.next:
+	pop bc
+	djnz .try
 	ret
 
 ; ---------------------------------------------------------------- 4

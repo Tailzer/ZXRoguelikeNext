@@ -56,7 +56,7 @@ art_table:
 	db 1,1, 1,2,SN_CRISDURIAN
 	dw 21				; & Flail
 	db 1,1, 1,1,SN_TOTILA
-	dw 334				; & Short sword
+	dw 335				; & Short sword
 	db 1,1, 1,1,SN_GILETTAR
 	dw 13				; & Katana
 	db 1,1, 1,3,SN_AGLARANG
@@ -84,9 +84,9 @@ art_table:
 	db 7,3, 3,1,SN_NAR, 3,1,SN_ERIRIL, 1,2,SN_OLORIN
 	dw 88				; Adamantite Plate Mail
 	db 1,1, 1,3,SN_SOULKEEPER
-	dw 333				; Multi-Hued Dragon Scale Mail
+	dw 334				; Multi-Hued Dragon Scale Mail
 	db 1,1, 1,1,SN_RAZORBACK
-	dw 352				; Power Dragon Scale Mail
+	dw 355				; Power Dragon Scale Mail
 	db 1,1, 1,1,SN_BLADETURNER
 	dw 63				; & Pair of Hard Leather Boots
 	db 1,1, 1,5,SN_FEANOR
@@ -152,27 +152,27 @@ NUM_ART_BITS	equ 192
 
 ; special_place_object's 12 cases: kind (or $FFFF), 1 in r, 1 in m deeper, bit
 special_cases:
-	dw 364
-	db 30,50,180	; Power named Narya
-	dw 365
-	db 35,60,181	; Power named Nenya
-	dw 366
-	db 40,70,182	; Power named Vilya
 	dw 367
-	db 60,100,183	; Power
+	db 30,50,180	; Power named Narya
 	dw 368
-	db 1,30,184	; The Phial of Galadriel
+	db 35,60,181	; Power named Nenya
 	dw 369
-	db 10,50,185	; Ingwe
+	db 40,70,182	; Power named Vilya
 	dw 370
-	db 6,35,186	; Carlammas
+	db 60,100,183	; Power
 	dw 371
-	db 8,30,187	; The Star of Elendil
+	db 1,30,184	; The Phial of Galadriel
 	dw 372
-	db 18,60,188	; The Arkenstone of Thrain
+	db 10,50,185	; Ingwe
 	dw 373
-	db 25,65,189	; Tulkas
+	db 6,35,186	; Carlammas
 	dw 374
-	db 25,60,190	; the Dwarves
+	db 8,30,187	; The Star of Elendil
 	dw 375
+	db 18,60,188	; The Arkenstone of Thrain
+	dw 376
+	db 25,65,189	; Tulkas
+	dw 377
+	db 25,60,190	; the Dwarves
+	dw 378
 	db 20,50,191	; Barahir
