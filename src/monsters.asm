@@ -263,6 +263,8 @@ mon_turn:
 .have_moves:
 	ld (mon_moves),a
 .move:
+	ld hl,0								; what the player may learn of it
+	ld (rc_move),hl						; (rc_move, rc_wake)
 	ld a,(ix+M_ML)
 	or a
 	jr nz,.awake_check
@@ -276,7 +278,7 @@ mon_turn:
 	jr z,.act
 	ld a,(p_eflags+1)					; aggravation wakes it at once
 	bit EF1_AGGRAVATE,a
-	jr nz,.wake
+	jr nz,.woken
 	call rand16							; does it notice the player?
 	ld a,h
 	and 3
@@ -302,8 +304,13 @@ mon_turn:
 	jr z,.wake
 	ld (ix+M_SLEEP),l
 	ld (ix+M_SLEEP+1),h
+	ld a,2								; (it ignored the player)
+	ld (rc_wake),a
 	jr .done_move
 .wake:
+	ld a,1
+	ld (rc_wake),a
+.woken:
 	ld (ix+M_SLEEP),0
 	ld (ix+M_SLEEP+1),0
 .act:
@@ -316,9 +323,13 @@ mon_turn:
 	call mon_move
 .done_move:
 	call update_mon
+	ld a,(ix+M_ML)						; seen: the player learns how it
+	or a								; moves, and how alert it is
+	ld e,LN_TURN
+	call nz,learn
 	ld hl,mon_moves
 	dec (hl)
-	jr nz,.move
+	jp nz,.move
 	ret
 
 /* mod16_8 - HL mod C -> A. Clobbers B, HL */
@@ -374,6 +385,7 @@ mon_move:
 	jr z,.not75
 	ld a,100
 	call randint
+	ld c,CM_75_RANDOM
 	cp 75
 	jr c,.random
 .not75:
@@ -381,6 +393,7 @@ mon_move:
 	jr z,.not40
 	ld a,100
 	call randint
+	ld c,CM_40_RANDOM
 	cp 40
 	jr c,.random
 .not40:
@@ -388,13 +401,17 @@ mon_move:
 	jr z,.not20
 	ld a,100
 	call randint
+	ld c,CM_20_RANDOM
 	cp 20
 	jr c,.random
 .not20:
 	bit RM_NORMAL,(iy+R_MOVE)
 	jr z,.only_attack
+	ld a,CM_MOVE_NORMAL
+	ld (rc_move),a
 	ld a,200
 	call randint
+	ld c,CM_MOVE_NORMAL
 	dec a
 	jr z,.random
 	call get_moves
@@ -405,9 +422,13 @@ mon_move:
 	ld a,(ix+M_CDIS)
 	cp 2
 	ret nc
+	ld a,CM_ATTACK_ONLY
+	ld (rc_move),a
 	call get_moves
 	jp make_move
 .random:
+	ld a,c
+	ld (rc_move),a
 	ld hl,move_dirs
 	ld b,5
 .rnd:

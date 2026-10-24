@@ -297,6 +297,11 @@ tot_dam:
 	ld a,d
 	or e
 	ret z
+	push hl								; what the slays show of the race
+	ld e,LN_SLAYS						; is learnt
+	call learn
+	pop hl
+	ld de,(w_slays)
 	ld a,(iy+R_FLAGS)					; what the race is, and isn't
 	ld (td_race),a						; immune to
 	ld a,(iy+R_FLAGS2)
@@ -681,6 +686,8 @@ mon_attack:
 	cp 51
 	jr c,.unprotected
 .repelled:
+	ld e,LN_REPELLED					; (it's evil, then)
+	call learn
 	call msg_begin						; "The Orc is repelled."
 	ld a,1
 	ld (name_cap),a
@@ -692,6 +699,10 @@ mon_attack:
 .unprotected:
 	FARCALL PAGE_MCAST, melee_hits
 	jr nc,.missed
+	ld a,(attack_num)					; a blow noticed
+	dec a
+	ld e,LN_BLOW
+	call learn
 	FARCALL PAGE_MCAST, melee_blow		; said and done -> carry if it left
 	push af
 	call mon_race
@@ -746,7 +757,17 @@ confuse_touch:
 	ld hl,txt_is_unaffected
 .say:
 	call msg_add
-	jp msg_end
+	call msg_end
+	ld a,(ix+M_ML)						; seen, 1 in 4 shows whether it can
+	or a								; be charmed
+	ret z
+	ld a,4
+	call randint
+	dec a
+	ret nz
+	ld a,1<<RF_CHARM_SLEEP
+	ld e,LN_FLAGS
+	jp learn
 
 /* div16_8 - HL / C -> HL = quotient, A = remainder. Clobbers B */
 div16_8:

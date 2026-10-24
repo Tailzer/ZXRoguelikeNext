@@ -17,6 +17,7 @@ def keyed(cmdno, keys=" ", dx=0, dy=0):
     set_reg(3, ((dx & 255) << 8) | (dy & 255)); set_reg(4, cmdno << 8); set_pc(A["DISPATCH"]); run_to(BP)
     return msgline()
 def turned(): return rd(A["TURN_TAKEN"], 1)[0]
+cmd(10, bytes([2, 57])); call(A["MEM_FORGET"])			# (no monster memory: / asks nothing)
 calm(); full(); call(A["LIGHT_REFRESH"])
 home = py(); dy, dx = open_line(3) or open_line(2); d = KEY[(dy, dx)]
 

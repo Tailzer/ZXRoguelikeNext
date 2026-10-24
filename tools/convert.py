@@ -502,6 +502,7 @@ def main():
     flavour_tables(note)
     store_tables(note, objs, kind_of)
     vault_tables(note, races)
+    recall_tables(note, races)
 
     per_page = 8192 // RACE_SIZE
     print(f"{len(races)} races ({(len(races) + per_page - 1) // per_page} pages), "
@@ -1020,6 +1021,52 @@ def flavour_tables(note):
         for i, n in enumerate(nm):
             lines.append(f"{what}_{i}:\tdb {asm_string(n)},0")
     open(os.path.join(OUT, "flavours.asm"), "w").write("\n".join(lines) + "\n")
+
+
+RINFO_SIZE = 11
+
+
+def recall_tables(note, races):
+    """data/recall.asm: each race's cmove and cdefense as the C has them
+    (monster memory is kept in the C's bits), and where its description
+    (DESCRIBE.C) is; data/descs.asm: the descriptions, a page at a time"""
+    descs = {}
+    for e in table_entries(read("DESCRIBE.C"), "desc_list["):
+        f = split_top(e)
+        name = "".join(re.findall(r'"((?:[^"\\]|\\.)*)"', f[0]))
+        descs[name] = "".join(re.findall(r'"((?:[^"\\]|\\.)*)"', ",".join(f[1:])))
+    pages, page, where = [], [], []
+    used = 0
+    for r in races:
+        d = descs.get(r["name"])
+        if d is None:                                # (the C: "You feel you know it...")
+            where.append((255, 0))
+            continue
+        raw = d.encode("latin-1") + b"\0"
+        if used + len(raw) > 8192:
+            pages.append(page)
+            page, used = [], 0
+        where.append((len(pages), 0x2000 + used))
+        page.append(d)
+        used += len(raw)
+    pages.append(page)
+    lines = [note, f"; per race, {RINFO_SIZE} bytes: the C's cmove and cdefense, then its description:",
+             "; page (from DESC_PAGE; $FF none) and address", "", f"NUM_DESC_PAGES\tequ {len(pages)}", "",
+             "rinfo_table:"]
+    for r, (pg, ad) in zip(races, where):
+        rec = struct.pack("<IIBH", r["cmove"] & 0xFFFFFFFF, r["cdefense"] & 0xFFFFFFFF, pg, ad)
+        lines.append("\tdb " + ",".join(str(b) for b in rec) + f"\t; {r['name']}")
+    open(os.path.join(OUT, "recall.asm"), "w").write("\n".join(lines) + "\n")
+    lines = [note, f"; the monster descriptions (DESCRIBE.C), {len(pages)} pages from DESC_PAGE"]
+    for k, pg in enumerate(pages):
+        lines += ["", f"\tMMU 1, DESC_PAGE+{k}, DATA_WINDOW"]
+        for d in pg:                                 # (sjasmplus: 128 bytes a db)
+            for i in range(0, max(len(d), 1), 100):
+                lines.append(f"\tdb {asm_string(d[i:i + 100])}" + (",0" if i + 100 >= len(d) else ""))
+            if not d:
+                lines[-1] = "\tdb 0"
+    lines += ["descs_end:"]
+    open(os.path.join(OUT, "descs.asm"), "w").write("\n".join(lines) + "\n")
 
 
 def vault_tables(note, races):

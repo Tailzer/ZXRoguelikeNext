@@ -542,6 +542,9 @@ ae_turn_undead:							; turn_undead: undead in sight that
 	call mon_race
 	bit RF_UNDEAD,(iy+R_FLAGS)
 	ret z
+	ld a,1<<RF_UNDEAD
+	ld e,LN_FLAGS
+	call learn
 	ld a,(p_lev)
 	cp (iy+R_LEVEL)
 	jr nc,.turned
@@ -570,6 +573,9 @@ ae_banish:								; banish_creature(EVIL, 100): the
 	call mon_race
 	bit RF_EVIL,(iy+R_FLAGS)
 	ret z
+	ld a,1<<RF_EVIL
+	ld e,LN_FLAGS
+	call learn
 	ld a,1
 	ld (d_any),a
 	jp teleport_away
@@ -1559,6 +1565,10 @@ resisted:
 	ld hl,gf_immunity
 	add hl,a
 	ld a,(hl)
+	push af								; (immune: that's learnt)
+	ld e,LN_RESIST
+	call learn
+	pop af
 	and (iy+R_RESIST)
 	ret z								; (carry clear)
 	scf
@@ -1957,6 +1967,9 @@ light_line:
 	call mon_race
 	bit RR_HURT_LIGHT,(iy+R_RESIST)
 	jr z,.next
+	ld a,1<<RR_HURT_LIGHT
+	ld e,LN_RESIST
+	call learn
 	call remember_victim
 	ld bc,6*256+8
 	call damroll
@@ -2066,6 +2079,9 @@ wall_to_mud:
 	call mon_race
 	bit RR_HURT_ROCK,(iy+R_RESIST)
 	ret z
+	ld a,1<<RR_HURT_ROCK
+	ld e,LN_RESIST
+	call learn
 	ld a,(ix+M_ML)
 	ld (d_seen),a
 	call remember_victim
@@ -2213,7 +2229,7 @@ sleep_one:
 	call saves
 	jr c,unaffected
 	bit RF_CHARM_SLEEP,(iy+R_FLAGS)
-	jr nz,unaffected
+	jr nz,.charm
 	call ident
 	ld (ix+M_SLEEP),low 500
 	ld (ix+M_SLEEP+1),high 500
@@ -2222,6 +2238,13 @@ sleep_one:
 unaffected:
 	ld hl,txt_unaffected_d
 	jp say_name
+sleep_one.charm:						; (it can't be slept: that's learnt)
+	call charm_learnt
+	jr unaffected
+charm_learnt:
+	ld a,1<<RF_CHARM_SLEEP
+	ld e,LN_FLAGS
+	jp learn
 wake:
 	ld (ix+M_SLEEP),0
 	ld (ix+M_SLEEP+1),0
@@ -2232,7 +2255,8 @@ drain_one:
 	call mon_race
 	ld a,(iy+R_FLAGS)
 	and 1<<RF_UNDEAD|1<<RF_DEMON
-	ret nz
+	ld e,LN_FLAGS						; (not living: which, learnt)
+	jp nz,learn
 	call ident
 	call remember_victim
 	ld hl,(d_dam)
@@ -2425,7 +2449,7 @@ sleep_monsters:
 	call saves
 	jr c,.resists
 	bit RF_CHARM_SLEEP,(iy+R_FLAGS)
-	jr nz,.resists
+	jr nz,.charm
 	ld (ix+M_SLEEP),low 500
 	ld (ix+M_SLEEP+1),high 500
 	ld a,(ix+M_ML)
@@ -2434,6 +2458,8 @@ sleep_monsters:
 	ld (d_any),a
 	ld hl,txt_falls_asleep
 	jp say_name
+.charm:
+	call charm_learnt
 .resists:
 	ld a,(ix+M_ML)
 	or a
@@ -2459,52 +2485,14 @@ probing:
 	call name_caps
 	ld hl,txt_has_
 	call msg_add
-	ld l,(ix+M_HP)
-	ld h,(ix+M_HP+1)
-	call msg_add_u16_d
+	push ix								; (hit points: msg_add_u16 takes
+	pop hl								;  their address)
+	ld de,M_HP
+	add hl,de
+	call msg_add_u16
 	ld hl,txt_hit_points
 	call msg_add
 	jp msg_end
-
-/* msg_add_u16_d - HL = number into the message being built */
-msg_add_u16_d:
-	ld de,(msg_ptr)
-	ld bc,10000
-	call .digit
-	ld bc,1000
-	call .digit
-	ld bc,100
-	call .digit
-	ld bc,10
-	call .digit
-	ld a,l
-	add a,'0'
-	ld (de),a
-	inc de
-	ld (msg_ptr),de
-	xor a
-	ld (d_digits),a
-	ret
-.digit:
-	ld a,'0'-1
-.sub:
-	inc a
-	or a
-	sbc hl,bc
-	jr nc,.sub
-	add hl,bc
-	cp '0'
-	jr nz,.put
-	ld a,(d_digits)
-	or a
-	ret z
-	ld a,'0'
-.put:
-	ld (de),a
-	inc de
-	ld a,1
-	ld (d_digits),a
-	ret
 
 /* detect_evil - evil monsters in view are shown until a key */
 detect_evil:
@@ -2821,7 +2809,6 @@ d_mask:			db 0
 d_each:			dw 0
 d_tdis:			db 0
 d_tries:		db 0
-d_digits:		db 0
 d_victim_says:	dw 0
 d_victim:		ds 32
 d_victim_caps:	ds 32

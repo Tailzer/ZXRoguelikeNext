@@ -196,7 +196,7 @@ look_see:
 	ld hl,lk_ry
 	add a,(hl)
 	cp MAP_H
-	jr nc,.none
+	jp nc,.none
 	ld d,a
 	ld a,(player_x)
 	ld hl,lk_rx
@@ -231,6 +231,20 @@ look_see:
 	call describe_monster
 	call lk_wait
 	ret c
+	cp 'r'								; [(r)ecall]: what's known of it
+	jr z,.recall
+	cp 'R'
+	jr nz,.it_is
+.recall:
+	push ix
+	ld l,(ix+M_RACE)
+	ld h,(ix+M_RACE_HI)
+	call lk_recall
+	pop ix
+	cp ' '
+	scf
+	ret z
+.it_is:
 	ld hl,ml_it_is_on
 	ld (lk_dstring),hl
 .objects:
@@ -279,6 +293,8 @@ describe_monster:
 	call health_word
 	call msg_add
 	ld hl,ml_close
+	call msg_add
+	ld hl,ml_recall
 	call msg_add
 	ld hl,lk_seen
 	inc (hl)
@@ -1021,10 +1037,61 @@ ident_char:
 	jr nz,.skip
 	jr .find
 .found:
-	jp msg_print
+	call msg_print
+	jr .memory
 .unused:
 	ld hl,ml_not_used
-	jp msg_print
+	call msg_print
+.memory:								; then what's known of the races it
+	ld hl,NUM_RACES						; stands for, deepest first
+	ld (lk_race),hl
+	xor a
+	ld (lk_asked),a
+.race:
+	ld hl,(lk_race)
+	ld a,h
+	or l
+	ret z
+	dec hl
+	ld (lk_race),hl
+	call race_addr
+	ld a,(lk_char)
+	cp (iy+R_CHAR)
+	jr nz,.race
+	ld hl,(lk_race)
+	OVCALL PAGE_RECALL, recall_known, PAGE_LOOK
+	jr z,.race
+	ld a,(lk_asked)
+	or a
+	jr nz,.tell
+	ld hl,ml_recall_q					; "You recall those details? [y/n]"
+	ld d,MSG_ROW
+	ld e,40
+	ld c,ATTR_WHITE
+	call print_at
+	call read_ascii
+	cp 'y'
+	jr z,.yes
+	cp 'Y'
+	jp nz,msg_clear
+.yes:
+	ld a,1
+	ld (lk_asked),a
+.tell:
+	ld hl,(lk_race)
+	call lk_recall
+	cp ' '								; (space: no more)
+	jr nz,.race
+	ret
+
+/* lk_recall - HL = race: what's known of it (recall.asm), until a key;
+	then the view back -> A = the key */
+lk_recall:
+	OVCALL PAGE_RECALL, roff_recall, PAGE_LOOK
+	push af
+	OVCALL PAGE_RECALL, recall_done, PAGE_LOOK
+	pop af
+	ret
 
 /* read_key_sym - wait for a key -> A = its character, with Caps Shift
 	(capitals) or Symbol Shift (the symbol printed in red on its key:
@@ -1066,6 +1133,8 @@ ml_a:			db " a ",0
 ml_an:			db " an ",0
 ml_open_br:		db " (",0
 ml_close:		db ").",0
+ml_recall:		db " [(r)ecall]",0
+ml_recall_q:	db "You recall those details? [y/n]",0
 ml_pause:		db " ---pause---",0
 ml_all:			db "That's all you see.",0
 ml_all_that_way: db "That's all you see in that direction.",0
@@ -1220,6 +1289,8 @@ lk_hp:			dw 0
 lk_max:			dw 0
 lk_t:			dw 0
 lk_char:		db 0
+lk_race:		dw 0				; (ident_char: the races, last first)
+lk_asked:		db 0
 lc_home_y:		db 0
 lc_home_x:		db 0
 lc_y:			db 0

@@ -895,6 +895,9 @@ sc_dispel_undead:
 	ld e,(ix+M_X)
 	call los
 	jr nc,.next
+	ld a,(dispel_mask)					; (what it is: learnt)
+	ld e,LN_FLAGS
+	call learn
 	ld a,(ix+M_ML)
 	ld (r_seen),a
 	call msg_begin						; name it before it might die

@@ -51,15 +51,40 @@ monster_death:
 	ld (md_good),a
 	inc hl
 	ld a,(hl)							; MS_TREASURE
+	call treasure_drop
+	ld e,0								; what was seen to fall is known of
+	ld a,(md_seen_obj)					; the race (recall.asm): objects,
+	ld d,a								; treasure, how many, and a kill
+	or a								; by the player
+	jr z,$+4
+	set 0,e
+	ld a,(md_seen_gold)
+	or a
+	jr z,.counted
+	set 1,e
+	add a,d
+	ld d,a
+.counted:
+	ld a,(md_plain)
+	or a
+	jr nz,$+4
+	set 7,e
+	ld a,e
+	OVCALL PAGE_RECALL, learn_kill, PAGE_CHEST
+	ret
+
 /* treasure_drop - A = MT_ bits, (md_y, md_x) where, (md_good): how many
 	things it carries, then each falls somewhere near (monster_death's
-	count, summon_object). Preserves IX */
+	count, summon_object); (md_seen_obj), (md_seen_gold) how many fell
+	where they can be seen. Preserves IX */
 treasure_drop:
 	push ix
 	ld (md_flags),a
 	and 3								; 1 objects, 2 treasure, 3 either
 	ld (md_typ),a
 	xor a
+	ld (md_seen_obj),a
+	ld (md_seen_gold),a
 	ld (md_num),a
 	ld a,(md_flags)
 	bit MT_60,a
@@ -139,6 +164,22 @@ treasure_drop:
 	inc a
 .typ:
 	ld b,a
+	push de
+	push bc
+	call .put
+	pop bc
+	pop de
+	call map_addr						; lit or remembered: seen to fall
+	ld a,(hl)
+	and F_SEEN
+	ret z
+	dec b
+	ld hl,md_seen_obj
+	jr z,$+5
+	ld hl,md_seen_gold
+	inc (hl)
+	ret
+.put:
 	ld a,(md_good)
 	or a
 	jr nz,.special
@@ -663,6 +704,8 @@ md_flags:		db 0
 md_typ:			db 0
 md_num:			db 0
 md_crown:		db 0
+md_seen_obj:	db 0
+md_seen_gold:	db 0
 ch_sq:			dw 0
 ch_level:		db 0
 ch_flags:		db 0

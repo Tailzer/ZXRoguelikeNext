@@ -687,7 +687,7 @@ mon_door:
 	call randint
 	dec a
 	call .set
-	jr .opened
+	jr .opener
 .basher:
 	ld a,(dc_terrain)
 	cp T_DOOR_SECRET
@@ -710,6 +710,9 @@ mon_door:
 .open:
 	xor a
 	call .set
+.opener:								; (seen, it's known to open doors)
+	ld hl,rc_move
+	set RC_OPEN_DOOR,(hl)
 .opened:
 	ld de,(dc_sq)
 	call map_addr

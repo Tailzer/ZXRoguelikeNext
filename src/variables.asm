@@ -25,5 +25,9 @@ end_event:		db 0				; 1 Sauron, 2 Morgoth died (endgame.asm)
 end_y:			db 0
 end_x:			db 0
 cc_a:			db 0				; (chest_call)
+cc_page:		db 0
+rc_move:		db 0				; how a monster moved this move (the C's
+										;  rcmove: CM_ bits, bit 7 a door opened)
+rc_wake:		db 0				; 1 it woke this move, 2 it slept on
 town_seed:		dw 0				; the town is built from this each visit
 town_night:		db 0

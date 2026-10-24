@@ -595,8 +595,9 @@ learn_kind:
 	jr nc,.done
 	set OD_KNOWN_BIT,(hl)
 	res OD_TRIED_BIT,(hl)
-	pop hl
-	jp pack_combine
+	pop de
+	ld hl,pack_combine					; (combine.asm)
+	jp recall_call
 .done:
 	pop hl
 	ret

@@ -28,6 +28,44 @@ ROOM_MON_MAX		equ 56				; what vaults and pits may fill of the list
 WIN_MON_APPEAR		equ 100				; the level Morgoth may be found from
 PAGE_ROOMS			equ 71				; overlay: inner rooms, crosses, vaults, pits
 PAGE_CHEST			equ 72				; overlay: chests, and what monsters drop
+PAGE_RECALL			equ 73				; overlay: monster memory (recall.asm)
+MEM_PAGE			equ 74				; RAM: monster memory, 3 pages of MR_SIZE
+										; records (saved as roguelike.mem)
+RINFO_PAGE			equ 77				; the C's cmove/cdefense, description places
+DESC_PAGE			equ 78				; the monster descriptions (6 pages)
+; a race's memory (the C's recall_type): what the player has learnt
+MR_CMOVE			equ 0				; dword: CM_ bits seen (the count of what
+										;  it was seen to drop in bits 26-30)
+MR_SPELLS			equ 4				; 3 dwords: spells seen (the CS_ layout of
+										;  the spell records; bits 0-3 how often)
+MR_KILLS			equ 16				; word
+MR_DEATHS			equ 18				; word: characters it has killed
+MR_CDEF				equ 20				; dword: cdefense bits learnt
+MR_WAKE				equ 24				; times seen to wake
+MR_IGNORE			equ 25				; times seen to sleep on
+MR_ATTACKS			equ 26				; 4 bytes: times each blow was noticed
+MR_SIZE				equ 32
+RI_CMOVE			equ 0				; (rinfo_table, RINFO_SIZE each)
+RI_CDEF				equ 4
+RI_DPAGE			equ 8
+RI_DADDR			equ 9
+RINFO_SIZE			equ 11
+; what learn is told (E)
+LN_FLAGS			equ 0				; A = R_FLAGS bits it has shown
+LN_RESIST			equ 1				; A = R_RESIST bits
+LN_TURN				equ 2				; (rc_move, rc_wake): a move seen
+LN_SPELL			equ 3				; A = the spell it cast (1-80)
+LN_BLOW				equ 4				; A = which blow hit (0-3)
+LN_SLAYS			equ 5				; the weapon's slays and brands met it
+LN_REPELLED			equ 6				; protection from evil repelled it
+LN_SMART			equ 7				; it cast to escape (INTELLIGENT)
+; the C's movement bits (rc_move)
+CM_ATTACK_ONLY		equ $01
+CM_MOVE_NORMAL		equ $02
+CM_20_RANDOM		equ $08
+CM_40_RANDOM		equ $10
+CM_75_RANDOM		equ $20
+RC_OPEN_DOOR		equ 7				; (bit: the C's CM_OPEN_DOOR)
 LOG_BASE			equ $E000			; (paged into slot 7 over the map for a moment)
 LOG_LINES			equ 32
 LOG_LEN				equ 80

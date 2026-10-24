@@ -109,6 +109,7 @@ save_game:
 	call sv_close
 	jr c,.failed
 	call esx_end
+	call mem_save						; (and what's known of monsters)
 	scf
 	ret
 .close_failed:
@@ -123,6 +124,7 @@ save_game:
 /* load_game - at the title: a saved game is restored if there is one
 	(and it fits this build) -> carry if it was */
 load_game:
+	call mem_load						; monster memory, from any character
 	call esx_begin
 	ld b,FA_READ
 	call sv_open
@@ -227,6 +229,8 @@ load_game:
 /* delete_save - the character has died: its save goes (and if the file
 	is still there after all, it's marked dead, which counts as no save) */
 delete_save:
+	OVCALL PAGE_RECALL, note_death, PAGE_SAVE	; (what killed you is
+	call mem_save						;  remembered)
 	call esx_begin
 	push ix
 	ld a,ESX_DRIVE
@@ -271,12 +275,14 @@ sv_page:
 
 /* sv_open - B = mode: roguelike.sav -> A = handle, carry on an error.
 	(esxDOS takes addresses in IX from a program, in HL from a dot
-	command: both are set) */
+	command: both are set). sv_open_hl: HL = the file's name */
 sv_open:
-	push ix
-	ld a,ESX_DRIVE
-	ld ix,save_name
 	ld hl,save_name
+sv_open_hl:
+	push ix
+	push hl
+	pop ix
+	ld a,ESX_DRIVE
 	rst $08
 	db F_OPEN
 	pop ix
@@ -316,6 +322,130 @@ sv_close:
 	db F_CLOSE
 	pop ix
 	ret
+
+; ---------------------------------------------------------------- monster memory
+
+; roguelike.mem: "RLMM", MEM_VERSION, then the memory pages (MEM_BYTES)
+MEM_BYTES			equ NUM_RACES*MR_SIZE
+MEM_VERSION			equ 1
+	ASSERT MEM_BYTES > 16384 && MEM_BYTES <= 24576, "Monster memory isn't 3 pages"
+mem_name:		db "roguelike.mem",0
+mem_magic:		db "RLMM", MEM_VERSION
+
+/* mem_save - monster memory to roguelike.mem (quietly: no word if it
+	fails) */
+mem_save:
+	call esx_begin
+	ld hl,mem_name
+	ld b,FA_WRITE|FA_CREATE_AL
+	call sv_open_hl
+	jr c,.done
+	ld (sv_handle),a
+	ld hl,mem_magic
+	ld bc,5
+	call sv_write
+	call nc,mem_pages
+.close:
+	call sv_close
+.done:
+	nextreg NR_MMU3,PAGE_SCREEN_HI
+	jp esx_end
+
+/* mem_load - monster memory forgotten, then read from roguelike.mem if
+	there is one (and it is this version) */
+mem_load:
+	call mem_forget
+	call esx_begin
+	ld hl,mem_name
+	ld b,FA_READ
+	call sv_open_hl
+	jr c,mem_save.done
+	ld (sv_handle),a
+	ld hl,sv_buf
+	ld bc,5
+	call sv_read
+	jr c,mem_save.close
+	ld hl,sv_buf
+	ld de,mem_magic
+	ld b,5
+.magic:
+	ld a,(de)
+	cp (hl)
+	jr nz,mem_save.close
+	inc hl
+	inc de
+	djnz .magic
+	ld a,1								; (reading)
+	ld (mem_reading),a
+	call mem_pages
+	ld a,0
+	ld (mem_reading),a
+	push af
+	call sv_close
+	nextreg NR_MMU3,PAGE_SCREEN_HI
+	call esx_end
+	pop af
+	ret nc
+/* mem_forget - monster memory forgotten: its pages zeroed, through slot 3
+	(and a half-read file forgotten with it) */
+mem_forget:
+	ld a,MEM_PAGE
+.clear:
+	nextreg NR_MMU3,a
+	ld hl,$6000
+	ld de,$6001
+	ld bc,$1FFF
+	ld (hl),0
+	ldir
+	inc a
+	cp MEM_PAGE+3
+	jr c,.clear
+	nextreg NR_MMU3,PAGE_SCREEN_HI
+	ret
+/* mem_pages - the memory's three pages written (or read, mem_reading),
+	through slot 3 -> carry on an error */
+mem_pages:
+	ld a,MEM_PAGE
+	ld de,MEM_BYTES
+.page:
+	nextreg NR_MMU3,a
+	push af
+	ld hl,$2000							; this page's share: 8K, or the rest
+	ex de,hl
+	or a
+	sbc hl,de
+	ex de,hl
+	ld b,h
+	ld c,l
+	jr nc,.full
+	add hl,de							; (the last: what was left)
+	ld b,h
+	ld c,l
+	ld de,0
+	jr .io
+.full:
+	ld bc,$2000
+.io:
+	push de
+	ld hl,$6000
+	ld a,(mem_reading)
+	or a
+	jr nz,.read
+	call sv_write
+	jr .did
+.read:
+	call sv_read
+.did:
+	pop de
+	pop bc								; (B = the page)
+	ret c
+	ld a,d
+	or e
+	ret z
+	ld a,b
+	inc a
+	jr .page
+mem_reading:	db 0
 
 sv_saving:			db "Saving game...",0
 sv_failed:			db "Save failed...",0

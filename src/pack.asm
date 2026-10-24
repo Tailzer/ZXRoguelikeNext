@@ -592,52 +592,6 @@ stackable:
 	cp IC_LANTERN						; (lanterns never do)
 	ret
 
-/* pack_combine - HL = a kind just identified: its stacks in the pack join
-	the first one (identify in DESC.C) */
-pack_combine:
-	ld (comb_kind),hl
-	call kind_addr						; (wands and the like never merge)
-	ld a,(iy+K_CLASS)
-	call stackable
-	ret nc
-	xor a
-	ld (comb_first),a
-.find:
-	call pack_slot
-	ld hl,(comb_kind)
-	call item_is_kind
-	jr z,.found
-	ld a,(comb_first)
-	inc a
-	ld (comb_first),a
-	cp PACK_MAX
-	jr c,.find
-	ret
-.found:
-	ld (comb_dst),ix
-	ld a,(comb_first)
-.next:
-	inc a
-	cp PACK_MAX
-	ret nc
-	ld (comb_try),a
-	call pack_slot
-	ld hl,(comb_kind)
-	call item_is_kind
-	ld a,(comb_try)
-	jr nz,.next
-	ld a,(ix+I_NUMBER)
-	ld ix,(comb_dst)
-	add a,(ix+I_NUMBER)
-	ld (ix+I_NUMBER),a
-	ld a,(comb_try)
-	call pack_remove
-	ld hl,msg_combine
-	call msg_print
-	ld a,(comb_try)						; the next one has moved up
-	dec a
-	jr .next
-
 /* find_pack_kind - HL = kind -> A = the first pack slot holding it.
 	Preserves HL */
 find_pack_kind:
@@ -891,7 +845,6 @@ txt_with_:		db " with ",0
 txt_turns_light: db " turns of light",0
 txt_you_have_r:	db "You have ",0
 txt_slot_r:		db " (a).",0
-msg_combine:	db "You combine similar objects from the shop and dungeon.",0
 carry_src:		dw 0
 carry_known:	db 0
 carry_kind:		dw 0
@@ -901,10 +854,6 @@ od_unknown:		db 0
 od_class:		db 0
 od_bare:		db 0				; 1: no article ("The Dagger you are...")
 od_note:		db 0
-comb_kind:		dw 0
-comb_first:		db 0
-comb_try:		db 0
-comb_dst:		dw 0
 LIST_TOP			equ 1
 LIST_LEFT			equ 2
 txt_label:		db "a) ",0

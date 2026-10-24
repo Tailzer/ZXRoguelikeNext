@@ -281,11 +281,25 @@ trap_gone:
 	pop ix
 	ret
 
+/* learn - IX = a monster, E = what's been learnt about its race (LN_),
+	A its detail: into monster memory (recall.asm). Clobbers BC, HL */
+learn:
+	ld hl,learn_what
+/* recall_call - HL = a routine in PAGE_RECALL: as chest_call */
+recall_call:
+	push af
+	ld a,PAGE_RECALL
+	jr page_call
 /* chest_call - HL = a routine in PAGE_CHEST: call it from resident code
 	whichever overlay called that, then put back the pages that were in
 	slots 1 and 2 (read back through ports $243B/$253B). A, DE, IX go in;
-	A, HL and the flags come back. Clobbers BC */
+	A, HL and the flags come back; IY is kept. Clobbers BC */
 chest_call:
+	push af
+	ld a,PAGE_CHEST
+page_call:
+	ld (cc_page),a
+	pop af
 	ld (.target+1),hl
 	ld (cc_a),a
 	ld bc,$243B
@@ -299,10 +313,13 @@ chest_call:
 	inc b
 	in h,(c)
 	push hl
-	nextreg NR_MMU2,PAGE_CHEST
+	ld a,(cc_page)
+	nextreg NR_MMU2,a
 	ld a,(cc_a)
+	push iy
 .target:
 	call 0
+	pop iy
 	ex (sp),hl
 	push af
 	ld a,l

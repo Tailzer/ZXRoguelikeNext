@@ -62,6 +62,8 @@
 	Milestone 16: Dungeon variety - inner rooms, crosses, vaults, pits
 	Milestone 17: Chests and what monsters drop - monster_death, the six
 		chests and their traps; o, D, f, searching and magic on them
+	Milestone 18: Monster memory - what each race has been seen to do and
+		be, learnt as the C learns it; r in look, / and roguelike.mem
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -396,6 +398,12 @@ rooms_end:
 chest_end:
 	ASSERT chest_end <= $6000, "Chest overlay is over 8K"
 
+	MMU 2, PAGE_RECALL, $4000
+	include "src/recall.asm"
+	include "src/combine.asm"
+recall_end:
+	ASSERT recall_end <= $6000, "Recall overlay is over 8K"
+
 	MMU 2, PAGE_RUN, $4000
 	include "src/rest_run.asm"
 	include "src/keys.asm"
@@ -450,6 +458,14 @@ spells_end:
 	include "data/mspells.asm"
 mspells_end:
 	ASSERT $$mspells_end == MSPELL_PAGE, "Monster spells run past their page"
+
+	MMU 1 n, RINFO_PAGE, DATA_WINDOW	; each race's C flags, its description
+	include "data/recall.asm"
+rinfo_end:
+	ASSERT $$rinfo_end == RINFO_PAGE, "Race flags run past their page"
+
+	include "data/descs.asm"			; the descriptions, from DESC_PAGE
+	ASSERT NUM_DESC_PAGES <= 6, "Descriptions need more pages"
 
 	MMU 1 n, MTEXT_PAGE, DATA_WINDOW	; what monster spells and blows say
 	include "src/mcast_text.asm"

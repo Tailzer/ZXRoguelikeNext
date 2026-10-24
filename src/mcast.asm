@@ -107,6 +107,11 @@ mon_cast_spell:
 	ld hl,mc_choice-1
 	add hl,a
 	ld a,(hl)							; cast (A+1): its handler, 0 if none yet
+	push af								; (seen cast: remembered)
+	inc a
+	ld e,LN_SPELL
+	call learn
+	pop af
 	sub 4
 	add a,a
 	ld hl,mc_handlers
@@ -163,7 +168,8 @@ desperate:
 	cp 1
 	ret nz
 	ld (mc_desp),a
-	ret
+	ld e,LN_SMART						; (it casts intelligently)
+	jp learn
 ; CS_INT1, CS_INT2 and CS_INT3's low word, as bytes
 int_masks:		db $20,$00,$06,$80, $00,$34,$02,$51, $00,$00
 
