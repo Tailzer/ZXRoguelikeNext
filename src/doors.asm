@@ -767,6 +767,67 @@ mon_door:
 	or a
 	ret
 
+/* mon_dig - IX = a monster that bores through rock (BREAK_WALL), D, E =
+	the wall in its way (make_move): a closed or secret door bursts open,
+	broken ("You hear a door burst open!"); rock or rubble becomes floor
+	(twall in MORIA2.C: in a room, like a room floor beside it, lit or
+	not; else a corridor). It's known to bore, seen or not */
+mon_dig:
+	ld (dc_sq),de
+	ld e,LN_BORE
+	call learn
+	ld de,(dc_sq)
+	call map_addr
+	ld a,(hl)
+	and TERRAIN_MASK
+	cp T_DOOR_CLOSED
+	jr z,.door
+	cp T_DOOR_SECRET
+	jr z,.door
+	ld (dc_tmp),hl
+	bit F_ROOM_BIT,(hl)
+	jr z,.corridor
+	ld de,dig_around					; a room floor next to it?
+	ld b,8
+.look:
+	push bc
+	ex de,hl
+	ld c,(hl)
+	inc hl
+	ld b,(hl)
+	inc hl
+	ex de,hl
+	ld hl,(dc_tmp)
+	add hl,bc
+	ld a,(hl)
+	and TERRAIN_MASK
+	pop bc
+	cp T_FLOOR
+	jr z,.like
+	cp T_FLOOR_LIT
+	jr z,.like
+	djnz .look
+.corridor:
+	ld b,T_CORRIDOR
+.set:
+	ld hl,(dc_tmp)
+	ld a,(hl)
+	and $FF-TERRAIN_MASK-F_PERM
+	or b
+	ld (hl),a
+	ret
+.like:									; its kind of floor, and its light
+	ld a,(hl)
+	and TERRAIN_MASK|F_PERM
+	ld b,a
+	jr .set
+.door:
+	ld a,1								; open, and broken
+	call mon_door.set
+	call mon_door.burst
+	jp mon_door.opened
+dig_around:		dw -MAP_W-1, -MAP_W, -MAP_W+1, -1, 1, MAP_W-1, MAP_W, MAP_W+1
+
 /* mon_stun - IX = a stunned monster, IY its race: level^2 > 1d5000 and
 	it shakes it off, else one less; at 0 "The Orc recovers and glares at
 	you." -> Z if it can act */

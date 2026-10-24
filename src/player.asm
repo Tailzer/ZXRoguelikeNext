@@ -98,6 +98,18 @@ try_move:
 	FARCALL PAGE_ITEMS, carry_here
 	ret
 .blocked:
+	bit F_MON_BIT,(hl)					; a monster you can see in the rock
+	jr z,.solid							; (one you can't: just the wall)
+	push bc
+	push de
+	call mon_at
+	pop de
+	pop bc
+	jr nc,.solid
+	ld a,(ix+M_ML)
+	or a
+	jr nz,.monster
+.solid:
 	ld a,b
 	cp T_DOOR_CLOSED
 	jr nz,.wall

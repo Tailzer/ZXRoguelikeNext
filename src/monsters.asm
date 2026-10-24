@@ -592,11 +592,17 @@ make_move:
 	and TERRAIN_MASK
 	ld (mm_terrain),a
 	cp T_PERMWALL
-	jr z,.fail
+	jp z,.fail
 	call terrain_flags
 	bit TF_PASSABLE,a
 	jr nz,.open
 	ld a,(mm_terrain)
+	cp T_STORE
+	jr z,.fail
+	bit RF2_PHASE,(iy+R_FLAGS2)			; through it (CM_PHASE)
+	jr nz,.phase
+	bit RF2_BREAK_WALL,(iy+R_FLAGS2)	; or through it, digging
+	jr nz,.dig
 	cp T_DOOR_CLOSED
 	jr z,.door
 	cp T_DOOR_SECRET
@@ -639,6 +645,20 @@ make_move:
 	call mon_distance
 	ld (ix+M_CDIS),a
 	ret
+.phase:
+	push hl
+	ld hl,rc_move
+	set RC_PHASE,(hl)
+	pop hl
+	jr .open
+.dig:									; (doors.asm)
+	push de
+	FARCALL PAGE_TRAP, mon_dig
+	pop de
+	push de
+	call map_addr
+	pop de
+	jr .open
 .fail:
 	ld hl,mm_try
 	inc (hl)

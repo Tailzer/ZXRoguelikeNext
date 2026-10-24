@@ -59,6 +59,7 @@ LN_BLOW				equ 4				; A = which blow hit (0-3)
 LN_SLAYS			equ 5				; the weapon's slays and brands met it
 LN_REPELLED			equ 6				; protection from evil repelled it
 LN_SMART			equ 7				; it cast to escape (INTELLIGENT)
+LN_BORE				equ 8				; it dug through rock (BREAK_WALL)
 ; the C's movement bits (rc_move)
 CM_ATTACK_ONLY		equ $01
 CM_MOVE_NORMAL		equ $02
@@ -66,6 +67,7 @@ CM_20_RANDOM		equ $08
 CM_40_RANDOM		equ $10
 CM_75_RANDOM		equ $20
 RC_OPEN_DOOR		equ 7				; (bit: the C's CM_OPEN_DOOR)
+RC_PHASE			equ 6				; (bit: the C's CM_PHASE)
 LOG_BASE			equ $E000			; (paged into slot 7 over the map for a moment)
 LOG_LINES			equ 32
 LOG_LEN				equ 80

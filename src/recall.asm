@@ -81,7 +81,7 @@ learn_what:
 	ld l,a
 	jp (hl)
 ln_table:	dw ln_flags, ln_resist, ln_turn, ln_spell, ln_blow, ln_slays
-			dw ln_repelled, ln_smart
+			dw ln_repelled, ln_smart, ln_bore
 
 ln_flags:								; R_FLAGS bits -> cdefense
 	ld a,(ln_val)
@@ -143,6 +143,11 @@ ln_smart:								; INTELLIGENT
 	ld (rc_mask+3),a
 	jr cdef_learnt
 
+ln_bore:								; BREAK_WALL (seen or not, as the C)
+	ld a,$20
+	ld (rc_mask+2),a
+	jr cdef_learnt
+
 ln_repelled:							; seen repelled: EVIL
 	ld a,(ix+M_ML)
 	or a
@@ -169,6 +174,10 @@ ln_turn:
 	jr z,.door
 	set 1,(hl)							; CM_OPEN_DOOR
 .door:
+	bit RC_PHASE,c
+	jr z,.solid
+	set 2,(hl)							; CM_PHASE
+.solid:
 	ld a,(rc_info+RI_CMOVE+2)			; invisible, seen without telepathy:
 	rra									; seen invisible (MV_INVIS)
 	jr nc,.visible

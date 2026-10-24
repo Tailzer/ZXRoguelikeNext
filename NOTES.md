@@ -231,7 +231,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - monsters: those that open doors pick locks and burst stuck doors (1d((hp+1)(50+n)) < 40(hp-10-n)); the rest bash closed doors (1d((hp+1)(80+n)) < 40(hp-20-n)): "You hear a door burst open!"; a stunned monster recovers (level^2 > 1d5000) or waits: "The Orc recovers and glares at you."
    - doors with a number (locked, stuck, broken) are kept in high RAM, 16 a level (any more are plain); the door code is in the trap overlay (`src/doors.asm`), and resting and running moved to their own overlay (59, `src/rest_run.asm`) to make room
    - `f` was a second fire key (13b); it's force now, as the roguelike keyset has it
-   - not yet: monsters that tunnel or pass walls (chests came in 17)
+   - (chests came in 17, monsters that pass or dig through walls in 19)
 14c. **Looking around** (`MORIA2.C` look/look_see/look_mon_desc, `IO.C` screen_map, `DUNGEON.C` locate and ^P, `HELP.C` ident_char) *(done)*
    - `x` (the roguelike keys' look): "Look which direction?", then every monster you can see and every object on a lit or remembered square in sight, in that 45-degree cone (5: all round), nearest first, each until a key, space stopping it ("--Aborting look--"): "You see a Kobold (unhurt).", "You see a Dagger (1d4) ---pause---", "It is on a down staircase ---pause---"; then "That's all you see in that direction." or "You see nothing of interest."; the C's ray scan is done with the game's line of sight; no monster recall (there's no monster memory)
    - `M`: the level a third the size in a border, each 3 x 3 showing its most important thing (you, stairs, items and monsters, doors, walls, floor), until a key
@@ -281,7 +281,14 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - `/`: after what the symbol is, "You recall those details? [y/n]" and each race of that symbol you know something of, the deepest first (space stops)
    - the memory outlives the character, as the C's: it's kept as roguelike.mem on the SD card, written when you save and when a character dies (the race that killed you remembered for it), and read at start-up
    - the memory is three RAM pages (74-76, 32 bytes a race); the code is its own overlay (73, `src/recall.asm`), reached through the resident `learn` (and `recall_call`, as `chest_call`); `pack_combine` moved there too, and the device overlay's copy of `msg_add_u16` went, to make room
-   - not yet: a few of the C's learning points with no port counterpart yet (monsters breaking walls, breeding, eating others, picking up objects); cold blood and invisibility are learnt while it's in view rather than exactly where `update_mon` finds them
+   - not yet: a few of the C's learning points with no port counterpart yet (breeding, eating others, picking up objects); cold blood and invisibility are learnt while it's in view rather than exactly where `update_mon` finds them
+19. **Monsters in the walls** (`CREATURE.C` make_move's CM_PHASE and BREAK_WALL, `MORIA2.C` twall and move_char) *(done)*
+   - those that pass through walls (CM_PHASE: ghosts, elementals, xorns...) step into granite, magma, quartz, rubble and closed doors as if they were floor, and leave them as they were; permanent rock (the outer wall, the greater vaults) stops them
+   - those that bore (BREAK_WALL: umber hulks, Morgoth...) dig through rock and rubble as they come, the square becoming floor (in a room, like the room floor beside it, lit or not; else a corridor), and burst closed and secret doors open, broken ("You hear a door burst open!"); permanent rock stops them too
+   - walking into a monster you can see in the rock attacks it; one you can't is just "There is a wall in the way." (find it by tunnelling, which fights whatever's there), as the C's move_char
+   - monster memory learns both: "It can pass through walls" when one's seen doing it, "It can bore through rock" whenever one digs, seen or not
+   - the digging is the trap overlay's (`mon_dig`, `src/doors.asm`); make_move tries them before doors, as the C
+   - not yet: monsters that eat others or pick things up; bolts still stop at the rock a monster stands in (as the C's)
 
 ## Memory map
 

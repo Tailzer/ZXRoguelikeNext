@@ -64,6 +64,8 @@
 		chests and their traps; o, D, f, searching and magic on them
 	Milestone 18: Monster memory - what each race has been seen to do and
 		be, learnt as the C learns it; r in look, / and roguelike.mem
+	Milestone 19: Monsters in the walls - passing through rock, and boring
+		through it and through doors
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)

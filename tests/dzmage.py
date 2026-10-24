@@ -45,6 +45,12 @@ def open_line():
     for d, (dy, dx) in DIRS.items():
         if all((m[(y + dy*i)*W + x + dx*i] & 15) in (1, 2, 14) for i in (1, 2, 3)):
             return d, y + 2*dy, x + 2*dx
+    for yy in range(4, 62):								# (cramped: into a room)
+        for xx in range(4, 194):
+            if all((m[(yy + a)*W + xx + b] & 15) in (1, 2, 14) and not m[(yy + a)*W + xx + b] & 0x80
+                   for a in range(-3, 4) for b in range(-3, 4)):
+                wr(A["PLAYER_Y"], bytes([yy])); wr(A["PLAYER_X"], bytes([xx])); call(A["UPDATE_VIEW"])
+                return open_line()
 def place_mon(race, y, x, hp=600):
     wr(0xB000, bytes([race & 255, y, x, hp & 255, hp >> 8, 0, 0, 255, 0, 0, 2, 1, race >> 8, 0, 0, 0]))
     a = 0xC000 + y*W + x; wr(a, bytes([rd(a, 1)[0] | 0x80]))
