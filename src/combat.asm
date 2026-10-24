@@ -504,6 +504,9 @@ mon_take_hit:
 	call msg_add
 	call msg_end
 .quiet:
+	xor a								; what it carried falls
+	ld hl,monster_death					; (chests.asm)
+	call chest_call
 	call mon_remove
 	call check_level_up
 	scf									; it died

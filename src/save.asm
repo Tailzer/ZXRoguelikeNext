@@ -19,7 +19,7 @@ FA_READ				equ $01
 FA_WRITE			equ $02
 FA_CREATE_AL		equ $0C				; create, or truncate what's there
 ESX_DRIVE			equ "*"				; the current drive
-SAVE_VERSION		equ 1
+SAVE_VERSION		equ 2				; (2: chests renumbered the kinds)
 
 ; what is saved: (page shown at $6000 while it's read or written, or 0 for
 ; none; address; length). Overlay and data pages are seen through slot 3.

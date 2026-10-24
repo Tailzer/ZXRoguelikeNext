@@ -18,7 +18,7 @@ end_event_now:
 	ld (end_event),a
 	pop af
 	cp 2
-	jr z,.morgoth
+	jp z,.morgoth
 	xor a								; the quest is done
 	ld (p_quest),a
 	ld a,(dun_level)
@@ -26,16 +26,30 @@ end_event_now:
 	ld hl,me_onward
 	jp nz,msg_print						; (killed elsewhere: just words)
 	ld a,(end_y)						; a stairway where he fell, or near
-	ld d,a								; it if something lies there
-	ld a,(end_x)
-	ld e,a
+	ld d,a								; it if an artifact or a trap lies
+	ld a,(end_x)						; there (anything else there goes,
+	ld e,a								; as what he dropped may)
 	ld b,20
 .spot:
 	push bc
 	push de
 	call item_at
 	pop de
-	jr c,.taken
+	jr nc,.no_item
+	ld a,(ix+I_KIND_HI)
+	cp KIND_GOLD
+	jr z,.gone
+	ld a,(ix+I_NAME2)
+	or a
+	jr z,.gone
+	push de
+	call ego_addr
+	pop de
+	bit EO_ARTIFACT,(iy+E_OPTS)
+	jr nz,.taken
+.gone:
+	ld (ix+I_KIND_HI),ITEM_EMPTY
+.no_item:
 	push de
 	call trap_at
 	pop de

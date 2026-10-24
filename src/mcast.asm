@@ -1265,14 +1265,19 @@ mc_hurt_mon:
 	jr z,.alive
 	ld a,(mc_ball)
 	or a
-	jp z,mon_remove
+	jr z,.dies
 	bit RF_UNIQUE,(iy+R_FLAGS)
-	jp z,mon_remove
+	jr z,.dies
 	ld hl,0
 .alive:
 	ld (ix+M_HP),l
 	ld (ix+M_HP+1),h
 	ret
+.dies:									; what it carried falls (plainly:
+	ld a,1								;  monster_death's good is 0)
+	ld hl,monster_death
+	call chest_call
+	jp mon_remove
 
 /* floor_destroy - mc_sq: what the element destroys there goes (the
 	destroy sets of get_flags in SPELLS.C): a floor item, or a door */

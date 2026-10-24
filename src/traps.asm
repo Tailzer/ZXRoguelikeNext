@@ -169,6 +169,38 @@ trap_name_add:
 	ld h,(iy+1)
 	jp msg_add
 
+/* search_square - D, E = a square searching has noticed: a hidden trap
+	there is found, or the trap on a chest (search in MORIA1.C) */
+search_square:
+	call trap_at
+	jr nc,.chest
+	bit TRF_SEEN,(ix+TR_FLAGS)
+	jr nz,.chest
+	set TRF_SEEN,(ix+TR_FLAGS)
+	push de
+	call say_found_trap
+	pop de
+.chest:
+	call chest_at
+	ret nc
+	OVCALL PAGE_CHEST, chest_search, PAGE_TRAP
+	ret
+
+/* chest_at - D, E -> IX = a chest lying there, carry if there is one.
+	Preserves DE */
+chest_at:
+	call item_at
+	ret nc
+	push de
+	call item_kind_addr
+	pop de
+	ld a,(iy+K_CLASS)
+	cp IC_CHEST
+	scf
+	ret z
+	or a
+	ret
+
 /* say_found_trap - IX = trap: "You have found an arrow trap." */
 say_found_trap:
 	call msg_begin
@@ -506,11 +538,14 @@ cmd_disarm:
 	OVCALL PAGE_DEVICE, get_dir, PAGE_TRAP
 	ret nc
 	call dir_square						; D, E, (tr_dx, tr_dy)
+	xor a
+	ld (tr_chest),a
 	call trap_at
-	jr nc,.nothing
+	jr nc,.chest
 	bit TRF_SEEN,(ix+TR_FLAGS)
-	jr z,.nothing
+	jr z,.chest
 	ld (tr_trap),ix
+.way:
 	push de
 	call map_addr
 	pop de
@@ -530,10 +565,22 @@ cmd_disarm:
 	ld hl,mt_in_your_way
 	call msg_add
 	jp msg_end
+.chest:									; or a chest's trap
+	call chest_at
+	jr nc,.nothing
+	ld a,1
+	ld (tr_chest),a
+	jr .way
 .nothing:
 	ld hl,mt_nothing_to_disarm
 	jp msg_print
 .clear:
+	ld a,(tr_chest)
+	or a
+	jr z,.trap
+	OVCALL PAGE_CHEST, chest_disarm, PAGE_TRAP
+	ret
+.trap:
 	ld a,1
 	ld (turn_taken),a
 	call disarm_skill					; HL = tot
@@ -894,8 +941,8 @@ dig_power:
 
 ; ---------------------------------------------------------------- magic
 
-/* detect_traps - every trap in view is found (detect_trap) -> carry if
-	any. Preserves IX */
+/* detect_traps - every trap in view is found, and what chests in view are
+	(detect_trap) -> carry if any trap. Preserves IX */
 detect_traps:
 	push ix
 	xor a
@@ -929,6 +976,7 @@ detect_traps:
 	inc ix
 	inc ix
 	djnz .each
+	OVCALL PAGE_CHEST, detect_chests, PAGE_TRAP	; (chests: what traps)
 	pop ix
 	ld a,(tr_any)
 	rra
@@ -1009,7 +1057,7 @@ trap_creation:
 	ret
 
 /* traps_around_gone - the traps round the player (theirs too) are
-	destroyed (td_destroy) -> carry if any */
+	destroyed, chests disarmed (td_destroy) -> carry if any */
 traps_around_gone:
 	xor a
 	ld (tr_any),a
@@ -1105,3 +1153,4 @@ tr_dy:			db 0
 tr_dx:			db 0
 tr_sq:			dw 0
 tr_any:			db 0
+tr_chest:		db 0				; D at a chest (chests.asm does it)

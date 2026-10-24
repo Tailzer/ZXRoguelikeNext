@@ -123,7 +123,7 @@ try_move:
 
 /* search - each square round the player, 1d100 under the searching
 	skill (a tenth of it when confused, blind or in the dark) finds a secret
-	door or a hidden trap there (search in MORIA1.C; no chests yet) */
+	door or a hidden trap there, or a chest's trap (search in MORIA1.C) */
 search:
 	ld a,(p_srh)
 	bit 7,a
@@ -165,16 +165,10 @@ search:
 	ld hl,sr_chance
 	cp (hl)
 	jr nc,.next
-	pop de								; a hidden trap is found
-	push de
+	pop de								; a hidden trap is found, or a
+	push de								; trap on a chest
 	push ix
-	call trap_at
-	jr nc,.no_trap
-	bit TRF_SEEN,(ix+TR_FLAGS)
-	jr nz,.no_trap
-	set TRF_SEEN,(ix+TR_FLAGS)
-	FARCALL PAGE_TRAP, say_found_trap
-.no_trap:
+	FARCALL PAGE_TRAP, search_square
 	pop ix
 	pop de
 	push de

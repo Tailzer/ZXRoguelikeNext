@@ -2099,7 +2099,7 @@ td_destroy2:
 	call beam_step
 	call beam_square
 	ld b,a								; (terrain flags)
-	call trap_gone						; traps go too
+	call trap_flash						; traps go too (and chests)
 	jr c,.flash
 	ld a,(hl)
 	and TERRAIN_MASK
@@ -2138,7 +2138,7 @@ disarm_all:
 .square:
 	call beam_square
 	ld b,a
-	call trap_gone						; traps are disarmed
+	call trap_click						; traps are disarmed (chests too)
 	jr c,.any
 	ld a,(hl)
 	and TERRAIN_MASK

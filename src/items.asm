@@ -246,16 +246,71 @@ trap_at:
 	or a
 	ret
 
-/* trap_gone - D = y, E = x: the trap there is destroyed -> carry if there
-	was one. Preserves BC, DE, HL, IX */
+/* trap_gone - D = y, E = x: the trap there is destroyed, or a chest there
+	disarmed (td_destroy) -> carry if there was one. trap_click: a chest's
+	lock clicks open too (disarm_all); trap_flash: a chest goes (td_destroy2).
+	Preserves BC, DE, HL, IX */
+trap_flash:
+	ld a,2
+	jr trap_gone.go
+trap_click:
+	ld a,1
+	jr trap_gone.go
 trap_gone:
+	xor a
+.go:
 	push ix
+	push af
 	call trap_at
-	jr nc,.none
+	jr nc,.chest
 	ld (ix+TR_TYPE),0
-	scf
-.none:
+	pop af
 	pop ix
+	scf
+	ret
+.chest:
+	pop af
+	push bc
+	push de
+	push hl
+	ld hl,chest_magic					; (chests.asm)
+	call chest_call
+	pop hl
+	pop de
+	pop bc
+	pop ix
+	ret
+
+/* chest_call - HL = a routine in PAGE_CHEST: call it from resident code
+	whichever overlay called that, then put back the pages that were in
+	slots 1 and 2 (read back through ports $243B/$253B). A, DE, IX go in;
+	A, HL and the flags come back. Clobbers BC */
+chest_call:
+	ld (.target+1),hl
+	ld (cc_a),a
+	ld bc,$243B
+	ld a,NR_MMU1
+	out (c),a
+	inc b
+	in l,(c)
+	dec b
+	ld a,NR_MMU2
+	out (c),a
+	inc b
+	in h,(c)
+	push hl
+	nextreg NR_MMU2,PAGE_CHEST
+	ld a,(cc_a)
+.target:
+	call 0
+	ex (sp),hl
+	push af
+	ld a,l
+	nextreg NR_MMU1,a
+	ld a,h
+	nextreg NR_MMU2,a
+	pop af
+	pop hl
 	ret
 
 /* draw_traps - the traps that have been found, where they're in view:

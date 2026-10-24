@@ -209,11 +209,15 @@ def resists(r):
 
 
 def mspell_record(r):
-    """12 bytes: spells, spells2 (dwords), spells3 (low word), RS_ flags (smart, destruct)"""
+    """12 bytes: spells, spells2 (dwords), spells3 (low word), RS_ flags (smart,
+    destruct, good, great), treasure"""
     assert r["s3"] < 0x10000, r["name"]
     flags = (1 if r["cdefense"] & value("INTELLIGENT") else 0) \
-        | (2 if r["cdefense"] & value("DESTRUCT") else 0)      # RS_DESTRUCT: big blows shake the cave
-    return (struct.pack("<IIH", r["s1"], r["s2"], r["s3"]) + bytes([flags, 0]))
+        | (2 if r["cdefense"] & value("DESTRUCT") else 0) \
+        | (4 if r["cdefense"] & value("GOOD") else 0) \
+        | (8 if r["cdefense"] & value("SPECIAL") else 0)        # RS_GOOD, RS_GREAT: what it drops
+    # MS_TREASURE: what it carries (monster_death), the C's CM_CARRY_OBJ... CM_4D2_OBJ
+    return (struct.pack("<IIH", r["s1"], r["s2"], r["s3"]) + bytes([flags, (r["cmove"] >> 24) & 0x7F]))
 
 
 def race_record(r):
@@ -260,7 +264,7 @@ CLASSES = {"TV_FOOD": 1, "TV_POTION1": 2, "TV_POTION2": 2,
            "TV_AMULET": 14, "TV_RING": 15, "TV_MAGIC_BOOK": 16, "TV_PRAYER_BOOK": 17,
            "TV_LIGHT": 20, "TV_FLASK": 19,       # (torches are 18: they stack)
            "TV_BOW": 21, "TV_SLING_AMMO": 22, "TV_BOLT": 22, "TV_ARROW": 22,
-           "TV_SPIKE": 23}
+           "TV_SPIKE": 23, "TV_CHEST": 24}
 # launchers by p1 (facts in MORIA2.C, objdes in DESC.C): multiplier, range,
 # the tval of the ammunition they fire
 BOWS = {1: (2, 20, "TV_SLING_AMMO"), 2: (2, 25, "TV_ARROW"), 3: (3, 30, "TV_ARROW"),
@@ -387,7 +391,7 @@ def kind_record(o, cls):
 def magic_class(o):
     """MC_ class for magic_treasure: 1 body armour/shields, 2 dragon armour,
     3 weapons, 4 gloves, 5 boots, 6 helms, 7 cloaks, 9 rings, 10 amulets,
-    0 anything else"""
+    13 chests, 0 anything else"""
     t = o["tval_name"]
     if t in ("TV_SHIELD", "TV_HARD_ARMOR", "TV_SOFT_ARMOR"):
         return 2 if "Dragon Scale" in o["name"] else 1
@@ -396,7 +400,7 @@ def magic_class(o):
     return {"TV_HAFTED": 3, "TV_POLEARM": 3, "TV_SWORD": 3, "TV_GLOVES": 4,
             "TV_BOOTS": 5, "TV_HELM": 6, "TV_CLOAK": 7, "TV_RING": 9,
             "TV_AMULET": 10, "TV_BOW": 11, "TV_SLING_AMMO": 12, "TV_BOLT": 12,
-            "TV_ARROW": 12, "TV_SPIKE": 12}.get(t, 0)
+            "TV_ARROW": 12, "TV_SPIKE": 12, "TV_CHEST": 13}.get(t, 0)
 
 
 def main():
@@ -423,7 +427,9 @@ def main():
     kinds, kind_of = [], {}
     alloc = []                                       # (level, kind, rare) per dungeon object
     specials = special_objects()                     # + the rings and amulets
-    for i in list(range(max_dungeon_obj + 23)) + sorted(specials):  # (store-only too)
+    ruined = max_dungeon_obj + 76                    # bashing a chest may leave one
+    assert objs[ruined]["name"] == "& ruined chest"
+    for i in list(range(max_dungeon_obj + 23)) + [ruined] + sorted(specials):  # (store-only too)
         o = objs[i]
         cls = usable(o)
         if not cls:
@@ -463,6 +469,9 @@ def main():
              f"KIND_CHAIN_MAIL\tequ {[i for i, (o, c) in enumerate(kinds) if o['name'] == 'Chain Mail'][0]}",
              f"KIND_RING_SPEED\tequ {kind_named('Speed', 15)}",
              f"KIND_RING_POWER\tequ {kind_of[('Power', value('TV_RING'))]}",
+             f"KIND_RUINED_CHEST\tequ {kind_of[('& ruined chest', value('TV_CHEST'))]}",
+             f"KIND_IRON_CROWN\tequ {kind_of[(objs[98]['name'], objs[98]['tval'])]}\t; Morgoth's crown",
+             f"KIND_LEAD_MACE\tequ {kind_of[(objs[56]['name'], objs[56]['tval'])]}\t; Grond",
              f"RACE_SAURON\t\tequ {next(i for i, r in enumerate(races) if r['cdefense'] & value('QUESTOR'))}"
              f"\t; QUESTOR: the quest",
              f"QUEST_LEVEL\t\tequ {next(r['level'] for r in races if r['cdefense'] & value('QUESTOR'))}",
@@ -636,7 +645,7 @@ def ego_tables(note, objs, kinds, kind_of, specials):
         return out
     lines = [note, f"MAX_OBJECTS\t\tequ {value('MAX_OBJECTS')}", f"SPECIAL_OBJ\t\tequ {value('SPECIAL_OBJ')}", "",
              "; kind, then 1d(first byte) chooses among (weight, 1 in keep, artifact)"]
-    lines += table("art_table", [(k, v) for k, v in choices.items() if not k.startswith(("cloak:", "bow:"))])
+    lines += table("art_table", [(k, v) for k, v in choices.items() if not k.startswith(("cloak:", "bow:", "win:"))])
     lines += table("art_cloak_table", [(k[6:], v) for k, v in choices.items() if k.startswith("cloak:")])
     lines += ["", "; the bow artifacts (magic_treasure's TV_BOW): which, then to-hit and to-dam added",
               "bow_arts:"]
@@ -785,6 +794,12 @@ def artifacts():
         a = art_fields(stmts)
         a["add"] = [int(re.search(r"->" + f + r"\s*\+=\s*(\d+)", stmts).group(1)) for f in ("tohit", "todam")]
         choices["bow:" + name] = [(a, Fraction(1))]
+    # what Morgoth leaves (monster_death in MORIA2.C): his crown, and Grond
+    src = strip_comments(read("MORIA2.C"))
+    i = src.index("int32u monster_death(")
+    for name, obj in (("crown", 98), ("grond", 56)):
+        j = src.index(f"invcopy(&t_list[cur_pos], {obj});", i)
+        choices["win:" + name] = [(art_fields(src[j:src.index("if (cave[j][k].cptr == 1)", j)]), Fraction(1))]
     return choices
 
 

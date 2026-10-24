@@ -27,6 +27,7 @@ PAGE_LOG			equ 70				; RAM: the message history, at LOG_BASE
 ROOM_MON_MAX		equ 56				; what vaults and pits may fill of the list
 WIN_MON_APPEAR		equ 100				; the level Morgoth may be found from
 PAGE_ROOMS			equ 71				; overlay: inner rooms, crosses, vaults, pits
+PAGE_CHEST			equ 72				; overlay: chests, and what monsters drop
 LOG_BASE			equ $E000			; (paged into slot 7 over the map for a moment)
 LOG_LINES			equ 32
 LOG_LEN				equ 80
@@ -264,6 +265,17 @@ MS_BITS				equ 80
 MS_FLAGS			equ 10
 RS_SMART			equ 0				; INTELLIGENT: casts to escape when hurt
 RS_DESTRUCT			equ 1				; DESTRUCT: its heavy blows shake the cave
+RS_GOOD				equ 2				; GOOD: what it drops is good
+RS_GREAT			equ 3				; SPECIAL: ... and great
+MS_TREASURE			equ 11				; MT_ bits: what it carries (CM_CARRY_OBJ...)
+MT_OBJ				equ 0				; objects
+MT_GOLD				equ 1				; treasure (both: half and half)
+MT_60				equ 2				; one, 60% of the time
+MT_90				equ 3				; one, 90% of the time
+MT_1D2				equ 4				; 1d2
+MT_2D2				equ 5				; 2d2
+MT_4D2				equ 6				; 4d2 (a chest's kind has these in
+										;  K_FLAGS+3 too)
 CS_FREQ				equ $0F				; 1 in this many turns it casts
 MAX_SPELL_DIS		equ 18				; the furthest a spell is cast from
 ; what summon_by (level overlay) brings
@@ -397,6 +409,7 @@ MC_RING				equ 9
 MC_AMULET			equ 10
 MC_BOW				equ 11
 MC_AMMO				equ 12
+MC_CHEST			equ 13
 OBJ_TOWN_LEVEL		equ 5				; what level store goods are made at
 ; ego items: SN_ numbers come with data/egos.asm, 16 bytes each in EGO_PAGE
 EGO_SIZE			equ 24
@@ -448,6 +461,16 @@ IC_LANTERN			equ 20				; lanterns and the light artifacts
 IC_BOW				equ 21				; slings, bows, crossbows (wielded)
 IC_AMMO				equ 22				; shots, arrows, bolts (they stack)
 IC_SPIKE			equ 23				; iron spikes (they stack; jam doors)
+IC_CHEST			equ 24				; chests: I_PVAL holds CHF_ bits, I_NAME2
+										; what it's known to be: "(Locked)"
+CHF_LOCKED			equ 0				; (the C's CH_ flags)
+CHF_LOSE_STR		equ 1
+CHF_POISON			equ 2
+CHF_PARALYSED		equ 3
+CHF_EXPLODE			equ 4
+CHF_SUMMON			equ 5
+CHF_TREASURE		equ 7				; its kind's MT_ bits still hold
+CH_TRAPPED			equ $3E
 OBJ_LAMP_MAX		equ 15000			; the most a lamp holds
 FILTER_CHARGED		equ $FE				; choose_pack filter: wand or staff
 TREAS_ROOM_ALLOC	equ 9				; mean objects in rooms
@@ -653,6 +676,8 @@ KILLER_EARTHQUAKE	equ $FE08			; elemental force bringing the cave down
 KILLER_TRAPS		equ $FE09			; and on: what each trap kills with (traps.asm)
 KILLER_QUIT			equ $FE13			; 'Q': "Quitting"
 KILLER_OLD_AGE		equ $FE14			; a winner's retirement: "Ripe Old Age"
+KILLER_NEEDLE		equ $FE15			; a chest's needle
+KILLER_CHEST		equ $FE16			; an exploding chest
 ; object_ident flags (DESC.C) and the kinds that have flavours
 OD_TRIED_BIT		equ 0
 OD_KNOWN_BIT		equ 1

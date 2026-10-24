@@ -60,6 +60,8 @@
 	Milestone 14c: Looking around - look, the map, locate, ^P, symbols
 	Milestone 15: The endgame - Sauron's quest, Morgoth, winning, retiring
 	Milestone 16: Dungeon variety - inner rooms, crosses, vaults, pits
+	Milestone 17: Chests and what monsters drop - monster_death, the six
+		chests and their traps; o, D, f, searching and magic on them
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -389,6 +391,11 @@ look_end:
 rooms_end:
 	ASSERT rooms_end <= $6000, "Rooms overlay is over 8K"
 
+	MMU 2, PAGE_CHEST, $4000
+	include "src/chests.asm"
+chest_end:
+	ASSERT chest_end <= $6000, "Chest overlay is over 8K"
+
 	MMU 2, PAGE_RUN, $4000
 	include "src/rest_run.asm"
 	include "src/keys.asm"
@@ -430,6 +437,7 @@ egos_end:
 
 	MMU 1 n, ACT_PAGE, DATA_WINDOW		; activation: effects and messages
 	include "data/activate.asm"
+	include "src/killers.asm"			; what kills you, when not a monster
 acts_end:
 	ASSERT $$acts_end == ACT_PAGE, "Activations run past their page"
 

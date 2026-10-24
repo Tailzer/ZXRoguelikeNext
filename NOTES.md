@@ -189,7 +189,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - store entries grew a byte for the fuel, so saves from before this don't load
    - searching (`MORIA1.C` search, `MORIA2.C` move_char, `CREATE.C` srh/fos), so secret doors can be found without magic: `s` searches the 8 squares round you; walking, you search every step if your searching frequency is 1 or less, else 1 in that many
      - each square: 1d100 under the searching skill (race + class, plus Searching rings) finds a secret door ("You have found a secret door."), which becomes a closed door; a tenth of the chance when confused, blind or in the dark
-     - not yet: chests to find; the character sheet doesn't show searching
+     - not yet: the character sheet doesn't show searching (chests' traps are found too since 17)
 12. **Traps** (`TREASURE.C` the 18 traps, `MISC2.C` place_trap/place_rubble, `MORIA2.C` hit_trap/disarm_trap/tunnel, `MORIA1.C` twall, `SPELLS.C` detect_trap/trap_creation/td_destroy) *(done)*
    - each level (not the town) gets 1d(level / 3, 2 to 10) traps anywhere on the floor and as much rubble in the corridors; traps are hidden (all but open pits) until found by searching (as you walk, or `s`), by magic, or by stepping on one; found traps show as a red `^` (`;` for a loose rock), rubble as `:`
    - stepping on one sets it off, as `hit_trap`: pits (feather fall floats you down) and covered pits (an open pit after), trap doors (down a level), arrows and darts against your AC (STR and CON drains unless sustained, slowing unless free action), gases (sleep unless free action, corrosion, poison, blindness unless resisted, confusion), the teleport rune, the summoning rune (2 + 1d3 monsters, then it's gone), fire and acid, a loose rock (something under it) and a rockfall (rubble where it was, and you're back where you stepped from); the death screen names the trap
@@ -197,7 +197,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - `T` tunnels: rubble against 1d180, magma 1d600+10, quartz 1d400+10, granite 1d1200+80, with a digging power of (STR + the weapon's dice x sides + its pluses) / 2 (STR + 25 + 50 per point of a TUNNEL weapon); rubble sometimes hides an object; permanent rock never; no weapon, "You dig with your hands, making no progress."
    - magic: Trap Detection/Location (scroll, staff, rod, Detection), Find Traps/Doors (mage), Find Traps (priest) find the traps in view; Trap Creation (scroll, monster spell) puts traps on every floor square round you, no experience for disarming those; Trap/Door Destruction (scroll, wand, spell, Caspanion) and Disarming destroy them
    - the trap list is 32 x 4 bytes of high RAM (saved with it), so saves from before this don't load; the trap code is its own overlay (58, `src/traps.asm`)
-   - not yet: chests and their traps; shovels and picks (TV_DIGGING isn't converted yet, so `T` digs with your weapon; the TUNNEL bonus is ready for them)
+   - not yet: shovels and picks (TV_DIGGING isn't converted yet, so `T` digs with your weapon; the TUNNEL bonus is ready for them)
 13a. **Throwing** (`MORIA2.C` throw_object/inven_throw/facts/drop_throw, `MISC2.C` tot_dam) *(done)*
    - `v` throws one of anything in the pack ("Fire/Throw which one?") in a direction ("You have 4 Flasks of oil (c)."); confused, it goes astray
    - it flies up to (STR + 20) x 10 / its weight squares (at most 10), stopping at a wall or the first monster in its way
@@ -231,7 +231,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - monsters: those that open doors pick locks and burst stuck doors (1d((hp+1)(50+n)) < 40(hp-10-n)); the rest bash closed doors (1d((hp+1)(80+n)) < 40(hp-20-n)): "You hear a door burst open!"; a stunned monster recovers (level^2 > 1d5000) or waits: "The Orc recovers and glares at you."
    - doors with a number (locked, stuck, broken) are kept in high RAM, 16 a level (any more are plain); the door code is in the trap overlay (`src/doors.asm`), and resting and running moved to their own overlay (59, `src/rest_run.asm`) to make room
    - `f` was a second fire key (13b); it's force now, as the roguelike keyset has it
-   - not yet: chests (open and bash work on doors only), monsters that tunnel or pass walls
+   - not yet: monsters that tunnel or pass walls (chests came in 17)
 14c. **Looking around** (`MORIA2.C` look/look_see/look_mon_desc, `IO.C` screen_map, `DUNGEON.C` locate and ^P, `HELP.C` ident_char) *(done)*
    - `x` (the roguelike keys' look): "Look which direction?", then every monster you can see and every object on a lit or remembered square in sight, in that 45-degree cone (5: all round), nearest first, each until a key, space stopping it ("--Aborting look--"): "You see a Kobold (unhurt).", "You see a Dagger (1d4) ---pause---", "It is on a down staircase ---pause---"; then "That's all you see in that direction." or "You see nothing of interest."; the C's ray scan is done with the game's line of sight; no monster recall (there's no monster memory)
    - `M`: the level a third the size in a border, each 3 x 3 showing its most important thing (you, stairs, items and monsters, doors, walls, floor), until a key
@@ -259,7 +259,21 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - the monster list holds 64: vaults and pits stop at 56, and a pit is filled from the middle out (the C fills a 95-monster pit from the outside in), so some of the outer, weakest ranks may be missing
    - as in the C, tunnels pass through the inner and permanent walls without digging them, so parts of a level with vaults can be cut off (dig, or use magic)
    - the room code is its own overlay (71, `src/rooms.asm`), the templates and the pits' races made by the converter (`data/vaults.asm`); a level's monsters, objects and traps are now cleared before its rooms are built, and the player starts on a free square
-   - not yet: the level feeling (the C's rating), chests
+   - not yet: the level feeling (the C's rating)
+17. **Chests and what monsters drop** (`MORIA2.C` monster_death/summon_object/chest_trap/openobject/disarm_trap/bash, `MISC1.C` magic_treasure's TV_CHEST, `MORIA1.C` search, `SPELLS.C` detect_trap/td_destroy/disarm_all/td_destroy2)
+   - monsters drop what they carry now: each race's CM_ treasure bits (objects, gold or both; 60%, 90%, 1d2, 2d2, 4d2) are in its spell record, and what it carries falls within 2 squares of where it died, on open floor in sight of there; GOOD and SPECIAL races drop good and great things (place_special: "You feel something roll beneath your feet." if it's under you); a monster killed by another's breath or ball drops plainly, as the C
+   - Morgoth leaves the Massive Iron Crown of Morgoth (+125 to every stat, telepathy, light, see invisible, cursed) and Grond (10d8, +5,+25, [+10], slays and resistances, aggravation), made by the converter from monster_death's own statements
+   - the six chests (Small/Large wooden, iron and steel, levels 7 to 50) are items, found anywhere objects are (`~`, too heavy to carry far); magic_treasure makes each 1d(level + 4): empty, locked, a poison needle (strength or poison), a gas trap, an explosion device, summoning runes, or multiple traps, and its name says which once it's known: "a Small wooden chest (Locked)"
+   - `o` opens one next to you: a lock is picked with the disarming skill less the chest's level ("You have picked the lock.", its level in experience; "You failed to pick the lock."; "You are too confused to pick the lock."); open, it's "(Empty)", any trap still on it goes off, and what was in it falls round it as if a monster had died there (never good, and no winning by it)
+   - the traps: "A small needle has pricked you!" (strength down and 1d4 unless sustained: "You feel weakened!"; or 1d6 and poison 10 + 1d20 unless resisted), "A puff of yellow gas surrounds you!" ("You choke and pass out." for 10 + 1d20, or free action), summoning runes (three monsters, or their groups), "There is a sudden explosion!" (5d8, the chest and all in it gone); the tombstone says "a poison needle" or "an exploding chest"
+   - `D` at a chest: "I don't see a trap." until it's known, "The chest was not trapped.", or the disarming skill less its level: "You have disarmed the chest." (its level in experience; "(Locked)" if it still is, else "(Disarmed)"), "You failed to disarm the chest.", or "You set a trap off!"
+   - `f` at a chest: 1 in 10 "You have destroyed the chest." "and its contents!" (a ruined chest), else 1 in 10 "The lock breaks open!", else "The chest holds firm."
+   - searching finds a chest's trap ("You have discovered a trap on the chest!", then "The chest is trapped!"); trap detection shows what traps the chests in view have; Trap/Door Destruction round you disarms and unlocks them ("You have disarmed the chest."), a wand of Disarming "Click!"s them open ("(Unlocked)"), and Trap/Door Destruction's beam destroys them
+   - Sauron's stairway takes the square he fell on even if what he dropped is there (the C deletes anything but an artifact for it), moving aside only for an artifact or a trap
+   - chests are kept out of the class checks that take everything from bows on as arms (Detect Enchantment, enchanting, pseudo-ID) or as wearable
+   - the drop and chest code is its own overlay (72, `src/chests.asm`), reached from anywhere through the resident `chest_call`, which reads back which pages were in slots 1 and 2 and puts them back; the tombstone's words moved to the activation data page (`src/killers.asm`) to make room in the creation overlay
+   - the kinds are renumbered (chests, the ruined chest), so the save version is 2 and older saves don't load
+   - not yet: monster memory (what a race was seen to drop); an opened chest keeps its price
 
 ## Memory map
 
@@ -300,6 +314,7 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 | 55 `PAGE_SPELL` | `spells.asm` | spells and prayers: learning, mana, browsing, casting |
 | 58 `PAGE_TRAP` | `traps.asm`, `throw.asm` | placing traps and rubble, setting them off, `D`, `T`, trap magic; `v` throwing |
 | 54 `PAGE_DEVICE` | `devices.asm` | wands, staffs, rods and artifact activation: bolts, balls, beams (borrows scroll and potion effects through `device_xcall`) |
+| 72 `PAGE_CHEST` | `chests.asm` | what monsters drop (`monster_death`), Morgoth's crown and Grond, chests: opening, their traps, `D`, `f`, searching and magic (reached through the resident `chest_call`) |
 
 Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 60-62 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page); the flavours (`data/flavours.asm`: potion colours, woods, metals, stones, amulets, the title syllables, the buffer this game's scroll titles are written into, normal_table) have their own page. 63 `EGO_PAGE` = `data/egos.asm` (ego and artifact names, flags and numbers, 24 bytes each); 64 `FLAVOUR_PAGE` = `data/flavours.asm`; 65 `ACT_PAGE` = `data/activate.asm`; 66 `SPELL_PAGE` = `data/spells.asm`. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.
 

@@ -1750,6 +1750,8 @@ ms_det_ench:							; detect_enchantment: magical
 	ld a,(iy+K_CLASS)					; weapons and armour with pluses, an
 	cp IC_WEAPON						; ego, and not cursed (bows and
 	jr c,.next							; arrows too)
+	cp IC_CHEST
+	jr z,.next
 	cp IC_BOW
 	jr nc,.arms
 	cp IC_AMULET

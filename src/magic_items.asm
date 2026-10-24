@@ -170,6 +170,8 @@ magic_treasure:
 	jp z,.bow
 	cp MC_AMMO
 	jp z,.ammo
+	cp MC_CHEST
+	jp z,.chest
 	; body armour and shields
 	call .magical
 	jp nc,.armour_cursed
@@ -827,6 +829,40 @@ magic_treasure:
 	neg
 	jp .add_dam
 
+.chest:									; 1d(level + 4): empty, locked, or
+	ld a,(mt_level)						; locked with a trap, worse deeper
+	add a,4
+	jr nc,$+4
+	ld a,255
+	call randint
+	ld hl,.chest_traps
+.trap:
+	cp (hl)
+	jr c,.this
+	jr z,.this
+	inc hl
+	inc hl
+	inc hl
+	jr .trap
+.this:
+	inc hl
+	ld a,(hl)
+	ld (ix+I_PVAL),a
+	inc hl
+	ld a,(hl)
+	ld (ix+I_NAME2),a
+	ret
+.chest_traps:							; up to 1d.., CHF_ bits, what it is
+	db 1, 0, SN_EMPTY					; (nothing in it, either)
+	db 2, $81, SN_LOCKED
+	db 4, $83, SN_POISON_NEEDLE			; (lose strength)
+	db 6, $85, SN_POISON_NEEDLE
+	db 9, $89, SN_GAS_TRAP
+	db 11, $91, SN_EXPLOSION_DEVICE
+	db 14, $A1, SN_SUMMONING_RUNES
+	db 17, $8F, SN_MULTIPLE_TRAPS		; (paralysis, poison, strength)
+	db 255, $B1, SN_MULTIPLE_TRAPS		; (summoning, explosion)
+
 .ammo:									; shots, arrows and bolts: pluses,
 	set ID_SHOWHD_BIT,(ix+I_IDENT)		; then 7d6 of them, a new pile
 	call .ammo_magic
@@ -1217,6 +1253,14 @@ make_artifact:
 .none:
 	or a
 	ret
+
+/* win_item - IX = a floor record (y, x set), HL = kind, A = artifact:
+	one of it, made that artifact (what Morgoth leaves, monster_death) */
+win_item:
+	push af
+	call new_plain
+	pop bc
+	jp make_artifact.kept
 
 /* art_bit - A = artifact (or special object) -> HL = its art_made byte,
 	A = its bit there, C = the same. Clobbers DE */

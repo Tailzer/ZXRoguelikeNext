@@ -757,7 +757,9 @@ filter_ok:
 	cp IC_LIGHT
 	scf
 	ret z
-	cp IC_SPIKE							; (spikes are carried)
+	cp IC_SPIKE							; (spikes are carried,
+	ret z
+	cp IC_CHEST							;  and chests)
 	ret z
 	cp IC_LANTERN						; (and bows and arrows)
 	ccf

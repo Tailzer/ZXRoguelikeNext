@@ -24,5 +24,6 @@ log_next:		db 0				; the message history's next line
 end_event:		db 0				; 1 Sauron, 2 Morgoth died (endgame.asm)
 end_y:			db 0
 end_x:			db 0
+cc_a:			db 0				; (chest_call)
 town_seed:		dw 0				; the town is built from this each visit
 town_night:		db 0

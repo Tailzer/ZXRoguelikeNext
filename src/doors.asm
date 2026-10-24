@@ -127,7 +127,7 @@ bump_door:
 	jp msg_print
 
 /* door_open - 'o' at (dc_sq): pick a lock (disarming skill against its
-	number), find it stuck, or open it */
+	number), find it stuck, or open it; or open a chest (chests.asm) */
 door_open:
 	ld de,(dc_sq)
 	call map_addr
@@ -193,9 +193,18 @@ door_open:
 	or T_DOOR_OPEN
 	ld (hl),a
 	ret
-.nothing:
+.nothing:								; a chest?
+	ld de,(dc_sq)
+	call chest_at
 	ld hl,md_nothing_open
-	jp msg_print
+	jp nc,msg_print
+	ld a,1
+	ld (turn_taken),a
+	call in_the_way
+	ret c
+	ld de,(dc_sq)
+	OVCALL PAGE_CHEST, chest_open, PAGE_TRAP
+	ret
 
 /* door_close - 'c': an open door closes, unless it's broken */
 door_close:
@@ -251,7 +260,8 @@ in_the_way:
 	ret
 
 /* door_bash - 'f' (force): a monster there gets a shield bash; a closed
-	door is shouldered, STR and weight against its number */
+	door is shouldered, STR and weight against its number; a chest is
+	bashed (chests.asm) */
 door_bash:
 	ld a,1
 	ld (turn_taken),a
@@ -275,6 +285,12 @@ door_bash:
 	and TERRAIN_MASK
 	cp T_DOOR_CLOSED
 	jr z,.smash
+	ld de,(dc_sq)						; a chest?
+	call chest_at
+	jr nc,.nothing
+	OVCALL PAGE_CHEST, chest_bash, PAGE_TRAP
+	ret
+.nothing:
 	xor a
 	ld (turn_taken),a
 	ld hl,md_nothing_bash
