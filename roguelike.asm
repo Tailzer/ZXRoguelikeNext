@@ -456,22 +456,20 @@ mspells_end:
 mtext_end:
 	ASSERT $$mtext_end == MTEXT_PAGE, "Monster texts run past their page"
 
-; ---- the loading screen: 256 x 192 Layer 2 (tools/loading_screen.py makes
-; assets/loading.l2 and .pal from assets/loading.webp), in pages 18-24 just
-; long enough for SAVENEX SCREEN to take it into the NEX header
-LOAD_SCREEN_PAGE	equ 18					; 6 pages of picture, then the palette
+; ---- the loading screen: assets/loading.sl2, a 256 x 192 Layer 2 screen
+; in the Next's default palette (so the NEX carries no palette for it), in
+; pages 18-23 just long enough for SAVENEX SCREEN to take it into the header
+LOAD_SCREEN_PAGE	equ 18					; 6 pages of picture
 	MMU 0 5, LOAD_SCREEN_PAGE, $0000
-	INCBIN "assets/loading.l2"
-	MMU 0, LOAD_SCREEN_PAGE+6, $0000
-	INCBIN "assets/loading.pal"
+	INCBIN "assets/loading.sl2"
 
 	SAVENEX OPEN "build/roguelike.nex", start, stack_top
 	SAVENEX CORE 3,0,0
 	SAVENEX CFG 0,0,0,0
-	SAVENEX SCREEN L2 LOAD_SCREEN_PAGE, 0, LOAD_SCREEN_PAGE+6, 0
+	SAVENEX SCREEN L2 LOAD_SCREEN_PAGE, 0
 
 lsp = LOAD_SCREEN_PAGE						; (then gone again, so AUTO doesn't
-	DUP 7									;  save it as the game's memory too)
+	DUP 6									;  save it as the game's memory too)
 	MMU 0, lsp, $0000
 	DS 8192, 0
 lsp = lsp + 1
