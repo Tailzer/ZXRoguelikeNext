@@ -1025,10 +1025,21 @@ next_to:
 	djnz .c3
 	ret
 
-/* place_stairs - A = T_STAIR_DOWN / T_STAIR_UP, B = how many.
+/* place_stairs - A = T_STAIR_DOWN / T_STAIR_UP, B = how many (on
+	Sauron's level while he lives, down is up: place_down_stairs).
 	Prefers spots with 3 walls round them (corridor ends), accepting fewer
 	walls if none can be found */
 place_stairs:
+	cp T_STAIR_DOWN
+	jr nz,.type
+	push bc
+	ld a,(dun_level)
+	call is_quest
+	pop bc
+	ld a,T_STAIR_DOWN
+	jr nz,.type
+	ld a,T_STAIR_UP
+.type:
 	ld (stair_type),a
 .each:
 	push bc

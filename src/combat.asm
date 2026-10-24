@@ -518,11 +518,41 @@ mon_remove:
 	ld (ix+M_RACE_HI),MON_EMPTY
 	ret
 
-/* unique_killed - IX = a unique monster that died: mark its race dead */
+/* unique_killed - IX = a unique monster that died, IY its race: mark its
+	race dead; Sauron or Morgoth: end_event for the main loop (endgame.asm) */
 unique_killed:
 	call unique_bit
 	or (hl)
 	ld (hl),a
+	bit RF2_WIN,(iy+R_FLAGS2)
+	ld a,2
+	jr nz,.event
+	ld a,(ix+M_RACE_HI)
+	cp high RACE_SAURON
+	ret nz
+	ld a,(ix+M_RACE)
+	cp low RACE_SAURON
+	ret nz
+	ld a,1
+.event:
+	ld (end_event),a
+	ld a,(ix+M_Y)
+	ld (end_y),a
+	ld a,(ix+M_X)
+	ld (end_x),a
+	ret
+
+/* is_quest - A = a level -> Z if it's Sauron's while he lives (is_quest in
+	DUNGEON.C). Clobbers B */
+is_quest:
+	ld b,a
+	ld a,(p_quest)
+	or a
+	jr z,.no
+	cp b
+	ret
+.no:
+	inc a								; (NZ)
 	ret
 
 /* unique_bit - IX = monster -> HL = byte in uniques_dead, A = its bit */
@@ -790,6 +820,8 @@ p_dis:			db 0				; disarming skill, race + class
 p_cla_dis:		db 0				; class_level_adj[class][CLA_DISARM]
 p_bthb:			db 0				; missile skill, race + class
 p_cla_bthb:		db 0				; class_level_adj[class][CLA_BTHB]
+p_quest:		db 0				; Sauron's level while he lives (quests[])
+p_winner:		db 0				; Morgoth is dead (total_winner)
 step_from:		dw 0				; where the last step came from (x, y)
 p_infra:		db 0				; infravision, in 10 ft, with equipment's
 p_infra_race:	db 0				; the race's

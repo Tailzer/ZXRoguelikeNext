@@ -16,7 +16,9 @@ look_command:
 	jp z,locate
 	dec a
 	jp z,show_messages
-	jp ident_char
+	dec a
+	jp z,ident_char
+	jp quit_command
 
 ; ---------------------------------------------------------------- look
 

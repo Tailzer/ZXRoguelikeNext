@@ -139,4 +139,5 @@ key_table:
 	db $FB,%00000010,KM_CAPS,CMD_LOCATE,0,0	; W: where (locate)
 	db $DF,%00000001,KM_SYMBOL,CMD_MESSAGES,0,0	; Symbol Shift + P: old messages (^P)
 	db $FE,%00010000,KM_SYMBOL,CMD_SYMBOL,0,0	; / (Symbol Shift + V): identify a symbol
+	db $FB,%00000001,KM_CAPS,CMD_QUIT,0,0	; Q: quit (retire)
 	db 0

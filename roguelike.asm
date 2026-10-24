@@ -58,6 +58,7 @@
 	Milestone 14a: Resting and running - 'R', and Caps Shift + a direction
 	Milestone 14b: Doors - locked, stuck and broken; o, c, f and S
 	Milestone 14c: Looking around - look, the map, locate, ^P, symbols
+	Milestone 15: The endgame - Sauron's quest, Morgoth, winning, retiring
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -188,6 +189,11 @@ dispatch:
 	ld a,(p_eflags+1)					; a ring of teleportation
 	bit EF1_TELEPORT,a
 	call nz,random_teleport
+	ld a,(end_event)					; Sauron or Morgoth fell
+	or a
+	jr z,.no_end
+	FARCALL PAGE_LOOK, end_event_now
+.no_end:
 	ld a,(p_new_level)					; word of recall
 	or a
 	jp z,main_loop
@@ -261,8 +267,10 @@ item_commands:							; in CMD_INVEN order
 	dw 0, 0, 0, 0, cmd_rest_turn		; (disarm, tunnel, throw, rest: above)
 	dw cmd_open, cmd_close, cmd_bash, cmd_spike
 	dw cmd_look, cmd_map, cmd_locate, cmd_messages, cmd_symbol, cmd_knowledge
+	dw cmd_quit
 player_died:
 	FARCALL PAGE_SAVE, delete_save		; (a dead character's save goes)
+	FARCALL PAGE_LOOK, end_screens		; (a winner retiring: the crown)
 	FARCALL PAGE_CREATE, player_died_screen
 	jp enter_dungeon
 
@@ -371,6 +379,7 @@ trap_end:
 
 	MMU 2, PAGE_LOOK, $4000
 	include "src/look.asm"
+	include "src/endgame.asm"
 look_end:
 	ASSERT look_end <= $6000, "Look overlay is over 8K"
 

@@ -827,6 +827,9 @@ cmd_messages:
 	jr look_cmd
 cmd_symbol:
 	ld a,4
+	jr look_cmd
+cmd_quit:
+	ld a,5
 look_cmd:
 	OVCALL PAGE_LOOK, look_command, PAGE_ITEMS
 	ret

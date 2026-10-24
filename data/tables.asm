@@ -16,6 +16,8 @@ KIND_BROADSWORD	equ 8
 KIND_CHAIN_MAIL	equ 75
 KIND_RING_SPEED	equ 102
 KIND_RING_POWER	equ 354
+RACE_SAURON		equ 546	; QUESTOR: the quest
+QUEST_LEVEL		equ 99
 
 ; the treasures: name, symbol, colour, base value
 gold_table:

@@ -372,12 +372,18 @@ jp_hl_v:
 	jp (hl)
 
 status_tests:	dw st_blind, st_confused, st_afraid, st_poisoned, st_cut
-				dw st_stun, st_paralysed, st_speed, 0
+				dw st_stun, st_paralysed, st_speed, st_winner, 0
 
 ; status tests -> carry and HL = what to show (prt_* in MISC2.C)
 st_blind:
 	ld hl,(p_blind)
 	ld de,txt_st_blind
+	jr st_word
+st_winner:								; (prt_winner)
+	ld a,(p_winner)
+	ld l,a
+	ld h,0
+	ld de,txt_st_winner
 	jr st_word
 st_confused:
 	ld hl,(p_confused)
@@ -461,6 +467,7 @@ cut_words:		dw 900,txt_st_mortal, 300,txt_st_gash, 200,txt_st_severe
 				dw 45,txt_st_nasty, 15,txt_st_bad, 5,txt_st_light, 0,txt_st_graze
 stun_words:		dw 100,txt_st_knocked, 50,txt_st_heavy, 0,txt_st_stun
 txt_st_blind:		db "Blind",0
+txt_st_winner:		db "Winner",0
 txt_st_confused:	db "Confused",0
 txt_st_afraid:		db "Afraid",0
 txt_st_poisoned:	db "Poisoned",0

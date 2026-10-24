@@ -463,6 +463,9 @@ def main():
              f"KIND_CHAIN_MAIL\tequ {[i for i, (o, c) in enumerate(kinds) if o['name'] == 'Chain Mail'][0]}",
              f"KIND_RING_SPEED\tequ {kind_named('Speed', 15)}",
              f"KIND_RING_POWER\tequ {kind_of[('Power', value('TV_RING'))]}",
+             f"RACE_SAURON\t\tequ {next(i for i, r in enumerate(races) if r['cdefense'] & value('QUESTOR'))}"
+             f"\t; QUESTOR: the quest",
+             f"QUEST_LEVEL\t\tequ {next(r['level'] for r in races if r['cdefense'] & value('QUESTOR'))}",
              ""]
     lines = [note, "; m_level[]: how many races have level <= n (n = 0-99)", "mon_level_table:"]
     for i in range(0, len(m_level), 10):

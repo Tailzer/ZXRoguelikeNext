@@ -21,5 +21,8 @@ turn_taken:		db 0				; set when the player's action used a turn
 msg_ptr:		dw 0
 msg_col:		db 0				; where the next message goes
 log_next:		db 0				; the message history's next line
+end_event:		db 0				; 1 Sauron, 2 Morgoth died (endgame.asm)
+end_y:			db 0
+end_x:			db 0
 town_seed:		dw 0				; the town is built from this each visit
 town_night:		db 0

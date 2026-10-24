@@ -235,11 +235,54 @@ fall:
 	ld hl,(tr_dam)
 	jp take_hit
 tp_trap_door:							; down a level ("You fell through a
-	ld hl,dun_level						; trap door!" comes after it)
+	ld a,(dun_level)					; trap door!" comes after it), but on
+	call is_quest						; Sauron's level it's a spiked pit
+	jr z,.spiked
+	ld hl,dun_level
 	inc (hl)
 	ld a,4								; (4: "You fell through a trap door!")
 	ld (p_new_level),a
 	jr fall
+.spiked:								; "You fall into a spiked pit!":
+	ld hl,mt_spiked_pit					; half as much again, and 1 in 3
+	call msg_print						; poisoned (twice, if not resisted)
+	ld a,(p_eflags+3)
+	bit EF3_FFALL,a
+	ld hl,mt_float
+	jp nz,msg_print
+	ld hl,(tr_dam)
+	ld d,h
+	ld e,l
+	srl d
+	rr e
+	add hl,de
+	ld (tr_dam),hl
+	ld a,3
+	call randint
+	dec a
+	jr nz,.hurt
+	ld hl,mt_spikes_poisoned
+	call msg_print
+	ld a,(p_eflags2+1)
+	and TR2_IM_POISON
+	jr nz,.resisted
+	ld a,(p_eflags+3)
+	bit EF3_POISON,a
+	jr nz,.resisted
+	ld hl,(p_resist_poison)
+	ld a,h
+	or l
+	jr nz,.resisted
+	ld hl,(tr_dam)
+	add hl,hl
+	ld (tr_dam),hl
+	jr .hurt
+.resisted:
+	ld hl,mt_unaffected_poison
+	call msg_print
+.hurt:
+	ld hl,(tr_dam)
+	jp take_hit
 tp_arrow:
 	call dart_hits
 	ld hl,mt_arrow_misses
@@ -1008,6 +1051,9 @@ mt_found:		db "You have found ",0
 mt_pit:			db "You fell into a pit!",0
 mt_covered_pit:	db "You fell into a covered pit.",0
 mt_float:		db "You gently float down.",0
+mt_spiked_pit:	db "You fall into a spiked pit!",0
+mt_spikes_poisoned: db "The spikes are poisoned!",0
+mt_unaffected_poison: db "You are unaffected by the poison.",0
 mt_arrow_hits:	db "An arrow hits you.",0
 mt_arrow_misses: db "An arrow barely misses you.",0
 mt_white_mist:	db "A strange white mist surrounds you!",0

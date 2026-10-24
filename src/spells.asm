@@ -1714,16 +1714,21 @@ ms_stairs:								; stair_creation: up or down here
 	ld a,(player_x)
 	ld e,a
 	call map_addr
-	ld b,T_STAIR_DOWN					; up 1 in 2, below the town
-	ld a,(dun_level)
+	ld b,T_STAIR_DOWN					; up 1 in 2, below the town (and
+	ld a,(dun_level)					; always on Sauron's level)
 	or a
 	jr z,.set
+	push bc
+	call is_quest
+	pop bc
+	jr z,.up
 	push hl
 	ld a,2
 	call randint
 	pop hl
 	dec a
 	jr nz,.set
+.up:
 	ld b,T_STAIR_UP
 .set:
 	ld a,(hl)

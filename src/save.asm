@@ -53,6 +53,16 @@ dead_magic:		db "DEAD!"
 	carry if saved (the caller then quits to the title), else "Save
 	failed..." */
 save_game:
+	ld a,(p_winner)						; a winner can only retire
+	or a
+	jr z,.save
+	ld hl,sv_winner
+	call msg_print
+	ld hl,sv_use_q
+	call msg_print
+	or a
+	ret
+.save:
 	ld hl,sv_saving
 	call msg_print
 	call esx_begin
@@ -313,3 +323,5 @@ sv_other_version:	db "Your saved game is from another version. Press any key.",0
 sv_broken:			db "Your saved game is damaged. Press any key.",0
 sv_handle:			db 0
 sv_buf:				ds 8
+sv_winner:		db "You are a Total Winner,  your character must be retired.",0
+sv_use_q:		db "Use 'Q' to when you are ready to retire.",0

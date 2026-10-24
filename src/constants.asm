@@ -648,6 +648,8 @@ KILLER_STRAIN		equ $FE06			; casting (mass) genocide
 KILLER_AURA			equ $FE07			; the One Ring
 KILLER_EARTHQUAKE	equ $FE08			; elemental force bringing the cave down
 KILLER_TRAPS		equ $FE09			; and on: what each trap kills with (traps.asm)
+KILLER_QUIT			equ $FE13			; 'Q': "Quitting"
+KILLER_OLD_AGE		equ $FE14			; a winner's retirement: "Ripe Old Age"
 ; object_ident flags (DESC.C) and the kinds that have flavours
 OD_TRIED_BIT		equ 0
 OD_KNOWN_BIT		equ 1
@@ -755,6 +757,7 @@ CMD_LOCATE			equ 35				; W: where - move the view about
 CMD_MESSAGES		equ 36				; Symbol Shift + P (^P): old messages
 CMD_SYMBOL			equ 37				; / (Symbol Shift + V): identify a symbol
 CMD_KNOWLEDGE		equ 38				; % (Symbol Shift + 5): self knowledge
+CMD_QUIT			equ 39				; Q: quit (or retire, having won)
 ; key modifiers in key_table
 KM_ANY				equ 0
 KM_SYMBOL			equ 1

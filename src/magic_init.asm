@@ -18,10 +18,15 @@ player_init:
 	ld (pending_magic),a
 	ld (p_max_dlv),a
 	ld (p_dead),a
+	ld (p_winner),a
+	ld (end_event),a
 	ld (p_hunger),a
 	ld (p_paralysed),a
 	inc a
 	ld (p_lev),a
+	ld a,QUEST_LEVEL					; Sauron waits on his level
+	ld (p_quest),a
+	ld a,1
 	ld hl,0
 	ld (p_exp),hl
 	ld (p_exp+2),hl

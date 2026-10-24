@@ -2,9 +2,15 @@
 
 /* player_died_screen - "You die.", then a simple tombstone */
 player_died_screen:
+	ld hl,(killer_race)					; (not quitting or retiring)
+	ld de,KILLER_QUIT
+	or a
+	sbc hl,de
+	jr nc,.no_die
 	ld hl,txt_you_die
 	call msg_print
 	call wait_fresh_key
+.no_die:
 	call clear_screen
 	ld hl,txt_rip
 	ld d,8
@@ -107,6 +113,19 @@ player_died_screen:
 	ld e,30
 	ld c,ATTR_GREY
 	call print_at
+	ld a,(p_winner)						; "the Magnificent *King*"
+	or a
+	jr z,.not_king
+	ld a,(p_male)
+	or a
+	ld hl,txt_magnificent_king
+	jr nz,$+5
+	ld hl,txt_magnificent_queen
+	ld d,14
+	ld e,30
+	ld c,ATTR_YELLOW
+	call print_at
+.not_king:
 	ld hl,txt_try_again
 	ld d,16
 	ld e,25
@@ -132,7 +151,9 @@ killer_texts:	dw txt_starvation, txt_k_detonation, txt_k_death, txt_k_ruination
 				dw txt_k_earthquake
 				dw txt_k_pit, txt_k_arrow, txt_k_covered_pit, txt_k_trap_door
 				dw txt_k_dart, txt_k_rock, txt_k_corrosion, txt_k_fire
-				dw txt_k_acid, txt_k_poison_gas
+				dw txt_k_acid, txt_k_poison_gas, txt_k_quitting, txt_k_old_age
+txt_k_quitting:	db "Quitting",0
+txt_k_old_age:	db "Ripe Old Age",0
 txt_k_pit:		db "an open pit",0
 txt_k_arrow:	db "an arrow trap",0
 txt_k_covered_pit: db "a covered pit",0

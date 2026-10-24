@@ -425,10 +425,15 @@ halve_toward:
 
 sc_tele_level:
 	call ident
+	ld a,(dun_level)					; (Sauron's level: only up)
+	call is_quest
+	ld a,-1
+	jr z,.change
 	ld a,2								; up or down a level
 	call randint
 	add a,a
 	sub 3
+.change:
 	ld hl,dun_level
 	add a,(hl)
 	bit 7,a
