@@ -24,6 +24,9 @@ PAGE_TRAP			equ 58				; overlay: traps, rubble, disarming, tunnelling
 PAGE_RUN			equ 59				; overlay: resting and running (next_command)
 PAGE_LOOK			equ 69				; overlay: look, the map, locate, ^P, symbols
 PAGE_LOG			equ 70				; RAM: the message history, at LOG_BASE
+ROOM_MON_MAX		equ 56				; what vaults and pits may fill of the list
+WIN_MON_APPEAR		equ 100				; the level Morgoth may be found from
+PAGE_ROOMS			equ 71				; overlay: inner rooms, crosses, vaults, pits
 LOG_BASE			equ $E000			; (paged into slot 7 over the map for a moment)
 LOG_LINES			equ 32
 LOG_LEN				equ 80

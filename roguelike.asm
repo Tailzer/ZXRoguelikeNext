@@ -59,6 +59,7 @@
 	Milestone 14b: Doors - locked, stuck and broken; o, c, f and S
 	Milestone 14c: Looking around - look, the map, locate, ^P, symbols
 	Milestone 15: The endgame - Sauron's quest, Morgoth, winning, retiring
+	Milestone 16: Dungeon variety - inner rooms, crosses, vaults, pits
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -382,6 +383,11 @@ trap_end:
 	include "src/endgame.asm"
 look_end:
 	ASSERT look_end <= $6000, "Look overlay is over 8K"
+
+	MMU 2, PAGE_ROOMS, $4000
+	include "src/rooms.asm"
+rooms_end:
+	ASSERT rooms_end <= $6000, "Rooms overlay is over 8K"
 
 	MMU 2, PAGE_RUN, $4000
 	include "src/rest_run.asm"

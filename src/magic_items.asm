@@ -18,16 +18,28 @@ OBJ_STD_MIN			equ 7
 new_item:
 	ld (mt_level),a
 	xor a
+	ld (mt_good),a
 .unique:
 	ld (mt_nounique),a
 	call new_plain
 	ld a,(mt_level)
 	jr magic_treasure
 
+/* new_good_item - as new_item, B = 1 good (always magic), 2 great (an ego
+	too, as magic_treasure's good == 666): place_special */
+new_good_item:
+	ld (mt_level),a
+	ld a,b
+	ld (mt_good),a
+	xor a
+	jr new_item.unique
+
 /* new_store_item - as new_item, but never an artifact (store_create's
 	not_unique) */
 new_store_item:
 	ld (mt_level),a
+	xor a
+	ld (mt_good),a
 	ld a,1
 	jr new_item.unique
 
@@ -84,6 +96,17 @@ magic_treasure:
 	call div16_8
 	ld a,l
 	ld (mt_cursed),a
+	ld a,(mt_good)						; good: always magic (great: an ego
+	or a								; too)
+	jr z,.ordinary
+	ld a,100
+	ld (mt_chance),a
+	ld a,(mt_good)
+	cp 2
+	jr nz,.ordinary
+	ld a,100
+	ld (mt_special),a
+.ordinary:
 	xor a
 	ld (mt_crown),a
 	ld a,(iy+K_EGO)						; (m_bonus pages the kinds out)
@@ -1406,4 +1429,5 @@ mt_crown:		db 0
 mt_ego:			db 0
 mt_kego:		db 0
 mt_bow:			db 0				; 1 a long bow, 2 a light crossbow
+mt_good:		db 0				; 1 good, 2 great (place_special)
 mt_nounique:	db 0				; 1: in a shop (no artifacts)

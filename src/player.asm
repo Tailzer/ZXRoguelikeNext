@@ -289,7 +289,16 @@ new_level:
 	jr z,.town
 	FARCALL PAGE_LEVEL, generate_level
 	call msg_clear
-	call random_open_spot
+.spot:									; (somewhere free: rooms may have
+	call random_open_spot				;  monsters, objects and traps)
+	bit F_MON_BIT,(hl)
+	jr nz,.spot
+	push de
+	call item_at
+	pop de
+	jr c,.spot
+	call trap_at
+	jr c,.spot
 	ld a,d
 	ld (player_y),a
 	ld a,e

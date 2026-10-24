@@ -466,6 +466,7 @@ def main():
              f"RACE_SAURON\t\tequ {next(i for i, r in enumerate(races) if r['cdefense'] & value('QUESTOR'))}"
              f"\t; QUESTOR: the quest",
              f"QUEST_LEVEL\t\tequ {next(r['level'] for r in races if r['cdefense'] & value('QUESTOR'))}",
+             f"RACE_MORGOTH\tequ {next(i for i, r in enumerate(races) if r['cmove'] & 0x80000000)}\t; CM_WIN",
              ""]
     lines = [note, "; m_level[]: how many races have level <= n (n = 0-99)", "mon_level_table:"]
     for i in range(0, len(m_level), 10):
@@ -491,6 +492,7 @@ def main():
     player_tables(note, objs, kinds, kind_of)
     flavour_tables(note)
     store_tables(note, objs, kind_of)
+    vault_tables(note, races)
 
     per_page = 8192 // RACE_SIZE
     print(f"{len(races)} races ({(len(races) + per_page - 1) // per_page} pages), "
@@ -1003,6 +1005,48 @@ def flavour_tables(note):
         for i, n in enumerate(nm):
             lines.append(f"{what}_{i}:\tdb {asm_string(n)},0")
     open(os.path.join(OUT, "flavours.asm"), "w").write("\n".join(lines) + "\n")
+
+
+def vault_tables(note, races):
+    """build_type5's templates (GENERATE.C), and the races special_pit
+    names (vault_orc, vault_troll, vault_dragon, vault_demon)"""
+    src = read("GENERATE.C")
+    i = src.index("static void build_type5(")
+    body = src[i:src.index("/* check these rooms will fit", i)]
+    lines = [note, "; build_type5's vault templates: width, height, 1 if a greater vault,",
+             "; then the rows. Greater vaults are placed 4 further down and right,",
+             "; with permanent walls", "", "vault_table:"]
+    data = []
+    for m in re.finditer(r"width=(\d+);\s*height=(\d+);.*?rating \+= (\d+);\s*sprintf\(template,\s*\"[%s]+\",(.*?)\);", body, re.S):
+        w, h, rating = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        rows = re.findall(r'"([^"]*)"', m.group(4))
+        assert len(rows) == h and all(len(r) == w for r in rows), (w, h, [len(r) for r in rows])
+        data.append((w, h, 1 if rating > 5 else 0, rows))
+    assert len(data) == 11, len(data)
+    for n, (w, h, greater, rows) in enumerate(data):
+        lines.append(f"\tdw vault_{n}")
+    lines.append(f"NUM_VAULTS\tequ {len(data)}")
+    for n, (w, h, greater, rows) in enumerate(data):
+        lines.append(f"vault_{n}:\tdb {w},{h},{greater}")
+        for r in rows:
+            lines.append("\tdb " + asm_string(r))
+    names = {"orc": ["Snaga", "Black orc", "Black orc", "Uruk-Hai", "Uruk-Hai", "Orc captain"],
+             "troll": ["Forest troll", "Stone troll", "Ice troll", "Cave troll", "Water troll", "Olog-Hai"],
+             "demon": ["Vrock", "Hezrou", "Glabrezu", "Nalfeshnee", "Marilith", "Balor"]}
+    colours = ["blue", "white", "green", "black", "red", "Multi-Hued"]
+    def race_no(name):
+        return next(i for i, r in enumerate(races) if r["name"] == name)
+    lines += ["", "; special_pit's races by rank 1-6"]
+    for k, v in names.items():
+        lines.append(f"pit_{k}:\tdw " + ",".join(str(race_no(n)) for n in v))
+    lines.append("; dragons: by colour 1-6, young (ranks 1-3), mature (4-5), ancient (6)")
+    lines.append("pit_dragon:")
+    for c in colours:
+        young = race_no(f"Young {c} dragon") if c != "Multi-Hued" else race_no("Young Multi-Hued Dragon")
+        mature = race_no(f"Mature {c} Dragon")
+        ancient = race_no(f"Ancient {c} Dragon")
+        lines.append(f"\tdw {young},{young},{young},{mature},{mature},{ancient}")
+    open(os.path.join(OUT, "vaults.asm"), "w").write("\n".join(lines) + "\n")
 
 
 def store_tables(note, objs, kind_of):

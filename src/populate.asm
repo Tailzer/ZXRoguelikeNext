@@ -186,7 +186,8 @@ test_place:
 /* alloc_monsters - populate a new level: 1d8 + 14 + clamp(level/3, 2, 10)
 	monsters, asleep, anywhere but on the player. Packs come in groups */
 alloc_monsters:
-	call mon_clear_all
+	call place_win_monster				; (first: rooms may have filled
+										;  much of the list)
 	ld a,(dun_level)
 	ld c,3
 	call div8
@@ -237,6 +238,39 @@ alloc_monsters:
 	dec (hl)
 	jr nz,.each
 	ret
+
+/* place_win_monster - from level 100 down, 3 times in 5, Morgoth is
+	there, awake, out of sight of the player (place_win_monster in MISC1.C;
+	a winner has already met him) */
+place_win_monster:
+	ld a,(dun_level)
+	cp WIN_MON_APPEAR
+	ret c
+	ld a,(p_winner)
+	or a
+	ret nz
+	ld a,5
+	call randint
+	cp 4
+	ret nc
+.spot:
+	call random_open_spot
+	bit F_MON_BIT,(hl)
+	jr nz,.spot
+	push de
+	call item_at
+	pop de
+	jr c,.spot
+	push de
+	call mon_distance
+	pop de
+	cp MAX_SIGHT+1
+	jr c,.spot
+	ld hl,RACE_MORGOTH
+	ld (place_race),hl
+	xor a
+	ld (place_sleep),a
+	jp place_monster
 
 /* alloc_town_monsters - townsfolk (alloc_monster(MIN_MALLOC_TD/TN, 3,
 	TRUE)): asleep, and not within 3 squares of the player */
@@ -364,6 +398,173 @@ get_mons_num_a:
 	ret z
 	jp .again
 
+/* get_nmons_num_a - A = level -> HL = a race (get_nmons_num in MISC1.C:
+	the vaults' meaner monsters): the best of three picks, the first 15
+	further on, then any race of that one's level; uniques from deeper, or
+	Sauron before his level, are picked again */
+get_nmons_num_a:
+	cp MAX_MONS_LEVEL+1
+	jr c,$+4
+	ld a,MAX_MONS_LEVEL
+	ld (gm_base),a
+.again:
+	ld a,(gm_base)						; num = m_level[level] - m_level[0]
+	call m_level
+	ld de,(mon_level_table)
+	or a
+	sbc hl,de
+	ld (gm_num),hl
+	call randint16						; i = 1d(num) - 1 + 15, at most
+	dec hl								; num - 1
+	ld de,15
+	add hl,de
+	ld de,(gm_num)
+	push hl
+	or a
+	sbc hl,de
+	pop hl
+	jr c,$+4
+	ex de,hl
+	dec hl
+	ld (gm_pick),hl
+	ld b,2								; then the higher of two more
+.best:
+	push bc
+	ld hl,(gm_num)
+	call randint16
+	dec hl
+	ld de,(gm_pick)
+	push hl
+	or a
+	sbc hl,de
+	pop hl
+	jr c,$+5
+	ld (gm_pick),hl
+	pop bc
+	djnz .best
+	ld hl,(gm_pick)						; its level -> any of that level
+	ld de,(mon_level_table)
+	add hl,de
+	call race_addr
+	ld a,(iy+R_LEVEL)
+	ld (gm_target),a
+	dec a
+	call m_level
+	ld (gm_pick),hl
+	ld a,(gm_target)
+	call m_level
+	ld de,(gm_pick)
+	or a
+	sbc hl,de
+	ld a,h
+	or l
+	jr nz,$+3
+	inc hl
+	call randint16
+	dec hl
+	ld de,(gm_pick)
+	add hl,de
+	push hl
+	call race_addr
+	pop hl
+	ld a,(gm_base)
+	cp (iy+R_LEVEL)
+	jr nc,.not_deep
+	bit RF_UNIQUE,(iy+R_FLAGS)
+	jp nz,.again
+.not_deep:
+	ld de,RACE_SAURON					; (Sauron, deeper than you are)
+	push hl
+	or a
+	sbc hl,de
+	pop hl
+	ret nz
+	ld a,(dun_level)
+	cp (iy+R_LEVEL)
+	ret nc
+	jp .again
+
+/* vault_place - D = y, E = x, HL = race, A = 1 asleep: that monster there
+	(unless rooms have already put ROOM_MON_MAX on the level, leaving the
+	rest of the list for its monsters, and Morgoth) */
+vault_place:
+	ld (place_race),hl
+	ld (place_sleep),a
+	call room_mon_full
+	ret nc
+	jp place_monster
+/* room_mon_full -> no carry if the list has ROOM_MON_MAX already.
+	Preserves DE */
+room_mon_full:
+	push de
+	ld ix,MON_LIST
+	ld de,MON_SIZE
+	ld bc,MON_MAX*256
+.each:
+	ld a,(ix+M_RACE_HI)
+	cp MON_EMPTY
+	jr z,$+3
+	inc c
+	add ix,de
+	djnz .each
+	pop de
+	ld a,c
+	cp ROOM_MON_MAX
+	ret
+
+/* vault_mon - D = y, E = x, A = level, H = 1 for a meaner one
+	(get_nmons_num): one asleep there, from that level */
+vault_mon:
+	push de
+	dec h
+	jr z,.nasty
+	call get_mons_num_a
+	jr .got
+.nasty:
+	call get_nmons_num_a
+.got:
+	pop de
+	ld a,1
+	jr vault_place
+
+/* place_special - D = y, E = x, A = 1 good, 2 great: a good weapon or
+	armour from 10 levels deeper (place_special in MISC2.C) */
+place_special:
+	ld (ps_good),a
+	push de
+	call item_free_slot
+	pop de
+	ret nc
+	ld (ix+I_Y),d
+	ld (ix+I_X),e
+	OVCALL PAGE_MISC, try_special, PAGE_LEVEL	; a Ring of Power?
+	ret c
+.pick:
+	ld a,(dun_level)
+	add a,10
+	call get_obj_num_a
+	push hl
+	call kind_addr
+	pop hl
+	ld a,(iy+K_CLASS)					; weapons, armour, bows and their
+	cp IC_WEAPON						; arrows and bolts
+	jr c,.pick
+	cp IC_AMULET
+	jr c,.good
+	cp IC_BOW
+	jr z,.good
+	cp IC_AMMO
+	jr nz,.pick
+	ld a,(iy+K_TVAL)
+	cp 10								; (not sling shot)
+	jr z,.pick
+.good:
+	ld a,(ps_good)
+	ld b,a
+	ld a,(dun_level)
+	OVCALL PAGE_MISC, new_good_item, PAGE_LEVEL
+	ret
+
 /* m_level - A = level -> HL = mon_level_table[level]. Clobbers A */
 m_level:
 	ld hl,mon_level_table
@@ -378,6 +579,15 @@ m_level:
 /* summon_monster - D = y, E = x: a monster from a little deeper appears
 	next to there, awake (summon_monster in MISC1.C) -> carry if one did */
 summon_monster:
+	xor a								; (awake)
+	jr summon_slp
+/* summon_asleep - the same, asleep (vault_monster's summon_monster(.., TRUE)) */
+summon_asleep:
+	call room_mon_full
+	ret nc
+	ld a,1
+summon_slp:
+	ld (sm_sleep),a
 	push de
 	ld a,(dun_level)
 	add a,MON_SUMMON_ADJ
@@ -386,7 +596,7 @@ summon_monster:
 	pop de
 	call summon_spot
 	ret nc
-	xor a
+	ld a,(sm_sleep)
 	ld (place_sleep),a
 	push de
 	ld hl,(place_race)
@@ -751,7 +961,6 @@ gm_pick:		dw 0
 	about 9 objects in rooms, about 3 anywhere, about 3 piles of treasure.
 	randnor(mean, 3) is approximated as mean - 4 + 1d7 */
 alloc_items:
-	call items_clear
 	ld a,TREAS_ROOM_ALLOC
 	call about
 	or a
@@ -845,6 +1054,11 @@ place_object:
 	that object's exact level; rarer objects are often picked again */
 get_obj_num:
 	ld a,(dun_level)
+/* get_obj_num_a - the same for level A (place_special: deeper) */
+get_obj_num_a:
+	ld (go_base),a
+.again:
+	ld a,(go_base)
 	ld (go_level),a
 	ld a,OBJ_GREAT
 	call randint
@@ -934,7 +1148,7 @@ get_obj_num:
 	call randint
 	pop hl
 	dec a
-	jp nz,get_obj_num
+	jp nz,get_obj_num_a.again
 .done:
 	ld a,(hl)
 	inc hl
@@ -1020,6 +1234,9 @@ place_gold:
 	ret
 
 go_level:		db 0
+go_base:		db 0
+sm_sleep:		db 0
+ps_good:		db 0
 go_count:		dw 0
 go_pick:		dw 0
 gold_type:		db 0

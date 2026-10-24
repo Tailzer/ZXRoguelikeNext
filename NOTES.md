@@ -26,7 +26,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
 ## Milestones
 
 1. **Walkabout** — tilemap text, test level, movement, scrolling view *(done)*
-2. **Dungeon generator** — rooms and corridors (`GENERATE.C`), stairs, new levels *(done; vaults, pits and room types 2/3 still to come)*
+2. **Dungeon generator** — rooms and corridors (`GENERATE.C`), stairs, new levels *(done; the unusual rooms came in 16)*
 3. **Lighting** — lit rooms light up on entry, 3x3 player light, remembered walls/doors/stairs (`MORIA1.C` light_room, move_light) *(done)*
 4. **Monsters** (`CREATURE.C`, `MONSTERS.C`, `MISC1.C`)
    - 4a: 10 races, placement and packs, `los()`, sleep/wake, speed, chasing and erratic movement *(done)*
@@ -249,6 +249,17 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - `Q`: "Do you really want to quit? [y/n]" (the character is done: "Killed by Quitting"), or for a winner "Do you want to retire? [y/n]": back to the town with 50 more levels, 250000 gold and 5000000 experience, the crown ("Veni, Vidi, Vici! I came, I saw, I conquered! All Hail the Mighty King!"), then the tombstone, "Killed by Ripe Old Age", "the Magnificent *King*"
    - the quest and the win are character data (saves from before this don't load); unique_killed notes the deaths and the main loop handles them at the end of the turn (`src/endgame.asm`, in the look overlay)
    - not yet: the high score list
+16. **Dungeon variety** (`GENERATE.C` build_type1/2/3/5, build_pit/special_pit, vault_monster/vault_trap, `MISC2.C` random_object/place_special, `MISC1.C` get_nmons_num/place_win_monster) *(done)*
+   - deeper than 1d200, a room is unusual: 1d5 picks overlapping rectangles (type 1), an inner room (2), a cross (3), or (deeper than 1d200 again) a vault (5); otherwise (deeper again) the level's one monster pit
+   - inner rooms (23 x 9, the inner one behind a secret door): just a guardian; a locked treasure vault inside (an object or stairs, 2 + 1d3 guards, 2 + 1d3 traps); pillars, maybe with two little rooms of their own; a maze with monsters, traps and treasure; four small rooms
+   - crosses: a big middle pillar, a treasure vault behind a secret door with guards and traps, a little pattern of pillars (perhaps with secret doors), or nothing
+   - vaults: the C's eleven templates (seven lesser, four greater behind permanent walls, placed 4 further down and right), with their monsters (from deeper, '@' meaner ones from get_nmons_num), treasure, traps and stairs; 8 and O are guarded "good" and "great" objects (place_special: weapons and armour from 10 levels deeper, always magic, the great ones with an ego chance); a vault takes the room slots beside and below it, and one that won't fit is an inner room
+   - pits: by depth a jelly pit, orc pit, troll pit, graveyard, dragon pit (one colour) or demon pit, the inner room packed in ranks, the strongest in the middle; jellies and undead asleep, the rest awake
+   - Morgoth: from level 100, 3 times in 5, awake and out of sight (place_win_monster), placed first
+   - the monster list holds 64: vaults and pits stop at 56, and a pit is filled from the middle out (the C fills a 95-monster pit from the outside in), so some of the outer, weakest ranks may be missing
+   - as in the C, tunnels pass through the inner and permanent walls without digging them, so parts of a level with vaults can be cut off (dig, or use magic)
+   - the room code is its own overlay (71, `src/rooms.asm`), the templates and the pits' races made by the converter (`data/vaults.asm`); a level's monsters, objects and traps are now cleared before its rooms are built, and the player starts on a free square
+   - not yet: the level feeling (the C's rating), chests
 
 ## Memory map
 

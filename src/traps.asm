@@ -42,15 +42,17 @@ NUM_TRAPS	equ 18
 	floor), 1d(alloc_level) of each, alloc_level being dun_level / 3 from 2
 	to 10; none in town (cave_gen's alloc_object calls) */
 alloc_traps:
+	ld a,(dun_level)					; (the town: none; a dungeon level
+	or a								; was cleared before its rooms were
+	jr nz,.dungeon						; built: they may have traps)
 	ld hl,TRAP_LIST
 	ld b,TRAP_MAX*TRAP_SIZE
 .clear:
 	ld (hl),0
 	inc hl
 	djnz .clear
-	ld a,(dun_level)
-	or a
-	ret z
+	ret
+.dungeon:
 	ld c,3
 	call div8
 	cp 2

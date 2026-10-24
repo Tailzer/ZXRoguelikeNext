@@ -18,6 +18,7 @@ KIND_RING_SPEED	equ 102
 KIND_RING_POWER	equ 354
 RACE_SAURON		equ 546	; QUESTOR: the quest
 QUEST_LEVEL		equ 99
+RACE_MORGOTH	equ 547	; CM_WIN
 
 ; the treasures: name, symbol, colour, base value
 gold_table:

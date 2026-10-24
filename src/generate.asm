@@ -3,7 +3,7 @@
 		random rooms on a 6x6 grid, shuffled and joined by wandering tunnels,
 		doors where tunnels pierce room walls and at junctions,
 		magma/quartz streamers, permanent outer wall, then stairs.
-	Not yet: vaults (type 5), pits, inner-room / cross rooms (types 2, 3).
+	The unusual rooms (types 2, 3, 5 and pits) are rooms.asm's.
 	[overlay: PAGE_LEVEL]
  */
 
@@ -97,6 +97,16 @@ next_to_walls:
 /* generate_level - build a new level for dun_level */
 generate_level:
 	OVCALL PAGE_TRAP, doors_clear, PAGE_LEVEL
+	call mon_clear_all					; (rooms may put monsters, objects
+	call items_clear					;  and traps in as they're built)
+	ld hl,TRAP_LIST
+	ld b,TRAP_MAX*TRAP_SIZE
+.no_traps:
+	ld (hl),0
+	inc hl
+	djnz .no_traps
+	ld a,1
+	ld (pit_ok),a
 	ld a,3								; stairs like corridor ends
 	ld (stair_wall_start),a
 	; blank cave
@@ -328,9 +338,11 @@ mark_rooms:
 	inc hl
 	ret
 
-/* build_room - room centred on room_yval, room_xval.
-	Deeper levels sometimes get an unusual room; for now that is always
-	type 1 (2-3 overlapping rectangles) */
+/* build_room - room centred on room_yval, room_xval, in slot (gen_row,
+	gen_col). Deeper levels (level > 1d200) sometimes get an unusual one:
+	1d5 picks overlapping rectangles (type 1, here), an inner room (2), a
+	cross (3) or, deeper again, a vault (5, which takes the slots beside and
+	below it); else, deeper again, the level's one monster pit (rooms.asm) */
 build_room:
 	ld a,25								; lit if dun_level <= 1d25
 	call randint
@@ -343,13 +355,83 @@ build_room:
 	ld a,T_FLOOR
 .lit:
 	ld (room_floor),a
+	call .deeper						; unusual if dun_level > 1d200
+	jp nc,.normal
+	ld a,5
+	call randint
+	cp 2
+	jp c,.type1
+	cp 4
+	jr c,.unusual						; 2, 3
+	jr nz,.pit_or_not					; 5
+	call .deeper						; 4: a vault, deeper again
+	jr nc,.pit_or_not
+	call .take_slots
+	ld a,5
+	jr .unusual
+.pit_or_not:
+	call .deeper
+	jr nc,.normal
+	ld a,(pit_ok)
+	or a
+	jr z,.normal
+	xor a
+	ld (pit_ok),a
+	ld a,6
+.unusual:
+	ld hl,(room_yval)					; (room_yval, room_xval)
+	ld d,l
+	ld e,h
+	ld hl,room_floor
+	ld l,(hl)
+	OVCALL PAGE_ROOMS, build_unusual, PAGE_LEVEL
+	ret
+.deeper:								; carry if dun_level > 1d200
 	ld a,DUN_UNUSUAL
 	call randint
 	ld b,a
 	ld a,(dun_level)
 	cp b
-	jr z,.normal
-	jr c,.normal						; unusual if dun_level > 1d200
+	ccf
+	ret nc
+	ret nz
+	or a
+	ret
+.take_slots:							; a vault takes the slots to the
+	ld a,(gen_row)						; right and below
+	ld d,a
+	ld e,ROOM_COLS
+	mul d,e
+	ld a,(gen_col)
+	add a,e
+	ld hl,ROOM_MAP
+	add hl,a							; HL = this slot
+	ld a,(gen_col)
+	cp ROOM_COLS-1
+	jr nc,.below
+	inc hl
+	ld (hl),0							; right
+	dec hl
+.below:
+	ld a,(gen_row)
+	cp ROOM_ROWS-1
+	ret nc
+	ld de,ROOM_COLS
+	add hl,de
+	ld (hl),0							; below
+	ld a,(gen_col)
+	cp ROOM_COLS-1
+	jr nc,$+5
+	inc hl
+	ld (hl),0							; below right
+	dec hl
+	ld a,(gen_col)
+	or a
+	ret z
+	dec hl
+	ld (hl),0							; below left
+	ret
+.type1:
 	ld a,2
 	call randint
 	inc a
@@ -1104,6 +1186,7 @@ door_list:		dw 0,DOOR_MAX,DOOR_STACK
 ; generator state
 room_count:		db 0
 room_floor:		db 0
+pit_ok:			db 0				; one pit a level
 gen_row:		db 0
 gen_col:		db 0
 room_yval:		db 0
