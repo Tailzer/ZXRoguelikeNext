@@ -75,6 +75,10 @@ place_monster:
 	add a,(iy+R_SPEED)
 	sub 10
 	ld (ix+M_SPEED),a
+	ld a,(iy+R_LEVEL)					; out of its depth: the level's
+	push hl								; rating, c > 30 ? 15 : c/2, and
+	call .rate							; c/2 more for a unique
+	pop hl
 	ld (ix+M_ML),0
 	ld (ix+M_CONFUSED),0
 	ld (ix+M_STUN),0
@@ -107,6 +111,24 @@ place_monster:
 	call mon_distance
 	ld (ix+M_CDIS),a
 	ret
+
+.rate:									; A = its level, IY its race
+	ld hl,dun_level
+	sub (hl)
+	ret c
+	ret z
+	ld c,a								; c
+	cp 31
+	ld a,15
+	jr nc,$+5
+	ld a,c
+	srl a
+	call rate_add
+	bit RF_UNIQUE,(iy+R_FLAGS)
+	ret z
+	ld a,c
+	srl a
+	jp rate_add
 
 /* unique_absent - place_race is a unique: carry set if it may appear
 	(not killed, not already on the level) */
@@ -907,6 +929,8 @@ summon_spot_n:
 /* place_group - D = y, E = x, place_race. 1d13 awake members spread
 	round the spot, as place_group()'s fall-through switch does */
 place_group:
+	ld hl,(lv_rating)					; (only the first counts)
+	ld (pg_rating),hl
 	xor a
 	ld (place_sleep),a
 	ld a,13
@@ -938,12 +962,18 @@ place_group:
 	inc hl
 	inc hl
 	djnz .member
-	ret
+	ld hl,(pg_rating)
+	ld (lv_rating),hl
+	ld hl,(place_race)
+	call race_addr
+	ld a,(iy+R_LEVEL)
+	jp place_monster.rate
 
 group_offsets:							; dy, dx for cases 13 down to 1
 	db 0,-2, 0,2, 2,0, -2,0, 1,1, 1,-1, -1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0, 0,0
 
 place_race:		dw 0
+pg_rating:		dw 0
 ss_centre:		dw 0
 ss_found:		dw 0				; where summon_spot found room
 sb_kind:		db 0
@@ -1044,6 +1074,11 @@ place_object:
 	OVCALL PAGE_MISC, try_special, PAGE_LEVEL	; a Ring of Power?
 	ret c
 	call get_obj_num
+	push hl								; out of its depth: the level's
+	call kind_addr						; rating
+	ld a,(iy+K_LEVEL)
+	call rate_deeper
+	pop hl
 	ld a,(dun_level)					; magic_treasure at this depth
 	OVCALL PAGE_MISC, new_item, PAGE_LEVEL
 	ret
@@ -1174,6 +1209,23 @@ alloc_entry:
 	add hl,hl
 	ld de,obj_alloc_table
 	add hl,de
+	ret
+
+/* rate_deeper - A = a level: as far as it's below this one, the level's
+	rating rises (place_object). -> A = how far (0 if not) */
+rate_deeper:
+	ld hl,dun_level
+	sub (hl)
+	jr nc,.deeper
+	xor a
+	ret
+.deeper:
+	ret z
+/* rate_add - A: added to the level's rating. Preserves A */
+rate_add:
+	ld hl,(lv_rating)
+	add hl,a
+	ld (lv_rating),hl
 	ret
 
 /* place_gold - D = y, E = x: treasure worth more deeper down

@@ -617,6 +617,9 @@ item_cost:
 	ld hl,70
 	jp .offer
 .known:
+	ld a,(iy+K_MAGIC)
+	cp MC_DIGGER
+	jp z,.digger
 	ld a,(iy+K_CLASS)
 	cp IC_BOW							; bows and arrows: as weapons
 	jp nc,.arms
@@ -725,6 +728,28 @@ item_cost:
 .worthless:
 	ld hl,0
 	ret
+.digger:								; picks and shovels: their cost, once
+	bit ID_KNOWN2_BIT,(ix+I_IDENT)		; known 100 more or less for each
+	jp z,.offer							; point from the kind's (worthless
+	bit 7,(ix+I_PVAL)					; below 0)
+	jr nz,.worthless
+	ld a,(ix+I_PVAL)
+	sub (iy+K_P1)
+	push af
+	jr nc,$+4
+	neg
+	ld e,a
+	ld d,100
+	mul d,e
+	pop af
+	jr c,.dig_less
+	add hl,de
+	jp .offer
+.dig_less:
+	or a
+	sbc hl,de
+	jp nc,.offer
+	jr .worthless
 .sat_add:								; HL += DE, at most 65535
 	add hl,de
 	ret nc
@@ -781,7 +806,7 @@ item_cost:
 	add a,(ix+I_TODAM)
 .times:
 	bit 7,a
-	jr nz,.worthless
+	jp nz,.worthless
 	ld e,a
 	ld d,b
 	mul d,e

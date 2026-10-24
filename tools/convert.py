@@ -258,7 +258,7 @@ def race_record(r):
 CLASSES = {"TV_FOOD": 1, "TV_POTION1": 2, "TV_POTION2": 2,
            "TV_SCROLL1": 3, "TV_SCROLL2": 3,
            "TV_WAND": 4, "TV_STAFF": 5, "TV_ROD": 6,
-           "TV_SWORD": 7, "TV_HAFTED": 7, "TV_POLEARM": 7,
+           "TV_SWORD": 7, "TV_HAFTED": 7, "TV_POLEARM": 7, "TV_DIGGING": 7,
            "TV_SOFT_ARMOR": 8, "TV_HARD_ARMOR": 8, "TV_SHIELD": 9, "TV_HELM": 10,
            "TV_CLOAK": 11, "TV_GLOVES": 12, "TV_BOOTS": 13,
            "TV_AMULET": 14, "TV_RING": 15, "TV_MAGIC_BOOK": 16, "TV_PRAYER_BOOK": 17,
@@ -391,7 +391,7 @@ def kind_record(o, cls):
 def magic_class(o):
     """MC_ class for magic_treasure: 1 body armour/shields, 2 dragon armour,
     3 weapons, 4 gloves, 5 boots, 6 helms, 7 cloaks, 9 rings, 10 amulets,
-    13 chests, 0 anything else"""
+    13 chests, 14 digging tools, 0 anything else"""
     t = o["tval_name"]
     if t in ("TV_SHIELD", "TV_HARD_ARMOR", "TV_SOFT_ARMOR"):
         return 2 if "Dragon Scale" in o["name"] else 1
@@ -400,7 +400,7 @@ def magic_class(o):
     return {"TV_HAFTED": 3, "TV_POLEARM": 3, "TV_SWORD": 3, "TV_GLOVES": 4,
             "TV_BOOTS": 5, "TV_HELM": 6, "TV_CLOAK": 7, "TV_RING": 9,
             "TV_AMULET": 10, "TV_BOW": 11, "TV_SLING_AMMO": 12, "TV_BOLT": 12,
-            "TV_ARROW": 12, "TV_SPIKE": 12, "TV_CHEST": 13}.get(t, 0)
+            "TV_ARROW": 12, "TV_SPIKE": 12, "TV_CHEST": 13, "TV_DIGGING": 14}.get(t, 0)
 
 
 def main():
@@ -1075,7 +1075,8 @@ def vault_tables(note, races):
     src = read("GENERATE.C")
     i = src.index("static void build_type5(")
     body = src[i:src.index("/* check these rooms will fit", i)]
-    lines = [note, "; build_type5's vault templates: width, height, 1 if a greater vault,",
+    lines = [note, "; build_type5's vault templates: width, height, 1 if a greater vault, the",
+             "; level's rating it adds,",
              "; then the rows. Greater vaults are placed 4 further down and right,",
              "; with permanent walls", "", "vault_table:"]
     data = []
@@ -1083,13 +1084,13 @@ def vault_tables(note, races):
         w, h, rating = int(m.group(1)), int(m.group(2)), int(m.group(3))
         rows = re.findall(r'"([^"]*)"', m.group(4))
         assert len(rows) == h and all(len(r) == w for r in rows), (w, h, [len(r) for r in rows])
-        data.append((w, h, 1 if rating > 5 else 0, rows))
+        data.append((w, h, 1 if rating > 5 else 0, rows, rating))
     assert len(data) == 11, len(data)
-    for n, (w, h, greater, rows) in enumerate(data):
+    for n, (w, h, greater, rows, rating) in enumerate(data):
         lines.append(f"\tdw vault_{n}")
     lines.append(f"NUM_VAULTS\tequ {len(data)}")
-    for n, (w, h, greater, rows) in enumerate(data):
-        lines.append(f"vault_{n}:\tdb {w},{h},{greater}")
+    for n, (w, h, greater, rows, rating) in enumerate(data):
+        lines.append(f"vault_{n}:\tdb {w},{h},{greater},{rating}")
         for r in rows:
             lines.append("\tdb " + asm_string(r))
     names = {"orc": ["Snaga", "Black orc", "Black orc", "Uruk-Hai", "Uruk-Hai", "Orc captain"],

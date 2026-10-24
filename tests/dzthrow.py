@@ -93,9 +93,10 @@ setup(FLASK, 1, hp=0)
 m = keyed(THROW, "a" + d)
 where = [(rd(0xB400 + IS*i + 3, 1)[0], rd(0xB400 + IS*i + 4, 1)[0]) for i in range(64) if rd(0xB400 + IS*i + 1, 1)[0] != 255]
 print("  flask into the open:", where, repr(m))
+m1 = m
 setup(FLASK, 3, hp=0); m = keyed(THROW, "a" + d)
 expect("You have 2 Flasks of oil (a)." in m, "'You have 2 Flasks of oil (a).'")
-expect("disappears" in m or where, "with nothing to hit, it lands at the end of its flight (or against a wall)")
+expect("disappears" in m1 or where, "with nothing to hit, it lands at the end of its flight (or against a wall)")
 wr(A["P_STAT_USE"], bytes([st]))
 calm()
 cmd(2)

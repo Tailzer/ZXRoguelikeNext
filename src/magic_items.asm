@@ -63,6 +63,12 @@ new_plain:
 	ld a,(iy+K_TOAC)
 	ld (ix+I_TOAC),a
 	call init_charges
+	ld a,(iy+K_MAGIC)					; a digger: how well it digs
+	cp MC_DIGGER
+	jr nz,.not_digger
+	ld a,(iy+K_P1)
+	ld (ix+I_PVAL),a
+.not_digger:
 	ld a,(iy+K_CLASS)					; Teleportation, Weakness, Woe, Doom...
 	cp IC_AMULET
 	ret c
@@ -172,6 +178,8 @@ magic_treasure:
 	jp z,.ammo
 	cp MC_CHEST
 	jp z,.chest
+	cp MC_DIGGER
+	jp z,.digger
 	; body armour and shields
 	call .magical
 	jp nc,.armour_cursed
@@ -829,6 +837,26 @@ magic_treasure:
 	neg
 	jp .add_dam
 
+.digger:								; picks and shovels: their pluses
+	set ID_SHOWHD_BIT,(ix+I_IDENT)		; always shown; magic: better at
+	call .magical						; digging, or 1 in 3 worse, cursed
+	ret nc
+	ld a,3
+	call randint
+	cp 3
+	jr z,.dig_cursed
+	ld bc,0*256+25
+	call m_bonus
+	add a,(ix+I_PVAL)
+	ld (ix+I_PVAL),a
+	ret
+.dig_cursed:
+	ld bc,1*256+30
+	call m_bonus
+	neg
+	ld (ix+I_PVAL),a
+	set ID_CURSED_BIT,(ix+I_IDENT)
+	ret
 .chest:									; 1d(level + 4): empty, locked, or
 	ld a,(mt_level)						; locked with a trap, worse deeper
 	add a,4
@@ -1220,6 +1248,8 @@ make_artifact:
 	or (hl)
 	ld (hl),a
 	ld (ix+I_NAME2),b					; it's this one: its numbers
+	ld a,1								; (the level feels special)
+	ld (lv_special),a
 	ld a,b
 	call ego_addr
 	ld a,(iy+E_HIT)
@@ -1289,17 +1319,17 @@ try_special:
 	ld de,SPECIAL_OBJ+1
 	or a
 	sbc hl,de
-	jr c,.none
+	jp c,.none
 	ld a,10
 	call randint
 	cp 1
-	jr nz,.none
+	jp nz,.none
 	xor a
 	ld (sp_done),a
 .again:
 	ld a,(sp_done)
 	cp 21
-	jr nc,.none
+	jp nc,.none
 	inc a
 	ld (sp_done),a
 	ld a,12
@@ -1361,6 +1391,18 @@ try_special:
 	ld (hl),a
 	ld hl,(sp_kind)
 	call new_plain
+	ld a,1								; the level feels special, and its
+	ld (lv_special),a					; rating rises 2 x how deep it is
+	ld a,(iy+K_LEVEL)
+	ld hl,dun_level
+	sub (hl)
+	jr c,.rated
+	jr z,.rated
+	add a,a
+	ld hl,(lv_rating)
+	add hl,a
+	ld (lv_rating),hl
+.rated:
 	scf
 	ret
 .none:

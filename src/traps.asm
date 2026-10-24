@@ -914,11 +914,23 @@ dig_power:
 	jr z,.weapon
 	ld de,25
 	add hl,de
-	ld a,(ix+I_PVAL)
+	ld a,(ix+I_PVAL)					; (signed: a cursed one digs worse,
+	bit 7,a								;  at worst not at all)
+	jr nz,.worse
 	ld e,a
 	ld d,50
 	mul d,e
 	add hl,de
+	ret
+.worse:
+	neg
+	ld e,a
+	ld d,50
+	mul d,e
+	or a
+	sbc hl,de
+	ret nc
+	ld hl,0
 	ret
 .weapon:
 	push hl

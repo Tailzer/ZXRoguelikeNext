@@ -314,7 +314,9 @@ new_level:
 	FARCALL PAGE_LEVEL, alloc_items
 	FARCALL PAGE_TRAP, alloc_traps
 	call update_view
-	jp monsters_see_all
+	call monsters_see_all
+	FARCALL PAGE_LEVEL, level_feeling	; (generate.asm)
+	ret
 .town:
 	FARCALL PAGE_LEVEL, town_gen
 	call msg_clear
@@ -329,4 +331,6 @@ new_level:
 	call light_arrive
 	FARCALL PAGE_LEVEL, alloc_town_monsters
 	call update_view
-	jp monsters_see_all
+	call monsters_see_all
+	FARCALL PAGE_LEVEL, level_feeling	; (the turn it began, all the same)
+	ret

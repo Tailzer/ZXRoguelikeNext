@@ -66,6 +66,7 @@
 		be, learnt as the C learns it; r in look, / and roguelike.mem
 	Milestone 19: Monsters in the walls - passing through rock, and boring
 		through it and through doors
+	Milestone 20: Shovels, picks and the level feeling
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)

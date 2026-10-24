@@ -823,7 +823,7 @@ build_type5:
 	inc hl
 	ld h,(hl)
 	ld l,a
-	ld a,(hl)							; width, height, greater
+	ld a,(hl)							; width, height, greater, rating
 	ld (rv_w),a
 	inc hl
 	ld a,(hl)
@@ -832,6 +832,13 @@ build_type5:
 	ld a,(hl)
 	ld (rv_greater),a
 	inc hl
+	ld a,(hl)							; (the level's feeling)
+	inc hl
+	push hl
+	ld hl,(lv_rating)
+	add hl,a
+	ld (lv_rating),hl
+	pop hl
 	ld (rv_ptr),hl
 	ld a,T_TMP1
 	ld (rv_wall),a
@@ -1040,6 +1047,24 @@ vault_cell:
 	from the middle out (the C fills from the outside in, but here only
 	64 monsters fit a level) */
 build_pit:
+	ld hl,(lv_rating)					; the level's rating + 10, and it
+	ld a,10								; may feel special: 1d(level^2 + 1)
+	add hl,a							; < 650 (the PC's)
+	ld (lv_rating),hl
+	ld a,(dun_level)
+	ld e,a
+	ld d,a
+	mul d,e
+	ex de,hl
+	inc hl
+	call randint16
+	ld de,650
+	or a
+	sbc hl,de
+	jr nc,.plain
+	ld a,1
+	ld (lv_special),a
+.plain:
 	ld a,(dun_level)
 	cp 81
 	jr c,$+4

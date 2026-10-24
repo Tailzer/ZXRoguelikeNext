@@ -450,6 +450,8 @@ MC_AMULET			equ 10
 MC_BOW				equ 11
 MC_AMMO				equ 12
 MC_CHEST			equ 13
+MC_DIGGER			equ 14				; picks and shovels (TV_DIGGING): K_P1 is
+										;  how well they dig (TR_TUNNEL)
 OBJ_TOWN_LEVEL		equ 5				; what level store goods are made at
 ; ego items: SN_ numbers come with data/egos.asm, 16 bytes each in EGO_PAGE
 EGO_SIZE			equ 24

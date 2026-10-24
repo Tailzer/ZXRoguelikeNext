@@ -240,6 +240,9 @@ objdes_msg:
 .ego_p1:
 	bit ID_KNOWN2_BIT,(ix+I_IDENT)		; egos: " (+2)" if they show it,
 	jr z,.notes							; weapons " (+2 to stealth)"
+	ld a,(iy+K_MAGIC)					; picks and shovels: " (+3)"
+	cp MC_DIGGER
+	jr z,.show_p1
 	ld a,(ix+I_NAME2)
 	or a
 	jr z,.notes

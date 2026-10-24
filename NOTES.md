@@ -197,7 +197,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - `T` tunnels: rubble against 1d180, magma 1d600+10, quartz 1d400+10, granite 1d1200+80, with a digging power of (STR + the weapon's dice x sides + its pluses) / 2 (STR + 25 + 50 per point of a TUNNEL weapon); rubble sometimes hides an object; permanent rock never; no weapon, "You dig with your hands, making no progress."
    - magic: Trap Detection/Location (scroll, staff, rod, Detection), Find Traps/Doors (mage), Find Traps (priest) find the traps in view; Trap Creation (scroll, monster spell) puts traps on every floor square round you, no experience for disarming those; Trap/Door Destruction (scroll, wand, spell, Caspanion) and Disarming destroy them
    - the trap list is 32 x 4 bytes of high RAM (saved with it), so saves from before this don't load; the trap code is its own overlay (58, `src/traps.asm`)
-   - not yet: shovels and picks (TV_DIGGING isn't converted yet, so `T` digs with your weapon; the TUNNEL bonus is ready for them)
+   - (shovels and picks came in 20)
 13a. **Throwing** (`MORIA2.C` throw_object/inven_throw/facts/drop_throw, `MISC2.C` tot_dam) *(done)*
    - `v` throws one of anything in the pack ("Fire/Throw which one?") in a direction ("You have 4 Flasks of oil (c)."); confused, it goes astray
    - it flies up to (STR + 20) x 10 / its weight squares (at most 10), stopping at a wall or the first monster in its way
@@ -259,7 +259,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - the monster list holds 64: vaults and pits stop at 56, and a pit is filled from the middle out (the C fills a 95-monster pit from the outside in), so some of the outer, weakest ranks may be missing
    - as in the C, tunnels pass through the inner and permanent walls without digging them, so parts of a level with vaults can be cut off (dig, or use magic)
    - the room code is its own overlay (71, `src/rooms.asm`), the templates and the pits' races made by the converter (`data/vaults.asm`); a level's monsters, objects and traps are now cleared before its rooms are built, and the player starts on a free square
-   - not yet: the level feeling (the C's rating)
+   - (the level feeling came in 20)
 17. **Chests and what monsters drop** (`MORIA2.C` monster_death/summon_object/chest_trap/openobject/disarm_trap/bash, `MISC1.C` magic_treasure's TV_CHEST, `MORIA1.C` search, `SPELLS.C` detect_trap/td_destroy/disarm_all/td_destroy2) *(done)*
    - monsters drop what they carry now: each race's CM_ treasure bits (objects, gold or both; 60%, 90%, 1d2, 2d2, 4d2) are in its spell record, and what it carries falls within 2 squares of where it died, on open floor in sight of there; GOOD and SPECIAL races drop good and great things (place_special: "You feel something roll beneath your feet." if it's under you); a monster killed by another's breath or ball drops plainly, as the C
    - Morgoth leaves the Massive Iron Crown of Morgoth (+125 to every stat, telepathy, light, see invisible, cursed) and Grond (10d8, +5,+25, [+10], slays and resistances, aggravation), made by the converter from monster_death's own statements
@@ -289,6 +289,14 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - monster memory learns both: "It can pass through walls" when one's seen doing it, "It can bore through rock" whenever one digs, seen or not
    - the digging is the trap overlay's (`mon_dig`, `src/doors.asm`); make_move tries them before doors, as the C
    - not yet: monsters that eat others or pick things up; bolts still stop at the rock a monster stands in (as the C's)
+20. **Shovels, picks and the level feeling** (`TREASURE.C` the digging tools, `MISC1.C` magic_treasure's TV_DIGGING, `DESC.C`, `STORE1.C`, `MORIA2.C` tunnel; `DUNGEON.C`'s feeling, the rating in `GENERATE.C`, `MISC1.C` place_monster/place_group, `MISC2.C` place_object/special_place_object, the artifacts' good_item_flag) *(done)*
+   - the Orcish and Dwarven Picks and the Gnomish and Dwarven Shovels are found in the dungeon, and the General Store sells a Pick and a Shovel; they're wielded as weapons, and dig with STR + 25 + 50 x how good they are (their number: 0 to 3 as made)
+   - magic_treasure: more often better diggers (+m_bonus(0,25)), 1 in 3 of the magical ones worse and cursed; their pluses always show: "a Dwarven Pick (1d4) (+0,+0) (+3)"; stores pay their cost and 100 for each point above the kind's (nothing if below 0)
+   - a cursed digger digs worse, at worst not at all (it used to dig as if it were very good)
+   - each level is rated as it's made: things deeper than the level (objects by how much, special objects twice that, monsters half that up to 15, and a unique as much again; a group counts its leader), a vault's template (5 to 35), a pit (10); an artifact or special object (or a pit, 1 in ~(level^2)/650) makes it "special"
+   - arriving, if you spent more than 1d50 turns on the last level: "You feel there is something special about this level.", or by its rating "You have a superb feeling about this level." (over 100) down to "You like the look of this place." (over 10)
+   - the kinds are renumbered: save version 3
+   - resident code ends at `$AFE2`: about 30 bytes left
 
 ## Memory map
 

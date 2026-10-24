@@ -26,6 +26,9 @@ end_y:			db 0
 end_x:			db 0
 cc_a:			db 0				; (chest_call)
 cc_page:		db 0
+lv_rating:		dw 0				; how good the new level is (the C's rating)
+lv_special:		db 0				; something special on it (good_item_flag)
+lv_old_turn:	dw 0				; the turn the last level began
 rc_move:		db 0				; how a monster moved this move (the C's
 										;  rcmove: CM_ bits, bit 7 a door opened)
 rc_wake:		db 0				; 1 it woke this move, 2 it slept on

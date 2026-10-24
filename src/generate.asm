@@ -94,8 +94,106 @@ next_to_walls:
 	ret
 
 
+/* level_feeling - a new level is made: if you spent a while on the last
+	(more than 1d50 turns, and the game more than 1d50 old), what you feel
+	about this one, from what went into it (DUNGEON.C's rating and
+	good_item_flag); the town: nothing */
+level_feeling:
+	ld hl,(lv_old_turn)
+	ld (lf_old),hl
+	ld hl,(game_turn)
+	ld (lv_old_turn),hl
+	ld a,(dun_level)
+	or a
+	ret z
+	ld a,(lv_special)
+	or a
+	jr nz,.something
+	ld hl,(lv_rating)
+	ld a,h
+	or l
+	ret z
+.something:
+	ld a,50								; turn - old_turn > 1d50
+	call randint
+	ld e,a
+	ld d,0
+	ld hl,(lv_old_turn)
+	ld bc,(lf_old)
+	or a
+	sbc hl,bc
+	or a
+	sbc hl,de
+	ret c
+	ret z
+	ld a,50								; and old_turn > 1d50
+	call randint
+	ld e,a
+	ld d,0
+	ld hl,(lf_old)
+	or a
+	sbc hl,de
+	ret c
+	ret z
+	ld a,(lv_special)
+	or a
+	ld hl,lf_special
+	jp nz,msg_print
+	ld de,feelings						; rating over each, best first
+.feeling:
+	ld a,(de)
+	inc de
+	cp $FF
+	ret z
+	ld c,a
+	ld b,0
+	ld hl,(lv_rating)
+	or a
+	sbc hl,bc
+	jr z,.next
+	jr c,.next
+	ex de,hl
+	ld a,(hl)
+	inc hl
+	ld h,(hl)
+	ld l,a
+	jp msg_print
+.next:
+	inc de
+	inc de
+	jr .feeling
+feelings:
+	db 100
+	dw lf_superb
+	db 80
+	dw lf_excellent
+	db 60
+	dw lf_very_good
+	db 40
+	dw lf_good
+	db 30
+	dw lf_lucky
+	db 20
+	dw lf_turning
+	db 10
+	dw lf_like
+	db $FF
+lf_special:		db "You feel there is something special about this level.",0
+lf_superb:		db "You have a superb feeling about this level.",0
+lf_excellent:	db "You have an excellent feeling that your luck is turning...",0
+lf_very_good:	db "You have a very good feeling.",0
+lf_good:		db "You have a good feeling.",0
+lf_lucky:		db "You feel strangely lucky.",0
+lf_turning:		db "You feel your luck is turning...",0
+lf_like:		db "You like the look of this place.",0
+lf_old:			dw 0
+
 /* generate_level - build a new level for dun_level */
 generate_level:
+	ld hl,0								; (its feeling, from what's put in)
+	ld (lv_rating),hl
+	xor a
+	ld (lv_special),a
 	OVCALL PAGE_TRAP, doors_clear, PAGE_LEVEL
 	call mon_clear_all					; (rooms may put monsters, objects
 	call items_clear					;  and traps in as they're built)
