@@ -323,6 +323,10 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - monster memory: "It can pick up objects" once one's seen doing it
    - resting shows on the status line as the C's: "Rest 23" counting down, or "Rest *****" resting till you're better; gone when it stops
    - the picking up is the memory overlay's (`mon_pickup`, with the C's flags in rinfo_table); resident code ends at `$AFDC` (36 bytes left)
+25. **The tombstone** (`DEATH.C` print_tomb, center_string, date; `MISC2.C` title_string) *(done)*
+   - dying (or retiring) ends on the C's gravestone with the graveyard beside it: RIP, the name, "the" title (a winner: Magnificent), the class (*King* / *Queen*), "Level : 12", experience, gold, "Died on Level : 5", "killed by" and what did it ("a Kobold.", "starvation."), and the date from the Next's real-time clock ("Sun Feb 08"), if it has one
+   - the picture is in the activation data page with the killer words (`src/killers.asm`); the creation overlay has about 50 bytes left
+   - not yet: the C's "Character record?" (writing the character sheet out) and the high score list
 
 ## Memory map
 

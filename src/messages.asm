@@ -46,7 +46,5 @@ txt_town:		db "  Town",0
 msg_yanked_up:	db "You feel yourself yanked upwards!",0
 msg_yanked_down: db "You feel yourself yanked downwards!",0
 msg_trap_door:	db "You fell through a trap door!",0
-txt_magnificent_king: db "the Magnificent *King*",0	; (the tombstone's: room)
-txt_magnificent_queen: db "the Magnificent *Queen*",0
 msg_too_afraid:	db "You are too afraid!",0
 msg_no_light:	db "You have no light to read by.",0

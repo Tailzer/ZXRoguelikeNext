@@ -236,6 +236,6 @@ pc, sp, *_ = regs(); sp -= 2; wr(sp, struct.pack("<H", BP)); set_reg(1, sp)
 set_pc(A["PLAYER_DIED_SCREEN"]); run_to(A["PLAYER_DIED_SCREEN@NOT_KING"])
 tomb = [l.strip() for l in screen() if l.strip()]
 print("  tomb:", tomb)
-expect(any("Killed by an exploding chest" in l for l in tomb), "the tombstone: 'Killed by an exploding chest'")
+expect(any("an exploding chest." in l for l in tomb), "the tombstone: killed by 'an exploding chest.'")
 cmd(2)
 print("ALL OK" if ok else "FAILURES")

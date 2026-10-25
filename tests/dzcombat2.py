@@ -195,7 +195,7 @@ for turn in range(400):
     else:
         nxt = step_to(m, px, py, goals)
         act(3) if nxt is None else act(0, nxt[1]-px, nxt[0]-py)
-    tomb = [c for c in captured if any("R I P" in r for r in c)]
+    tomb = [c for c in captured if any("RIP" in r for r in c)]
     if tomb:
         print("tombstone:")
         for r in tomb[0]:
@@ -204,7 +204,7 @@ for turn in range(400):
     captured.clear()
 if p()["dead"]:
     captured.clear(); run_until(BP)
-    tomb = [c for c in captured if any("R I P" in r for r in c)]
+    tomb = [c for c in captured if any("RIP" in r for r in c)]
     if tomb:
         print("tombstone:", [r.strip() for r in tomb[0] if r.strip()])
 after = p()

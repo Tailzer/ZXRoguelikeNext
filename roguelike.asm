@@ -72,6 +72,7 @@
 		Acquirement scrolls
 	Milestone 23: Monsters that eat others
 	Milestone 24: Monsters that pick things up; resting on the status line
+	Milestone 25: The tombstone - DEATH.C's gravestone and graveyard
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)

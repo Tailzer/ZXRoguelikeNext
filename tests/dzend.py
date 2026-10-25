@@ -90,6 +90,7 @@ expect(any("Veni, Vidi, Vici!" in l for l in crown) and any("*#########*########
 expect(rd(A["P_LEV"], 1)[0] >= lev0 + 50 and gold() == g0 + 250000 and rd(A["DUN_LEVEL"], 1)[0] == 0, "and 50 levels, 250000 gold, back in the town")
 run_to(A["PLAYER_DIED_SCREEN@NOT_KING"]); tomb = [l.strip() for l in screen() if l.strip()]
 print("  tomb:", tomb)
-expect(any("Ripe Old Age" in l for l in tomb) and any("the Magnificent *King*" in l or "the Magnificent *Queen*" in l for l in tomb), "the tombstone: 'Killed by Ripe Old Age', 'the Magnificent *King*'")
+expect(any("Ripe Old Age." in l for l in tomb) and any("Magnificent" in l for l in tomb) and any("*King*" in l or "*Queen*" in l for l in tomb),
+       "the tombstone: killed by 'Ripe Old Age.', 'the Magnificent', '*King*'")
 cmd(2)
 print("ALL OK" if ok else "FAILURES")
