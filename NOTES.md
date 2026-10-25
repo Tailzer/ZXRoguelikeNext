@@ -327,6 +327,14 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - dying (or retiring) ends on the C's gravestone with the graveyard beside it: RIP, the name, "the" title (a winner: Magnificent), the class (*King* / *Queen*), "Level : 12", experience, gold, "Died on Level : 5", "killed by" and what did it ("a Kobold.", "starvation."), and the date from the Next's real-time clock ("Sun Feb 08"), if it has one
    - the picture is in the activation data page with the killer words (`src/killers.asm`); the creation overlay has about 50 bytes left
    - not yet: the C's "Character record?" (writing the character sheet out) and the high score list
+26. **Haggling, and the stores turning over** (`STORE2.C` purchase_haggle, sell_haggle, receive_offer, get_haggle, the insults and comments; `STORE1.C` sell_price, noneedtobargain, updatebargain, store_maint; `DUNGEON.C`) *(done)*
+   - prices are the C's: a shop lists its asking price (the value at the owner's race adjustment, its markup, x2 at the black market, your charisma), and comes down as far as its final markup; selling, it opens with the value less charisma and race at 200% less its markup, up to its final offer or what's in its purse
+   - you haggle: type an offer (digits, Delete), Enter alone takes the price on the table or repeats your last change, Symbol Shift + K / J then a number is +n / -n on your last offer, space walks away; "Asking :" and "Your last offer :" on the row below
+   - the shopkeepers say everything the C's do: counter-offers ("Ha!  No less than 42 gold pieces."), "Done!" and the rest, "What was that?" for nonsense, insults ("That's an insult!") for offers that go backwards or barely move, "Liar!  You have not the gold!", "How dare you!  I will not buy that!" for worthless goods, and what they make of what you sold once it's known ("What a fool!", "You hear a shriek!")
+   - too many insults (the owner's patience) and you're thrown out ("ENOUGH!..."): the doors are locked for 2500 + 1d2500 turns; a deal forgives one insult
+   - once bought, the rest of a stack sells at that price, listed "[Fixed]"; with well over twice as many good deals (at the final price) as bad at a store, anything under 5000 there goes straight to the final price: "After a long bargaining session, you agree upon the price."
+   - every 1000 turns in the dungeon the stores sell off and make stock, and forget your insults, as well as each time the town is made
+   - the haggling is its own overlay (page 84, `src/haggle.asm`), which keeps each store's insults, good and bad deals and when it opens again; the store page hands it the prices through the data window. Save version 6
 
 ## Memory map
 
@@ -368,6 +376,7 @@ Code that runs every turn is **resident** in bank 2. Code that runs rarely lives
 | 58 `PAGE_TRAP` | `traps.asm`, `throw.asm` | placing traps and rubble, setting them off, `D`, `T`, trap magic; `v` throwing |
 | 54 `PAGE_DEVICE` | `devices.asm` | wands, staffs, rods and artifact activation: bolts, balls, beams (borrows scroll and potion effects through `device_xcall`) |
 | 73 `PAGE_RECALL` | `recall.asm`, `combine.asm` | monster memory: learning it, `r` and `/` showing it; joining stacks (`pack_combine`) |
+| 84 `PAGE_HAGGLE` | `haggle.asm` | haggling: offers, counter-offers, insults, the shopkeepers' words; each store's bargaining record; the door check and charisma adjustment |
 | 72 `PAGE_CHEST` | `chests.asm` | what monsters drop (`monster_death`), Morgoth's crown and Grond, chests: opening, their traps, `D`, `f`, searching and magic (reached through the resident `chest_call`) |
 
 Data pages (slot 1, `$2000`): 44-48 `RACE_PAGE` = `data/races.asm` (128 x 64-byte races per page, name inline); 60-62 `KIND_PAGE` = `data/kinds.asm` (128 kinds per page); the flavours (`data/flavours.asm`: potion colours, woods, metals, stones, amulets, the title syllables, the buffer this game's scroll titles are written into, normal_table) have their own page. 63 `EGO_PAGE` = `data/egos.asm` (ego and artifact names, flags and numbers, 24 bytes each); 64 `FLAVOUR_PAGE` = `data/flavours.asm`; 65 `ACT_PAGE` = `data/activate.asm`; 66 `SPELL_PAGE` = `data/spells.asm`. The level tables (`data/alloc.asm`) live in the level overlay and the treasures (`data/tables.asm`) are resident.

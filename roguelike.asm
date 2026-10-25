@@ -73,6 +73,8 @@
 	Milestone 23: Monsters that eat others
 	Milestone 24: Monsters that pick things up; resting on the status line
 	Milestone 25: The tombstone - DEATH.C's gravestone and graveyard
+	Milestone 26: Haggling, insults and locked doors; the stores turn over
+		every 1000 turns in the dungeon
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -360,6 +362,11 @@ create_end:
 	include "data/stores.asm"			; generated: owners, prices, stock lists
 store_end:
 	ASSERT store_end <= $6000, "Store overlay is over 8K"
+
+	MMU 2, PAGE_HAGGLE, $4000
+	include "src/haggle.asm"
+haggle_end:
+	ASSERT haggle_end <= $6000, "Haggle overlay is over 8K"
 
 	MMU 2, PAGE_MAGIC, $4000
 	include "src/potions.asm"

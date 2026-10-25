@@ -191,7 +191,7 @@ EGO_REC = [[int(x) for x in m.group(1).split(",")] for m in re.finditer(r"\tdb (
 JEWEL = {(15, 0): (6, 100), (15, 1): (6, 100), (15, 2): (6, 100), (15, 3): (6, 100), (15, 5): (6, 30),
          (15, 19): (10, 100), (15, 20): (9, 100), (15, 21): (11, 100), (15, 30): ("hd", 100),
          (14, 0): (6, 100), (14, 1): (6, 100), (14, 2): (6, 20), (14, 8): (6, 20)}
-def buy_price(store, kind, disc, prace, chr_, pval=0, e=None):
+def buy_price(store, kind, disc, prace, chr_, pval=0, e=None, inf="max_inf"):
     c = KCOST[kind]
     if disc: c = max(1, c * {1: 75, 2: 50, 3: 25, 4: 10}[disc] // 100)
     cls = KIND_RECS[kind]["raw"][2]
@@ -216,7 +216,7 @@ def buy_price(store, kind, disc, prace, chr_, pval=0, e=None):
     if c == 0: return 0
     o = OWN[rd(STORE_OWNER + store, 1)[0]]
     v = max(1, c * RG[o["race"]][prace] // 100)
-    v = v * o["min_inf"] // 100
+    v = v * o[inf] // 100
     if store == 6: v *= 2
     return max(1, v * chr_ // 100)
 def sell_offer(store, kind, prace, chr_):
@@ -226,14 +226,13 @@ def sell_offer(store, kind, prace, chr_):
     c = c * (200 - chr_) // 100
     c = max(1, c * (200 - RG[o["race"]][prace]) // 100)
     max_buy = max(1, c * (200 - o["max_inf"]) // 100)
-    min_buy = max(max_buy, max(1, c * (200 - o["min_inf"]) // 100))
-    return min(min_buy, o["purse"])
+    return min(max_buy, o["purse"])					# their first offer
 def stock(store):
     n = rd(STORE_COUNT + store, 1)[0]
     old = cmd(11, bytes([0x52]))[0]				# the stock lives in the store overlay
-    cmd(10, bytes([2, PAGE_STORE])); raw = rd(STORE_INV + store * 264, 264); cmd(10, bytes([2, old]))
+    cmd(10, bytes([2, PAGE_STORE])); raw = rd(STORE_INV + store * 312, 312); cmd(10, bytes([2, old]))
     sg = lambda v: v - 256 if v > 127 else v
-    return [dict(kind=raw[i*11] | raw[i*11+1] << 8, num=raw[i*11+2], disc=raw[i*11+3], pval=raw[i*11+4] | raw[i*11+10] << 8, tohit=sg(raw[i*11+5]), todam=sg(raw[i*11+6]), toac=sg(raw[i*11+7]), name2=raw[i*11+8], ident=raw[i*11+9]) for i in range(n)]
+    return [dict(kind=raw[i*13] | raw[i*13+1] << 8, num=raw[i*13+2], disc=raw[i*13+3], pval=raw[i*13+4] | raw[i*13+10] << 8, tohit=sg(raw[i*13+5]), todam=sg(raw[i*13+6]), toac=sg(raw[i*13+7]), name2=raw[i*13+8], ident=raw[i*13+9]) for i in range(n)]
 def door(store):
     y, x = rd(STORE_DOOR + 2 * store, 2); return y, x
 
@@ -259,13 +258,13 @@ for sn in (0, 1, 2, 3, 6):
     o = OWN[rd(STORE_OWNER + sn, 1)[0]]
     for i, e in enumerate(stock(sn)):
         want = buy_price(sn, e["kind"], e["disc"], prace, chr_, e["pval"], e)
-        shown = shot[3 + i][68:].strip()
+        shown = shot[3 + i][64:].strip()
         checked += 1
         if want > 65535 and shown == "65535":
             print(f"   (known limit) {KINDS[e['kind']]}: C price {want}, prices stop at 65535"); continue
         if shown != str(want):
             bad += 1; print(f"   {STORES[sn]}: {KINDS[e['kind']]} shows {shown!r}, C formula {want}")
-    print(f"  {STORES[sn]:13} owner {o['name'].split('  ')[0]} (race {o['race']}, markup {o['min_inf']}%): {len(stock(sn))} prices checked")
+    print(f"  {STORES[sn]:13} owner {o['name'].split('  ')[0]} (race {o['race']}, markup {o['max_inf']}%): {len(stock(sn))} prices checked")
 expect(bad == 0, f"all {checked} shelf prices match the C formula")
 # night: every other 5000 turns
 wr(A["GAME_TURN"], struct.pack("<H", 5000))

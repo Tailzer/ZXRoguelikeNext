@@ -93,8 +93,32 @@ lt_perm:		db 0
 msg_light_out:	db "Your light has gone out!",0
 msg_light_faint: db "Your light is growing faint.",0
 
+/* store_turnover - in the dungeon, every 1000 turns, the stores sell off
+	and make stock, and forget your insults (DUNGEON.C) */
+store_turnover:
+	ld a,(dun_level)
+	or a
+	ret z
+	ld hl,(game_turn)					; turn % 1000: % 8, then / 8 % 125
+	ld a,l
+	and 7
+	ret nz
+	srl h
+	rr l
+	srl h
+	rr l
+	srl h
+	rr l
+	ld c,125
+	call div16_8
+	or a
+	ret nz
+	OVCALL PAGE_STORE, store_maint, PAGE_MAGIC
+	ret
+
 /* timed_tick - one turn of every timed effect, in the C's order */
 timed_tick:
+	call store_turnover
 	call light_tick
 	call art_tick
 	ld ix,te_blind

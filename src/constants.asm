@@ -29,6 +29,7 @@ WIN_MON_APPEAR		equ 100				; the level Morgoth may be found from
 PAGE_ROOMS			equ 71				; overlay: inner rooms, crosses, vaults, pits
 PAGE_CHEST			equ 72				; overlay: chests, and what monsters drop
 PAGE_RECALL			equ 73				; overlay: monster memory (recall.asm)
+PAGE_HAGGLE			equ 84				; overlay: haggling (haggle.asm)
 MEM_PAGE			equ 74				; RAM: monster memory, 3 pages of MR_SIZE
 										; records (saved as roguelike.mem)
 RINFO_PAGE			equ 77				; the C's cmove/cdefense, description places
@@ -538,7 +539,7 @@ NUM_STORES			equ 8				; 6 shops, the black market, home
 STORE_BLACK			equ 6
 STORE_HOME			equ 7
 STORE_INVEN_MAX		equ 24
-STORE_ITEM			equ 11				; stock entry (store_inv, in the store overlay):
+STORE_ITEM			equ 13				; stock entry (store_inv, in the store overlay):
 SE_KIND				equ 0				;  word
 SE_NUMBER			equ 2
 SE_DISC				equ 3				;  special offer
@@ -549,6 +550,7 @@ SE_TOAC				equ 7
 SE_NAME2			equ 8
 SE_IDENT			equ 9				;  ID_CURSED (home items keep theirs)
 SE_PVAL_HI			equ 10				;  (a light's fuel is a word)
+SE_FIXED			equ 11				;  word: its price, once haggled (0: not)
 STORE_OWNER			equ P_EXP_TABLE+200
 STORE_COUNT			equ STORE_OWNER+NUM_STORES
 STORE_DOOR			equ STORE_COUNT+NUM_STORES	; (y, x) for each store

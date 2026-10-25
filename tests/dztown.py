@@ -186,7 +186,7 @@ KTVAL = [k["raw"][15] for k in KIND_RECS]
 def chr_adj(c):
     for lim, v in [(4,130),(5,125),(6,122),(7,120),(8,118),(9,116),(10,114),(11,112),(12,110),(13,108),(14,106),(15,104),(16,103),(17,102),(18,101),(19,100),(68,98),(88,96),(108,94),(118,92),(148,90),(188,88),(218,86),(256,80)]:
         if c < lim: return v
-def buy_price(store, kind, disc, prace, chr_, pval=0, e=None):
+def buy_price(store, kind, disc, prace, chr_, pval=0, e=None, inf="max_inf"):
     c = KCOST[kind]
     if disc: c = max(1, c * {1: 75, 2: 50, 3: 25, 4: 10}[disc] // 100)
     cls = KIND_RECS[kind]["raw"][2]
@@ -197,7 +197,7 @@ def buy_price(store, kind, disc, prace, chr_, pval=0, e=None):
     if c == 0: return 0
     o = OWN[rd(STORE_OWNER + store, 1)[0]]
     v = max(1, c * RG[o["race"]][prace] // 100)
-    v = v * o["min_inf"] // 100
+    v = v * o[inf] // 100
     if store == 6: v *= 2
     return max(1, v * chr_ // 100)
 def sell_offer(store, kind, prace, chr_, value=None):
@@ -207,14 +207,13 @@ def sell_offer(store, kind, prace, chr_, value=None):
     c = c * (200 - chr_) // 100
     c = max(1, c * (200 - RG[o["race"]][prace]) // 100)
     max_buy = max(1, c * (200 - o["max_inf"]) // 100)
-    min_buy = max(max_buy, max(1, c * (200 - o["min_inf"]) // 100))
-    return min(min_buy, o["purse"])
+    return min(max_buy, o["purse"])					# their first offer
 def stock(store):
     n = rd(STORE_COUNT + store, 1)[0]
     old = cmd(11, bytes([0x52]))[0]				# the stock lives in the store overlay
-    cmd(10, bytes([2, PAGE_STORE])); raw = rd(STORE_INV + store * 264, 264); cmd(10, bytes([2, old]))
+    cmd(10, bytes([2, PAGE_STORE])); raw = rd(STORE_INV + store * 312, 312); cmd(10, bytes([2, old]))
     sg = lambda v: v - 256 if v > 127 else v
-    return [dict(kind=raw[i*11] | raw[i*11+1] << 8, num=raw[i*11+2], disc=raw[i*11+3], pval=raw[i*11+4] | raw[i*11+10] << 8, tohit=sg(raw[i*11+5]), todam=sg(raw[i*11+6]), toac=sg(raw[i*11+7]), name2=raw[i*11+8], ident=raw[i*11+9]) for i in range(n)]
+    return [dict(kind=raw[i*13] | raw[i*13+1] << 8, num=raw[i*13+2], disc=raw[i*13+3], pval=raw[i*13+4] | raw[i*13+10] << 8, tohit=sg(raw[i*13+5]), todam=sg(raw[i*13+6]), toac=sg(raw[i*13+7]), name2=raw[i*13+8], ident=raw[i*13+9]) for i in range(n)]
 def door(store):
     y, x = rd(STORE_DOOR + 2 * store, 2); return y, x
 # ---- a new character starts in town
@@ -255,7 +254,7 @@ def enter(store, keys):
 chr_ = chr_adj(p["stats"][5]); prace = p["race"]
 g0 = player_state()["gold"]; first = stock(0)[0]
 price = buy_price(0, first["kind"], first["disc"], prace, chr_, first["pval"], first)
-shot = enter(0, "pa ")
+shot = enter(0, "pa\rxxxxxxxx ")	# Enter: accept the asking price
 print("  in the general store:"); [print("   |" + r.rstrip()) for r in shot if r.strip()]
 g1 = player_state()["gold"]
 expect(g0 - g1 == price, f"bought a {KINDS[first['kind']]} for {g0 - g1} gold (expected {price})")
@@ -264,7 +263,7 @@ expect(any(str(price) in r for r in shot), "price shown matches")
 # sell the ration (slot a) to the general store
 ration_offer = sell_offer(0, [r for r in pack() if r][0]["kind"], prace, chr_)
 g1 = player_state()["gold"]
-shot = enter(0, "sa ")
+shot = enter(0, "sa\rxxxxxxxx ")	# Enter: take their first offer
 g2 = player_state()["gold"]
 expect(g2 - g1 == ration_offer, f"sold the ration for {g2 - g1} gold (expected {ration_offer})")
 # the home: drop the broadsword? it's wielded; drop pack slot a there, then get it back
@@ -281,7 +280,7 @@ oi = A["OBJECT_IDENT"] + 5*64 + KIND_RECS[CSW]["raw"][22]
 wr(oi, bytes([0]))
 offer = sell_offer(3, CSW, prace, chr_, value=20)
 g1 = player_state()["gold"]
-enter(3, "sa ")
+enter(3, "sa\rxxxxxxxx ")
 g2 = player_state()["gold"]
 print("  sold an unknown potion to the temple:", g2 - g1, "gold (offer on 20:", offer, ") ident", rd(oi, 1)[0])
 expect(g2 - g1 == offer and rd(oi, 1)[0] & 2 and pack()[0] and pack()[0]["num"] == 1, "an unknown potion sells as worth 20 and becomes known")

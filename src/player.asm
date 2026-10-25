@@ -240,7 +240,7 @@ new_level:
 .town:
 	FARCALL PAGE_LEVEL, town_gen
 	call msg_clear
-	FARCALL PAGE_STORE, store_maint		; the stores restock
+	FARCALL PAGE_STORE, store_maint		; the stores restock (town_gen)
 	call items_clear					; nothing lying about in town
 	FARCALL PAGE_TRAP, alloc_traps		; (no traps either)
 	call random_open_spot

@@ -19,7 +19,7 @@ FA_READ				equ $01
 FA_WRITE			equ $02
 FA_CREATE_AL		equ $0C				; create, or truncate what's there
 ESX_DRIVE			equ "*"				; the current drive
-SAVE_VERSION		equ 5				; (5: the last scrolls renumbered the kinds)
+SAVE_VERSION		equ 6				; (6: haggling, the stores' bargains)
 
 ; what is saved: (page shown at $6000 while it's read or written, or 0 for
 ; none; address; length). Overlay and data pages are seen through slot 3.
@@ -40,6 +40,7 @@ save_blocks:
 														; spells, uniques...
 	SV_BLOCK 0, MAP_BASE, MAP_W*MAP_H					; the level
 	SV_BLOCK PAGE_STORE, store_inv+$2000, NUM_STORES*STORE_INVEN_MAX*STORE_ITEM
+	SV_BLOCK PAGE_HAGGLE, hg_state+$2000, NUM_STORES*HG_SIZE	; insults, bargains
 	SV_BLOCK PAGE_MISC, art_made+$2000, (NUM_ART_BITS+7)/8	; artifacts made
 	SV_BLOCK FLAVOUR_PAGE, scroll_titles+$4000, MAX_TITLES*10
 SAVE_BLOCKS			equ ($-save_blocks)/5

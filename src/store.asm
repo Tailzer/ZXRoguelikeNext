@@ -13,13 +13,15 @@ OWN_NAME			equ 0
 OWN_PURSE			equ 2				; word: the most they'll pay
 OWN_MAX_INFLATE		equ 4
 OWN_MIN_INFLATE		equ 5
+OWN_HAGGLE			equ 6				; haggle_per
 OWN_RACE			equ 7
+OWN_INSULTS			equ 8				; insult_max
 STORE_CHOICES		equ 30
 STORE_MIN_INVEN		equ 10
 STORE_MAX_INVEN		equ 18
 STORE_TURN_AROUND	equ 9
 LIST_ROW			equ 3
-PRICE_COL			equ 68
+PRICE_COL			equ 64
 STORE_MSG_ROW		equ 28
 STORE_PROMPT_ROW	equ 29
 STORE_CMD_ROW		equ 31
@@ -57,6 +59,7 @@ store_init:
 /* store_maint - sell off some stock and make some more, in every store
 	but the home (store_maint in STORE1.C) */
 store_maint:
+	OVCALL PAGE_HAGGLE, hg_calm, PAGE_STORE	; insults forgotten
 	xor a
 .each:
 	ld (maint_store),a
@@ -382,8 +385,7 @@ store_carry:
 	ld e,a
 	ld d,STORE_ITEM
 	mul d,e
-	ld a,e
-	ld (sc_bytes),a
+	ld (sc_bytes),de
 	push bc
 	ld a,(sc_store)
 	ld b,c
@@ -394,9 +396,7 @@ store_carry:
 	ld e,l
 	ld bc,-STORE_ITEM
 	add hl,bc							; the last byte in use
-	ld a,(sc_bytes)
-	ld c,a
-	ld b,0
+	ld bc,(sc_bytes)
 	lddr								; move the later entries up one
 	pop bc
 .write:
@@ -432,6 +432,11 @@ store_carry:
 	ld (hl),a
 	inc hl
 	ld a,(ix+I_PVAL+1)					; (fuel)
+	ld (hl),a
+	inc hl
+	xor a								; (no price fixed yet)
+	ld (hl),a
+	inc hl
 	ld (hl),a
 	ld a,(sc_store)						; one more entry
 	ld hl,STORE_COUNT
@@ -523,10 +528,9 @@ store_remove:
 	ld e,a
 	ld d,STORE_ITEM
 	mul d,e
-	ld a,e
+	ld b,d
+	ld c,e
 	pop de
-	ld c,a
-	ld b,0
 	ld hl,STORE_ITEM
 	add hl,de
 	ldir
@@ -850,9 +854,12 @@ jewel_values:
 	db IC_AMULET,2,I_PVAL,20, IC_AMULET,8,I_PVAL,20	; searching, the Magi
 	db $FF
 
-/* buy_price - (cur_store) IX = item, C = discount -> HL = what you pay:
-	value * race adjustment * final markup (x2 black market) * charisma */
-buy_price:
+/* buy_prices - (cur_store) IX = item, C = discount -> HL = the asking
+	price, 0 if worthless; hgi_ask, hgi_final and hgi_least set for
+	purchase_haggle: the value at the race adjustment (sell_price), marked
+	up (x2 at the black market) at your charisma; the least you'd offer is
+	the value at 200 - the markup (STORE2.C purchase_haggle) */
+buy_prices:
 	call item_cost
 	ld a,h
 	or l
@@ -864,8 +871,25 @@ buy_price:
 	pop hl
 	call pct
 	call at_least_1
-	ld a,(iy+OWN_MIN_INFLATE)
+	ld (bp_cost),hl
+	ld a,(iy+OWN_MIN_INFLATE)			; final_ask
+	call bp_inflate
+	ld (hgi_final),hl
+	ld hl,(bp_cost)						; min_offer
+	ld a,(iy+OWN_MAX_INFLATE)
+	call bp_under
+	ld (hgi_least),hl
+	ld hl,(bp_cost)						; cur_ask
+	ld a,(iy+OWN_MAX_INFLATE)
+	call bp_inflate
+	ld (hgi_ask),hl
+	ret
+
+/* bp_inflate - HL = cost, A = markup: HL * A / 100, x2 at the black
+	market, at your charisma; at least 1 */
+bp_inflate:
 	call pct
+	call at_least_1
 	ld a,(cur_store)
 	cp STORE_BLACK
 	jr nz,.charisma
@@ -877,10 +901,23 @@ buy_price:
 	call pct
 	jp at_least_1
 
-/* sell_offer - (cur_store) IX = item -> HL = what they'll pay for one:
-	value less the charisma and race adjustments, at their final offer,
-	never more than they can afford */
-sell_offer:
+/* bp_under - HL = cost, A = markup: HL * (200 - A) / 100, at least 1 */
+bp_under:
+	cp 200
+	jr c,.under
+	ld hl,1
+	ret
+.under:
+	neg
+	add a,200
+	call pct
+	jp at_least_1
+
+/* sell_prices - (cur_store) IX = item -> HL = what it's worth to them, 0
+	if worthless; hgi_ask (their first offer), hgi_final (their last, not
+	below the first), hgi_least (the most you'd ask) and hgi_purse set for
+	sell_haggle: the value less charisma and race (STORE2.C sell_haggle) */
+sell_prices:
 	ld c,0
 	call item_cost
 	ld a,h
@@ -901,35 +938,48 @@ sell_offer:
 	add a,200
 	call pct
 	call at_least_1
-	push hl
-	ld a,(iy+OWN_MAX_INFLATE)			; max_buy
-	neg
-	add a,200
+	ld (bp_cost),hl
+	ld a,(iy+OWN_MAX_INFLATE)			; max_sell
 	call pct
 	call at_least_1
-	ld (max_buy),hl
-	pop hl
-	ld a,(iy+OWN_MIN_INFLATE)			; min_buy, but not below max_buy
-	neg
-	add a,200
-	call pct
-	call at_least_1
-	ld de,(max_buy)
+	ld (hgi_least),hl
+	ld hl,(bp_cost)						; max_buy
+	ld a,(iy+OWN_MAX_INFLATE)
+	call bp_under
+	ld (hgi_ask),hl
+	ld hl,(bp_cost)						; min_buy, but not below max_buy
+	ld a,(iy+OWN_MIN_INFLATE)
+	call bp_under
+	ld de,(hgi_ask)
 	push hl
 	or a
 	sbc hl,de
 	pop hl
-	jr nc,.capped
+	jr nc,.final
 	ex de,hl
-.capped:								; and no more than their purse
-	ld e,(iy+OWN_PURSE)
-	ld d,(iy+OWN_PURSE+1)
-	push hl
-	or a
-	sbc hl,de
-	pop hl
-	ret c
-	ex de,hl
+.final:
+	ld (hgi_final),hl
+	ld l,(iy+OWN_PURSE)
+	ld h,(iy+OWN_PURSE+1)
+	ld (hgi_purse),hl
+	ld hl,(bp_cost)
+	ret
+
+/* hg_send - the haggle's inputs (this store, its owner's step and
+	patience, the prices) into the haggle page, through the data window */
+hg_send:
+	ld a,(cur_store)
+	ld (hgi_store),a
+	call owner_rec
+	ld a,(iy+OWN_HAGGLE)
+	ld (hgi_per),a
+	ld a,(iy+OWN_INSULTS)
+	ld (hgi_insult_max),a
+	nextreg NR_MMU1,PAGE_HAGGLE
+	ld hl,hgi_store
+	ld de,hg_store-$2000
+	ld bc,HGI_SIZE
+	ldir
 	ret
 
 /* race_adjust - IY = owner -> A = rgold_adj[owner race][your race] */
@@ -986,17 +1036,8 @@ buys_magic:		db 40,45,55,65,70,71,75,76,90,66,0
 /* enter_store - A = store: browse, buy and sell until space or Enter */
 enter_store:
 	ld (cur_store),a
-	ld a,(p_stat_use+A_CHR)				; chr_adj()
-	ld hl,chr_table
-.chr:
-	cp (hl)
-	jr c,.chr_found
-	inc hl
-	inc hl
-	jr .chr
-.chr_found:
-	inc hl
-	ld a,(hl)
+	OVCALL PAGE_HAGGLE, hg_door, PAGE_STORE	; thrown out, not long ago?
+	ret c
 	ld (store_chr),a
 	xor a
 	ld (store_said),a
@@ -1021,8 +1062,10 @@ enter_store:
 .leave:
 	jp clear_screen
 
-/* say - finish the message being built and keep it for the next redraw */
+/* say - finish the message being built and keep it for the next redraw
+	(after any haggling message not seen yet) */
 say:
+	OVCALL PAGE_HAGGLE, hg_flush, PAGE_STORE
 	ld hl,(msg_ptr)
 	ld (hl),0
 	ld hl,msg_buf
@@ -1117,6 +1160,7 @@ draw_store:
 	cp STORE_HOME
 	jr z,.next_line
 	call entry_price
+	push af
 	ld a,(list_pos)
 	add a,LIST_ROW
 	ld d,a
@@ -1127,12 +1171,21 @@ draw_store:
 	pop hl
 	ld c,ATTR_WHITE
 	call print_u16
+	pop af
+	jr nc,.next_line					; "[Fixed]", once haggled over
+	ld a,(list_pos)
+	add a,LIST_ROW
+	ld d,a
+	ld e,PRICE_COL+6
+	ld hl,txt_fixed
+	ld c,ATTR_GREY
+	call print_at
 .next_line:
 	ld a,(list_pos)
 	inc a
 	ld hl,list_count
 	cp (hl)
-	jr c,.line
+	jp c,.line
 .gold:
 	ld hl,txt_gold_left					; "Gold remaining: 312"
 	ld d,STORE_PROMPT_ROW-2
@@ -1206,6 +1259,22 @@ store_purchase:
 	cp STORE_HOME
 	jr z,.priced
 	call entry_price
+	push af
+	push hl
+	xor a
+	ld (hgi_said),a
+	call hg_send
+	pop hl
+	pop af
+	jr c,.priced						; fixed: no haggling
+	push ix
+	OVCALL PAGE_HAGGLE, purchase_haggle, PAGE_STORE
+	pop ix
+	or a
+	jr z,.priced
+	dec a
+	jp z,store_flush_redraw				; (you gave up)
+	jp store_out						; (thrown out)
 .priced:
 	ld (deal_price),hl
 	ld de,(p_gold+2)					; enough gold?
@@ -1217,8 +1286,10 @@ store_purchase:
 	or a
 	sbc hl,de
 	jr nc,.afford
-	ld hl,txt_no_gold
-	jp say_text
+	ld a,(cur_store)					; "Liar!  You have not the gold!"
+	OVCALL PAGE_HAGGLE, hg_liar, PAGE_STORE
+	jp c,store_out
+	jp store_flush_redraw
 .afford:
 	push ix								; one of them, as a pack item
 	pop hl
@@ -1236,6 +1307,18 @@ store_purchase:
 	jp say_text
 .carried:
 	ld (deal_slot),a
+	ld a,(cur_store)
+	cp STORE_HOME
+	jr z,.pay
+	push ix								; "Done!", and one insult forgiven
+	OVCALL PAGE_HAGGLE, hg_accepted, PAGE_STORE
+	ld a,(cur_store)
+	OVCALL PAGE_HAGGLE, decrease_insults, PAGE_STORE
+	pop ix
+	ld hl,(deal_price)					; the rest at the price agreed
+	ld (ix+SE_FIXED),l
+	ld (ix+SE_FIXED+1),h
+.pay:
 	ld hl,(p_gold)						; pay
 	ld de,(deal_price)
 	or a
@@ -1343,13 +1426,66 @@ store_sell:
 	ld hl,0
 	ld a,(cur_store)
 	cp STORE_HOME
-	jr z,.offered
-	call sell_offer
+	jp z,.offered
+	ld a,(deal_slot)					; "Selling a Dagger (1d4) (c)"
+	call pack_slot
+	push ix
+	pop hl
+	ld de,deal_item
+	ld bc,ITEM_SIZE
+	ldir
+	ld a,1
+	ld (deal_item+I_NUMBER),a
+	call msg_begin
+	ld hl,txt_selling
+	call msg_add
+	ld ix,deal_item
+	call objdes_msg
+	ld a,(deal_slot)
+	add a,'a'
+	ld (txt_sel_letter+2),a
+	ld hl,txt_sel_letter
+	call msg_add
+	ld hl,(msg_ptr)
+	ld (hl),0
+	ld d,STORE_MSG_ROW
+	call clear_row
+	ld hl,msg_buf
+	ld d,STORE_MSG_ROW
+	ld e,2
+	ld c,ATTR_YELLOW
+	call print_at
+	ld a,1
+	ld (hgi_said),a
+	ld ix,deal_item						; what it seems worth
+	ld c,0
+	call item_cost
+	ld (deal_seemed),hl
+	ld ix,deal_item
+	call sell_prices
+	push hl
+	call hg_send
+	pop hl
 	ld a,h
 	or l
-	jr nz,.offered
-	ld hl,txt_not_interested
-	jp say_text
+	jr nz,.haggle
+	ld a,(cur_store)					; worthless: "How dare you!"
+	OVCALL PAGE_HAGGLE, hg_worthless, PAGE_STORE
+	jp c,store_out
+	jp store_flush_redraw
+.haggle:
+	OVCALL PAGE_HAGGLE, sell_haggle, PAGE_STORE
+	or a
+	jr z,.agreed
+	dec a
+	jp z,store_flush_redraw
+	jp store_out
+.agreed:
+	push hl
+	OVCALL PAGE_HAGGLE, hg_accepted, PAGE_STORE
+	ld a,(cur_store)
+	OVCALL PAGE_HAGGLE, decrease_insults, PAGE_STORE
+	pop hl
 .offered:
 	ld (deal_price),hl
 	ld de,(p_gold)						; paid
@@ -1407,7 +1543,7 @@ store_sell:
 	ld hl,txt_for
 	call msg_add
 	ld hl,deal_price
-	call store_add_u16
+	call msg_add_u16
 	ld hl,txt_gold_pieces
 	call msg_add
 .dropped:
@@ -1422,7 +1558,30 @@ store_sell:
 	pop ix
 	ld a,(deal_slot)
 	call use_one
-	jp say
+	ld a,(cur_store)
+	cp STORE_HOME
+	jp z,say
+	ld hl,(msg_ptr)						; "You sold...", then what the
+	ld (hl),0							; shopkeeper makes of it, now it's
+	ld hl,msg_buf						; known
+	OVCALL PAGE_HAGGLE, hg_say, PAGE_STORE
+	ld ix,deal_item
+	ld c,0
+	call item_cost
+	ld de,(deal_seemed)
+	OVCALL PAGE_HAGGLE, hg_reaction, PAGE_STORE
+	jp store_flush_redraw
+
+/* store_flush_redraw - any haggling message not seen yet ("-more-"),
+	then the store again */
+store_flush_redraw:
+	OVCALL PAGE_HAGGLE, hg_flush, PAGE_STORE
+	jp enter_store.redraw
+
+/* store_out - thrown out of the store: "-more-", and out */
+store_out:
+	OVCALL PAGE_HAGGLE, hg_flush, PAGE_STORE
+	jp clear_screen
 
 /* store_objdes - IX = stock entry: describe it, as a known item */
 store_objdes:
@@ -1432,8 +1591,15 @@ store_objdes:
 	call entry_to_item
 	jp objdes_msg
 
-/* entry_price - IX = stock entry -> HL = its price */
+/* entry_price - IX = stock entry -> HL = its price: carry if it's fixed
+	(haggled over before), else the asking price, with hgi_ set */
 entry_price:
+	ld l,(ix+SE_FIXED)
+	ld h,(ix+SE_FIXED+1)
+	ld a,h
+	or l
+	scf
+	ret nz
 	push ix
 	ld c,(ix+SE_DISC)
 	push bc
@@ -1442,8 +1608,9 @@ entry_price:
 	ld ix,show_item
 	call entry_to_item
 	pop bc
-	call buy_price
+	call buy_prices
 	pop ix
+	or a
 	ret
 
 /* clear_rows - D = first row: clear down to the prompt row */
@@ -1457,68 +1624,14 @@ clear_rows:
 	jr c,clear_rows
 	ret
 
-/* store_add_u16 - HL -> 16-bit value: add it as a decimal number */
-store_add_u16:
-	xor a
-	ld (u16_started),a
-	ld e,(hl)
-	inc hl
-	ld d,(hl)
-	ex de,hl
-	ld de,(msg_ptr)
-	ld bc,10000
-	call .digit
-	ld bc,1000
-	call .digit
-	ld bc,100
-	call .digit
-	ld bc,10
-	call .digit
-	ld a,l
-	add a,'0'
-	ld (de),a
-	inc de
-	ld (msg_ptr),de
-	ret
-.digit:
-	ld a,'0'
-.sub:
-	or a
-	sbc hl,bc
-	jr c,.got
-	inc a
-	jr .sub
-.got:
-	add hl,bc
-	cp '0'
-	jr nz,.write
-	push af
-	ld a,(u16_started)
-	or a
-	jr z,.skip
-	pop af
-.write:
-	ld (de),a
-	inc de
-	ld a,1
-	ld (u16_started),a
-	ret
-.skip:
-	pop af
-	ret
-
-; chr_adj() in MISC2.C as (charisma below this, percent) pairs
-chr_table:
-	db 4,130, 5,125, 6,122, 7,120, 8,118, 9,116, 10,114, 11,112, 12,110
-	db 13,108, 14,106, 15,104, 16,103, 17,102, 18,101, 19,100, 68,98
-	db 88,96, 108,94, 118,92, 148,90, 188,88, 218,86, 255,80
-
 offer_texts:	dw txt_off25, txt_off50, txt_off75, txt_off90
 txt_off25:		db " {25% discount}",0
 txt_off50:		db " {50% discount}",0
 txt_off75:		db " {75% discount}",0
 txt_off90:		db " {to clear}",0
 txt_price_heading: db "Price",0
+txt_fixed:		db "[Fixed]",0
+txt_selling:	db "Selling ",0
 txt_no_stock:	db "(nothing)",0
 txt_gold_left:	db "Gold remaining: ",0
 txt_store_cmds:	db "p) Purchase an item    s) Sell an item    Space) Leave",0
@@ -1539,6 +1652,7 @@ txt_you_drop_s:	db "You drop ",0
 txt_for:		db " for ",0
 txt_gold_pieces: db " gold",0
 txt_letter:		db " (a).",0
+txt_sel_letter:	db " (a)",0
 txt_store_label: db "a) ",0
 
 cur_store:		db 0
@@ -1549,10 +1663,20 @@ list_pos:		db 0
 list_count:		db 0
 deal_price:		dw 0
 deal_slot:		db 0
+deal_seemed:	dw 0
 deal_item:		ds ITEM_SIZE
 show_item:		ds ITEM_SIZE
 ic_pval:		db 0
-max_buy:		dw 0
+bp_cost:		dw 0
+hgi_store:		db 0				; the haggle's inputs, as hg_store...
+hgi_per:		db 0				; in haggle.asm
+hgi_insult_max:	db 0
+hgi_ask:		dw 0
+hgi_final:		dw 0
+hgi_least:		dw 0
+hgi_purse:		dw 0
+hgi_said:		db 0				; a message showing already
+HGI_SIZE		equ $-hgi_store
 maint_store:	db 0
 cs_store:		db 0
 cs_kind:		dw 0
@@ -1564,11 +1688,10 @@ sc_pval:		db 0
 sc_store:		db 0
 sc_discount:	db 0
 sc_tval:		db 0
-sc_bytes:		db 0
+sc_bytes:		dw 0
 sd_store:		db 0
 sd_pos:			db 0
 sr_store:		db 0
-u16_started:	db 0
 
 ; the stock of every store (the home's too): only this overlay looks at it
 store_inv:		ds NUM_STORES*STORE_INVEN_MAX*STORE_ITEM
