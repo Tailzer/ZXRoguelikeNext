@@ -23,6 +23,8 @@ def fresh():
     wr(TL, bytes(128)); clear(0xB400, 64); calm(); full()
     for t in ("P_BLIND", "P_CONFUSED", "P_AFRAID", "P_POISONED", "P_STUN", "P_CUT"): w16(t, 0)
     wr(A["P_PARALYSED"], bytes([0]))
+    for y_, x_ in (home, spot):						# (Morgoth's blows shake the cave)
+        q = 0xC000 + y_*W + x_; wr(q, bytes([(rd(q, 1)[0] & 0xF0) | 1]))
     wr(A["PLAYER_Y"], bytes([home[0]])); wr(A["PLAYER_X"], bytes([home[1]]))
 
 # ---- the rune

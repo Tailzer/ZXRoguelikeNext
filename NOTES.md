@@ -281,14 +281,14 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - `/`: after what the symbol is, "You recall those details? [y/n]" and each race of that symbol you know something of, the deepest first (space stops)
    - the memory outlives the character, as the C's: it's kept as roguelike.mem on the SD card, written when you save and when a character dies (the race that killed you remembered for it), and read at start-up
    - the memory is three RAM pages (74-76, 32 bytes a race); the code is its own overlay (73, `src/recall.asm`), reached through the resident `learn` (and `recall_call`, as `chest_call`); `pack_combine` moved there too, and the device overlay's copy of `msg_add_u16` went, to make room
-   - not yet: a few of the C's learning points with no port counterpart yet (eating others, picking up objects); cold blood and invisibility are learnt while it's in view rather than exactly where `update_mon` finds them
+   - not yet: a few of the C's learning points with no port counterpart yet (picking up objects); cold blood and invisibility are learnt while it's in view rather than exactly where `update_mon` finds them
 19. **Monsters in the walls** (`CREATURE.C` make_move's CM_PHASE and BREAK_WALL, `MORIA2.C` twall and move_char) *(done)*
    - those that pass through walls (CM_PHASE: ghosts, elementals, xorns...) step into granite, magma, quartz, rubble and closed doors as if they were floor, and leave them as they were; permanent rock (the outer wall, the greater vaults) stops them
    - those that bore (BREAK_WALL: umber hulks, Morgoth...) dig through rock and rubble as they come, the square becoming floor (in a room, like the room floor beside it, lit or not; else a corridor), and burst closed and secret doors open, broken ("You hear a door burst open!"); permanent rock stops them too
    - walking into a monster you can see in the rock attacks it; one you can't is just "There is a wall in the way." (find it by tunnelling, which fights whatever's there), as the C's move_char
    - monster memory learns both: "It can pass through walls" when one's seen doing it, "It can bore through rock" whenever one digs, seen or not
    - the digging is the trap overlay's (`mon_dig`, `src/doors.asm`); make_move tries them before doors, as the C
-   - not yet: monsters that eat others or pick things up; bolts still stop at the rock a monster stands in (as the C's)
+   - not yet: monsters that pick things up; bolts still stop at the rock a monster stands in (as the C's)
 20. **Shovels, picks and the level feeling** (`TREASURE.C` the digging tools, `MISC1.C` magic_treasure's TV_DIGGING, `DESC.C`, `STORE1.C`, `MORIA2.C` tunnel; `DUNGEON.C`'s feeling, the rating in `GENERATE.C`, `MISC1.C` place_monster/place_group, `MISC2.C` place_object/special_place_object, the artifacts' good_item_flag) *(done)*
    - the Orcish and Dwarven Picks and the Gnomish and Dwarven Shovels are found in the dungeon, and the General Store sells a Pick and a Shovel; they're wielded as weapons, and dig with STR + 25 + 50 x how good they are (their number: 0 to 3 as made)
    - magic_treasure: more often better diggers (+m_bonus(0,25)), 1 in 3 of the magical ones worse and cursed; their pluses always show: "a Dwarven Pick (1d4) (+0,+0) (+3)"; stores pay their cost and 100 for each point above the kind's (nothing if below 0)
@@ -304,7 +304,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - monster memory: "It can breed explosively" once one's seen breeding
    - the breeding is the level overlay's (`mon_breed`, `src/populate.asm`; it asks the run overlay whether you're resting), reached from mon_move by a bit in the race's move flags (RM_MULTIPLY)
    - resident code ends at `$AFFA`: 6 bytes left - the next resident change must move something out first
-   - not yet: a breeder that eats what's beside it (CM_EATS_OTHER) breeds only onto clear floor; it doesn't mind objects there (the C's must be bare)
+   - not yet: a breeder doesn't mind objects on the floor it breeds onto (the C's must be bare); one that eats others breeds onto them since 23
 22. **The Rune of Protection and Acquirement** (`SPELLS.C` warding_glyph, `CREATURE.C` make_move's glyph, `SCROLLS.C`, `PRAYER.C`, `MISC2.C` special_random_object/place_special) *(done)*
    - a glyph of warding (the Rune of Protection scroll, the Glyph of Warding prayer) goes where you stand, if nothing's there (not on stairs or a door, nor over an object or a trap): "a strange rune", shown as a found trap
    - no monster steps onto it, so standing on one stops anything hitting you in melee, unless 1d550 < its level and it breaks it ("The rune of protection is broken!"); one that only attacks loses its turn, others try another way
@@ -312,6 +312,12 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - Acquirement: something great (place_special's weapons and armour from 10 levels deeper, an ego likely) where you stand, in place of anything there: "You feel something roll beneath your feet."; *Acquirement*: one on bare floor up to 2 away up or down and 3 across, 1 in 5 a special object instead (a Phial, a Ring of Power...) if one can still be made
    - every scroll in the game is read now; the kinds are renumbered (save version 5)
    - to make resident room, `search` moved to the trap overlay (resident code ends at `$AF7C`, about 130 bytes left)
+23. **Monsters that eat others** (`CREATURE.C` make_move's CM_EATS_OTHER and multiply_monster) *(done)*
+   - the 12 races that eat others (ant lions, army ants, the elementals and their lords, icky things, black oozes, the Lernean Hydra) walk through any monster worth less experience than they are: it's simply gone, no drops, no experience, and they step in; anything worth as much or more is in the way, as for everyone else
+   - a breeder that eats (the black ooze) may breed onto a monster beside it worth no more than itself, eating it (its own kind too)
+   - monster memory: "It can kill weaker creatures" once one's seen being eaten
+   - the eating is the memory overlay's (`mon_eat`, which has the C's cmove flags in rinfo_table), the breeding's the level overlay's (`breed_eat`)
+   - a fix on the way: *Acquirement* could drop its item anywhere on the level when no special object could be made (22's)
 
 ## Memory map
 

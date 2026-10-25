@@ -611,7 +611,7 @@ make_move:
 	cp T_DOOR_CLOSED
 	jr z,.door
 	cp T_DOOR_SECRET
-	jr nz,.fail							; wall: try the next direction
+	jp nz,.fail							; wall: try the next direction
 .door:									; opened, unlocked, bashed (doors.asm)
 	FARCALL PAGE_TRAP, mon_door
 	jr c,.fail
@@ -634,11 +634,17 @@ make_move:
 	jr z,.move
 	ld a,(ix+M_Y)						; occupied: fine only if it's us
 	cp d
-	jr nz,.fail
+	jr nz,.other
 	ld a,(ix+M_X)
 	cp e
-	jr nz,.fail
-	ret
+	ret z
+.other:									; another: it may eat it (recall.asm)
+	push hl
+	ld hl,mon_eat
+	call recall_call
+	pop hl
+	jr c,.move
+	jp .fail
 .move:
 	set F_MON_BIT,(hl)
 	push de

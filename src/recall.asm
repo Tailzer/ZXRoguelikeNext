@@ -174,6 +174,9 @@ ln_turn:
 	bit RC_BRED,a
 	jr z,$+4
 	set 5,(hl)							; CM_MULTIPLY
+	bit RC_ATE,a
+	jr z,$+4
+	set 3,(hl)							; CM_EATS_OTHER
 	bit RC_OPEN_DOOR,c
 	jr z,.door
 	set 1,(hl)							; CM_OPEN_DOOR
@@ -205,7 +208,7 @@ ln_turn:
 	set 1,(hl)
 .warm:
 	ld a,(rc_wake)						; woke, or slept on
-	and $7F
+	and $3F
 	ret z
 	add a,MR_WAKE-1
 	call rc_field
@@ -353,6 +356,66 @@ slay_learn:
 	db 0,$20							; demon
 	db $81,$08, $81,$10					; frost brand, flame tongue
 	db 0,$02, 0,$01						; evil, animal
+
+/* mon_eat - IX = a monster about to step onto D, E, where another stands
+	(make_move in CREATURE.C): one that eats others (CM_EATS_OTHER) and is
+	worth more experience eats it - it's simply gone - and moves in ->
+	carry if so. Preserves IX, DE */
+mon_eat:
+	ld (me_sq),de
+	ld l,(ix+M_RACE)
+	ld h,(ix+M_RACE_HI)
+	call rc_open
+	ld de,(me_sq)
+	ld a,(rc_info+RI_CMOVE+2)
+	bit 3,a								; (CM_EATS_OTHER)
+	ret z
+	ld l,(ix+M_RACE)					; its experience
+	ld h,(ix+M_RACE_HI)
+	call race_addr
+	ld l,(iy+R_EXP)
+	ld h,(iy+R_EXP+1)
+	ld (rf_t),hl
+	ld de,(me_sq)
+	push ix
+	push de
+	call mon_at							; the other, and its
+	pop de
+	jr nc,.not
+	ld l,(ix+M_RACE)
+	ld h,(ix+M_RACE_HI)
+	push de
+	call race_addr
+	pop de
+	ld l,(iy+R_EXP)
+	ld h,(iy+R_EXP+1)
+	ex de,hl
+	push hl
+	ld hl,(rf_t)						; more than it: eaten
+	or a
+	sbc hl,de
+	pop de
+	jr z,.not
+	jr c,.not
+	ld a,(ix+M_ML)						; (seen eaten: it's known to)
+	push af
+	push de
+	call mon_remove
+	pop de
+	pop af
+	pop ix
+	or a
+	jr z,.eaten
+	ld hl,rc_wake
+	set RC_ATE,(hl)
+.eaten:
+	scf
+	ret
+.not:
+	pop ix
+	or a
+	ret
+me_sq:			dw 0
 
 /* learn_kill - IX = a monster that died, D = how many things it was seen
 	to drop, A = bit 0 objects, 1 treasure among them, 7 the player killed

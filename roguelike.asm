@@ -70,6 +70,7 @@
 	Milestone 21: Breeding - worm masses and lice multiply
 	Milestone 22: The Rune of Protection (glyphs of warding) and the
 		Acquirement scrolls
+	Milestone 23: Monsters that eat others
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)

@@ -569,7 +569,9 @@ acquire_at:
 	jr nc,.great
 	ld (ix+I_Y),d
 	ld (ix+I_X),e
+	push de
 	OVCALL PAGE_MISC, try_special_now, PAGE_LEVEL
+	pop de
 	ret c
 .great:
 	push de
@@ -941,7 +943,15 @@ mon_breed:
 	ld d,(ix+M_Y)
 	ld e,(ix+M_X)
 	push ix
+	ld l,(ix+M_RACE)
+	ld h,(ix+M_RACE_HI)
+	call race_eats
+	jr z,.clone
+	call breed_eat						; (one that eats others: where it
+	jr .bred							;  likes)
+.clone:
 	call clone_spot
+.bred:
 	pop ix
 	ret nc
 	ld hl,MON_MULT
@@ -949,6 +959,127 @@ mon_breed:
 	ld hl,rc_wake						; (seen, it's known to breed)
 	set RC_BRED,(hl)
 	ret
+
+/* race_eats - HL = race -> NZ if it eats others (CM_EATS_OTHER, from the
+	C's flags in rinfo_table). Preserves DE */
+race_eats:
+	nextreg NR_MMU1,RINFO_PAGE
+	push de
+	ld b,h
+	ld c,l
+	add hl,hl
+	ld d,h
+	ld e,l
+	add hl,hl
+	add hl,hl
+	add hl,de
+	add hl,bc
+	ld de,rinfo_table+RI_CMOVE+2
+	add hl,de
+	pop de
+	bit 3,(hl)
+	ret
+
+/* breed_eat - IX = a breeder that eats others, at D, E (multiply_monster):
+	19 tries at a square beside it - open floor, nothing on it, not you;
+	one with a monster on it is taken if that's worth no more experience
+	than this, and eaten -> carry if one bred */
+breed_eat:
+	ld (ss_centre),de
+	ld l,(ix+M_RACE)
+	ld h,(ix+M_RACE_HI)
+	ld (place_race),hl
+	call race_addr
+	ld l,(iy+R_EXP)
+	ld h,(iy+R_EXP+1)
+	ld (be_exp),hl
+	ld b,19
+.try:
+	push bc
+	ld a,3
+	call randint
+	ld hl,ss_centre+1
+	add a,(hl)
+	sub 2
+	ld d,a
+	push de
+	ld a,3
+	call randint
+	pop de
+	ld hl,ss_centre
+	add a,(hl)
+	sub 2
+	ld e,a
+	ld hl,(ss_centre)					; (not its own square)
+	or a
+	sbc hl,de
+	jr z,.no
+	call in_bounds
+	jr nc,.no
+	push de
+	call map_addr
+	pop de
+	ld a,(hl)
+	and TERRAIN_MASK
+	cp T_FLOOR
+	jr z,.floor
+	cp T_CORRIDOR
+	jr z,.floor
+	cp T_FLOOR_LIT
+	jr nz,.no
+.floor:
+	ld a,(player_y)
+	cp d
+	jr nz,.not_you
+	ld a,(player_x)
+	cp e
+	jr z,.no
+.not_you:
+	push hl
+	call item_at
+	pop hl
+	jr c,.no
+	push hl
+	call trap_at
+	pop hl
+	jr c,.no
+	bit F_MON_BIT,(hl)
+	jr z,.place
+	push de								; another: worth no more, eaten
+	call mon_at
+	pop de
+	jr nc,.no
+	ld l,(ix+M_RACE)
+	ld h,(ix+M_RACE_HI)
+	push de
+	call race_addr
+	pop de
+	ld l,(iy+R_EXP)
+	ld h,(iy+R_EXP+1)
+	push de
+	ex de,hl
+	ld hl,(be_exp)
+	or a
+	sbc hl,de
+	pop de
+	jr c,.no
+	push de
+	call mon_remove
+	pop de
+.place:
+	pop bc
+	xor a
+	ld (place_sleep),a
+	call place_monster
+	scf
+	ret
+.no:
+	pop bc
+	dec b
+	jp nz,.try
+	or a
+	ret
+be_exp:			dw 0
 
 /* clone_at - D = y, E = x: another of the monster there appears beside it
 	(multiply_monster in CREATURE.C) -> carry if one did */
