@@ -221,7 +221,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - Caps Shift + h j k l y u b n runs (the cursor keys are Caps Shift + 5-8 already, so they still walk): along corridors round their bends, through open rooms until a side opens or closes, stopping beside anything new in view (a monster, an item, a door, stairs, rubble, a trap you know of) and where a corridor branches (the C's find_examine and find_cut, both on); at most 100 steps ("You stop running to catch your breath."); confused, just a step
    - either stops for a key (which isn't taken as a command), anything said, any hurt, a monster coming into view, or a new level (the C calls disturb() from everywhere; here those cover it)
    - the main loop asks `next_command` (trap overlay, `src/rest_run.asm`) instead of `get_command`
-   - not yet: the status line doesn't show "Rest", and there's no repeat count (the C's `0` prefix)
+   - not yet: there's no repeat count (the C's `0` prefix); the status line shows "Rest" since 24
 14b. **Doors** (`MORIA2.C` openobject/closeobject/bash/py_bash, `DUNGEON.C` jamdoor, `GENERATE.C` place_door, `CREATURE.C` make_move and mon_move's stun) *(done)*
    - doors are made as the C's place_door: of 8, 3 open (1 in 4 of them broken), 3 closed (24% locked by 11-20, 1% stuck by 11-20) and 2 secret
    - `o` opens a closed door; a locked one is picked with the disarming skill (skill - lock > 1d100: "You have picked the lock.", 1 experience; else "You failed to pick the lock."; confused: "You are too confused to pick the lock."); a stuck one: "It appears to be stuck."; walking into a closed door does the same, and "You open the door."
@@ -281,14 +281,14 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - `/`: after what the symbol is, "You recall those details? [y/n]" and each race of that symbol you know something of, the deepest first (space stops)
    - the memory outlives the character, as the C's: it's kept as roguelike.mem on the SD card, written when you save and when a character dies (the race that killed you remembered for it), and read at start-up
    - the memory is three RAM pages (74-76, 32 bytes a race); the code is its own overlay (73, `src/recall.asm`), reached through the resident `learn` (and `recall_call`, as `chest_call`); `pack_combine` moved there too, and the device overlay's copy of `msg_add_u16` went, to make room
-   - not yet: a few of the C's learning points with no port counterpart yet (picking up objects); cold blood and invisibility are learnt while it's in view rather than exactly where `update_mon` finds them
+   - not yet: cold blood and invisibility are learnt while it's in view rather than exactly where `update_mon` finds them
 19. **Monsters in the walls** (`CREATURE.C` make_move's CM_PHASE and BREAK_WALL, `MORIA2.C` twall and move_char) *(done)*
    - those that pass through walls (CM_PHASE: ghosts, elementals, xorns...) step into granite, magma, quartz, rubble and closed doors as if they were floor, and leave them as they were; permanent rock (the outer wall, the greater vaults) stops them
    - those that bore (BREAK_WALL: umber hulks, Morgoth...) dig through rock and rubble as they come, the square becoming floor (in a room, like the room floor beside it, lit or not; else a corridor), and burst closed and secret doors open, broken ("You hear a door burst open!"); permanent rock stops them too
    - walking into a monster you can see in the rock attacks it; one you can't is just "There is a wall in the way." (find it by tunnelling, which fights whatever's there), as the C's move_char
    - monster memory learns both: "It can pass through walls" when one's seen doing it, "It can bore through rock" whenever one digs, seen or not
    - the digging is the trap overlay's (`mon_dig`, `src/doors.asm`); make_move tries them before doors, as the C
-   - not yet: monsters that pick things up; bolts still stop at the rock a monster stands in (as the C's)
+   - not yet: bolts still stop at the rock a monster stands in (as the C's)
 20. **Shovels, picks and the level feeling** (`TREASURE.C` the digging tools, `MISC1.C` magic_treasure's TV_DIGGING, `DESC.C`, `STORE1.C`, `MORIA2.C` tunnel; `DUNGEON.C`'s feeling, the rating in `GENERATE.C`, `MISC1.C` place_monster/place_group, `MISC2.C` place_object/special_place_object, the artifacts' good_item_flag) *(done)*
    - the Orcish and Dwarven Picks and the Gnomish and Dwarven Shovels are found in the dungeon, and the General Store sells a Pick and a Shovel; they're wielded as weapons, and dig with STR + 25 + 50 x how good they are (their number: 0 to 3 as made)
    - magic_treasure: more often better diggers (+m_bonus(0,25)), 1 in 3 of the magical ones worse and cursed; their pluses always show: "a Dwarven Pick (1d4) (+0,+0) (+3)"; stores pay their cost and 100 for each point above the kind's (nothing if below 0)
@@ -318,6 +318,11 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - monster memory: "It can kill weaker creatures" once one's seen being eaten
    - the eating is the memory overlay's (`mon_eat`, which has the C's cmove flags in rinfo_table), the breeding's the level overlay's (`breed_eat`)
    - a fix on the way: *Acquirement* could drop its item anywhere on the level when no special object could be made (22's)
+24. **Monsters that pick things up, and resting on the status line** (`CREATURE.C` make_move's CM_PICKS_UP, `MISC2.C` prt_state) *(done)*
+   - the 71 races that pick things up (townsfolk, rogues, jellies, ogres, trolls, many humans...) take whatever lies where they step - it's simply gone - except gold and artifacts
+   - monster memory: "It can pick up objects" once one's seen doing it
+   - resting shows on the status line as the C's: "Rest 23" counting down, or "Rest *****" resting till you're better; gone when it stops
+   - the picking up is the memory overlay's (`mon_pickup`, with the C's flags in rinfo_table); resident code ends at `$AFDC` (36 bytes left)
 
 ## Memory map
 

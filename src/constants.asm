@@ -70,6 +70,7 @@ RC_OPEN_DOOR		equ 7				; (bit: the C's CM_OPEN_DOOR)
 RC_PHASE			equ 6				; (bit: the C's CM_PHASE)
 RC_BRED				equ 7				; (rc_wake's bit: the C's CM_MULTIPLY)
 RC_ATE				equ 6				; (rc_wake's bit: the C's CM_EATS_OTHER)
+RC_PICKED			equ 5				; (rc_wake's bit: the C's CM_PICKS_UP)
 MAX_MON_MULT		equ 75				; the most that breed on a level
 MON_MULT_ADJ		equ 8				; (higher: slower)
 LOG_BASE			equ $E000			; (paged into slot 7 over the map for a moment)

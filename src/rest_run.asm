@@ -59,6 +59,8 @@ rest_state:
 rr_off:
 	xor a
 	ld (rr_mode),a
+	ld (p_rest),a						; (the status line: no "Rest")
+	ld (p_rest+1),a
 	ret
 
 /* rr_begin - A = RR_REST / RR_RUN: from now on, what would disturb it */
@@ -265,6 +267,8 @@ rest_turn:
 	call rr_off
 	jp next_command.ask
 .rest:
+	ld hl,(rr_count)					; (the status line: "Rest 23")
+	ld (p_rest),hl
 	ld hl,(p_poisoned)					; (not while poisoned or bleeding)
 	ld de,(p_cut)
 	ld a,h

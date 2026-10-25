@@ -177,6 +177,9 @@ ln_turn:
 	bit RC_ATE,a
 	jr z,$+4
 	set 3,(hl)							; CM_EATS_OTHER
+	bit RC_PICKED,a
+	jr z,$+4
+	set 4,(hl)							; CM_PICKS_UP
 	bit RC_OPEN_DOOR,c
 	jr z,.door
 	set 1,(hl)							; CM_OPEN_DOOR
@@ -208,7 +211,7 @@ ln_turn:
 	set 1,(hl)
 .warm:
 	ld a,(rc_wake)						; woke, or slept on
-	and $3F
+	and $1F
 	ret z
 	add a,MR_WAKE-1
 	call rc_field
@@ -416,6 +419,40 @@ mon_eat:
 	or a
 	ret
 me_sq:			dw 0
+
+/* mon_pickup - IX = a monster stepping onto D, E (make_move): one that
+	picks things up (CM_PICKS_UP) takes what lies there - it's gone - but
+	not gold, nor an artifact. Preserves IX, DE */
+mon_pickup:
+	ld (me_sq),de
+	ld l,(ix+M_RACE)
+	ld h,(ix+M_RACE_HI)
+	call rc_open
+	ld de,(me_sq)
+	ld a,(rc_info+RI_CMOVE+2)
+	bit 4,a								; (CM_PICKS_UP)
+	ret z
+	push ix
+	call item_at
+	jr nc,.none
+	ld a,(ix+I_KIND_HI)
+	cp KIND_GOLD
+	jr z,.none
+	ld a,(ix+I_NAME2)					; (an artifact stays)
+	or a
+	jr z,.take
+	push de
+	call ego_addr
+	pop de
+	bit EO_ARTIFACT,(iy+E_OPTS)
+	jr nz,.none
+.take:
+	ld (ix+I_KIND_HI),ITEM_EMPTY
+	ld hl,rc_wake
+	set RC_PICKED,(hl)
+.none:
+	pop ix
+	ret
 
 /* learn_kill - IX = a monster that died, D = how many things it was seen
 	to drop, A = bit 0 objects, 1 treasure among them, 7 the player killed

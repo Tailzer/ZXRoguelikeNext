@@ -605,16 +605,16 @@ make_move:
 	cp T_STORE
 	jp z,.fail
 	bit RF2_PHASE,(iy+R_FLAGS2)			; through it (CM_PHASE)
-	jr nz,.phase
+	jp nz,.phase
 	bit RF2_BREAK_WALL,(iy+R_FLAGS2)	; or through it, digging
-	jr nz,.dig
+	jp nz,.dig
 	cp T_DOOR_CLOSED
 	jr z,.door
 	cp T_DOOR_SECRET
 	jp nz,.fail							; wall: try the next direction
 .door:									; opened, unlocked, bashed (doors.asm)
 	FARCALL PAGE_TRAP, mon_door
-	jr c,.fail
+	jp c,.fail
 	ret
 .open:
 	FARCALL PAGE_TRAP, mon_glyph		; a glyph of warding holds it?
@@ -646,6 +646,10 @@ make_move:
 	jr c,.move
 	jp .fail
 .move:
+	push hl								; it may pick up what's there
+	ld hl,mon_pickup					; (recall.asm)
+	call recall_call
+	pop hl
 	set F_MON_BIT,(hl)
 	push de
 	ld d,(ix+M_Y)

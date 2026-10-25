@@ -71,6 +71,7 @@
 	Milestone 22: The Rune of Protection (glyphs of warding) and the
 		Acquirement scrolls
 	Milestone 23: Monsters that eat others
+	Milestone 24: Monsters that pick things up; resting on the status line
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)

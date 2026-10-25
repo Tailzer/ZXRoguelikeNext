@@ -372,7 +372,7 @@ jp_hl_v:
 	jp (hl)
 
 status_tests:	dw st_blind, st_confused, st_afraid, st_poisoned, st_cut
-				dw st_stun, st_paralysed, st_speed, st_winner, 0
+				dw st_stun, st_paralysed, st_rest, st_speed, st_winner, 0
 
 ; status tests -> carry and HL = what to show (prt_* in MISC2.C)
 st_blind:
@@ -407,6 +407,34 @@ st_word:								; HL above 0 -> show DE
 	ret
 .no:
 	or a
+	ret
+st_rest:								; "Rest 23", "Rest *****" (prt_state)
+	ld hl,(p_rest)
+	ld a,h
+	or l
+	ret z
+	ld de,txt_st_rest+5
+	ld a,h
+	and l
+	inc a
+	jr nz,.count
+	ld hl,txt_st_stars
+	ld bc,6
+	ldir
+	jr .shown
+.count:
+	ld hl,(msg_ptr)						; (msg_add_u16, into our own words)
+	push hl
+	ld (msg_ptr),de
+	ld hl,p_rest
+	call msg_add_u16
+	ld hl,(msg_ptr)
+	ld (hl),0
+	pop hl
+	ld (msg_ptr),hl
+.shown:
+	ld hl,txt_st_rest
+	scf
 	ret
 st_paralysed:
 	ld a,(p_paralysed)
@@ -472,6 +500,8 @@ txt_st_confused:	db "Confused",0
 txt_st_afraid:		db "Afraid",0
 txt_st_poisoned:	db "Poisoned",0
 txt_st_paralysed:	db "Paralysed",0
+txt_st_rest:		db "Rest ",0,0,0,0,0,0
+txt_st_stars:		db "*****",0
 txt_st_fast:		db "Fast",0
 txt_st_slow:		db "Slow",0
 txt_st_mortal:		db "Mortal wound",0
