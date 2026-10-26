@@ -546,7 +546,14 @@ pack_carry:
 	jr nz,.not_same
 .same:
 	ld hl,(carry_src)
-	ld de,I_NUMBER
+	ld de,I_MARKED						; the cheaper price stays (1.3: a
+	add hl,de							; bargain joining full-price ones
+	ld a,(ix+I_MARKED)					; sold back at full price)
+	cp (hl)
+	jr nc,$+6
+	ld a,(hl)
+	ld (ix+I_MARKED),a
+	ld de,I_NUMBER-I_MARKED
 	add hl,de
 	ld a,(ix+I_NUMBER)
 	add a,(hl)

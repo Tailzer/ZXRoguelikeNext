@@ -423,7 +423,7 @@ draw_items:
 	ld a,(hl)
 	and F_SEEN
 	jr z,.unseen
-	ld (ix+I_MARKED),1
+	set 0,(ix+I_MARKED)
 	jr .draw
 .unseen:
 	ld a,(ix+I_MARKED)

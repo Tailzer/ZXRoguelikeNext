@@ -290,10 +290,25 @@ door_bash:
 	jr nc,.nothing
 	OVCALL PAGE_CHEST, chest_bash, PAGE_TRAP
 	ret
-.nothing:
-	xor a
-	ld (turn_taken),a
+.nothing:								; (it takes the turn: else you could
+	ld de,(dc_sq)						; feel about for invisible monsters
+	call map_addr						; for nothing - 1.3)
+	ld a,(hl)
+	and TERRAIN_MASK
 	ld hl,md_nothing_bash
+	cp T_FLOOR
+	jr z,.floor
+	cp T_CORRIDOR
+	jr z,.floor
+	cp T_FLOOR_LIT
+	jp nz,msg_print
+.floor:									; bare floor: empty space
+	ld de,(dc_sq)
+	call item_at
+	jp c,msg_print
+	call trap_at
+	jp c,msg_print
+	ld hl,md_empty_space
 	jp msg_print
 .smash:
 	call door_get						; |number|
@@ -889,7 +904,8 @@ md_broken:		db "The door appears to be broken.",0
 md_something:	db "Something is in your way!",0
 md_in_your_way:	db " is in your way!",0
 md_afraid:		db "You are afraid!",0
-md_nothing_bash: db "I do not see anything you can bash there.",0
+md_nothing_bash: db "You bash it, but nothing interesting happens.",0
+md_empty_space:	db "You bash at empty space.",0
 md_smash:		db "You smash into the door!",0
 md_crashes_open: db "The door crashes open!",0
 md_off_balance:	db "You are off-balance.",0

@@ -1673,6 +1673,10 @@ sc_destruction:
 	and TERRAIN_MASK
 	cp T_PERMWALL
 	jr z,.next
+	cp T_STAIR_DOWN						; (stairs stand - 1.3)
+	jr z,.next
+	cp T_STAIR_UP
+	jr z,.next
 	push de
 	call mon_distance
 	pop de

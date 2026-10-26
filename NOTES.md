@@ -102,7 +102,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
        - gloves: Free Action, Slaying, Agility, Power; cursed Clumsiness, Weakness
        - boots: Slow Descent, Speed, Stealth (not metal shod); cursed Slowness, Noise, Great Mass
        - helms: Intelligence, Wisdom, Infra-Vision, Light, Telepathy; crowns of Might, Lordliness, the Magi, Beauty, Seeing, Regeneration; cursed Stupidity, Dullness, Weakness, Teleportation, Ugliness
-       - cloaks: Protection, Stealth, of Aman; cursed Irritation, Vulnerability, Enveloping. As in the C, a magical cloak only gets an armour bonus when it's an ego
+       - cloaks: Protection, Stealth, of Aman; cursed Irritation, Vulnerability, Enveloping. As in the C, a magical cloak only gets an armour bonus when it's an ego (every magical cloak gets one since 27, 1.3's fix)
      - names once known: "a Dagger (Defender) (1d4) (+3,+3) [+7] (+2 to stealth)", "a Pair of Soft Leather Boots of Speed [2,+5] (+1)", "a Set of Gauntlets of Power (+3,+4) [2,+2] (+3)"
      - what they do: slays and brands in melee (x5 lightning and execute dragon, x3 slay dragon/undead/orc/troll/giant/demon and the brands unless immune, x2 evil and animal, the first that applies); stealth (monsters notice you less), infravision, regeneration (heal half as fast again, eat 3 more a turn), telepathy (every monster within 20 squares on screen is seen, through walls and blind), speed, stat bonuses, sustains (a Holy Avenger's number; the Robe of the Magi all six), free action, see invisible, resistances, feather fall
      - monster races now carry the C's ANIMAL, ORC, DRAGON, TROLL and GIANT flags
@@ -120,7 +120,7 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
      - Remove Curse can't lift the curses of Morgul, Calris and Mormegil; *Remove Curse* can, but "The One Ring resists all attempts to remove it!"
      - value: an artifact's own cost (at most 65535), plus its known pluses; warriors feel it's "special"
      - the flavour tables moved to their own page (64), so the kinds can fill three pages
-     - not yet: activation (9c-3c), the lights (the Phial, the Star of Elendil, the Arkenstone: no light sources yet), the bows (Beleg Cuthalion, Bard, Cubragol: no missile weapons yet) (all since done); Razorback and Bladeturner can't appear (dragon scale mail never reaches unique_armour in 1.2)
+     - not yet: activation (9c-3c), the lights (the Phial, the Star of Elendil, the Arkenstone: no light sources yet), the bows (Beleg Cuthalion, Bard, Cubragol: no missile weapons yet) (all since done); Razorback and Bladeturner can't appear (dragon scale mail never reaches unique_armour in 1.2; they can since 27)
    - 9c-3c: activation *(done)* — `DUNGEON.C` activate() and its timeout loop
      - `A` lists what you wear that can be activated (and is known to be an artifact), then does it: "You activate it...", the artifact's own message and effect, and then it needs so many turns to recharge, counted down while it's worn ("It whines, glows and fades..." until then)
      - it can fail: INT below 1d18 and 1d(its kind's level) above your level ("You fail to activate it properly.")
@@ -335,6 +335,24 @@ Items: `i` inventory, `e` equipment, `w` wear/wield, `t` take off, `q` quaff, `r
    - once bought, the rest of a stack sells at that price, listed "[Fixed]"; with well over twice as many good deals (at the final price) as bad at a store, anything under 5000 there goes straight to the final price: "After a long bargaining session, you agree upon the price."
    - every 1000 turns in the dungeon the stores sell off and make stock, and forget your insults, as well as each time the town is made
    - the haggling is its own overlay (page 84, `src/haggle.asm`), which keeps each store's insults, good and bad deals and when it opens again; the store page hands it the prices through the data window. Save version 6
+27. **1.2's bugs, as PC Angband 1.3 and 1.4 fixed them** (`CHANGES.130`, `.131`, `.140` in the 1.4 source) *(done)*
+   - Razorback and Bladeturner can be made: dragon scale mail is enchanted as 1.3 rewrote it (always + m_bonus(1, 30); a special one + 1d10 more and 1 in 3 an artifact), Razorback is 1 in 3 of those, Bladeturner [+17]; their activations are the C's (a huge ball of lightning every way; heroism, berserk, blessing and four resistances)
+   - Glamdring and Aeglin search and sneak by 3 and 4 (no pval in 1.2); Tuor's acid immunity is real (it was in the wrong flags)
+   - every magical cloak gets + m_bonus(1, 20), not only the artifacts
+   - cursed armour keeps its base armour class (its minus does the harm)
+   - berserk hit points are worked out as +30, as they're given (1.2's 20 lost 10 for good on a level gained while berserk)
+   - the One Ring takes nothing from no experience (max experience went below 0)
+   - cuts heal with a poor CON too (by 2 a turn: they used to stay or get worse)
+   - armour immune to acid isn't eaten by it; lightning reaches the pack (rings, wands, rods), as the other elements do
+   - earthquakes and *Destruction* leave stairs standing; earthquakes leave artifacts (and where they lie) alone, as 1.2 meant to
+   - the level's rubble never lands on a monster
+   - bashing at nothing takes the turn ("You bash at empty space.", "You bash it, but nothing interesting happens.") and tunnelling at open floor with a monster on it is still "Empty air" - neither finds invisible monsters for free
+   - a special offer stays a bargain: the item remembers its discount (bits 1-3 of its marked byte), sells for that, and joining a stack it makes the stack a bargain (1.3: else buying cheap and selling dear made money); the home holds no more than 24 of a kind ("Your home is full.")
+   - "Your wounds heal." (not "You")
+   - a new game also clears every store's insults and locked doors (store_init, now on the haggle page: the store page is full - 1 byte left; the device page has 2)
+   - a fix of our own: noticing things as you walk (1 in your searching frequency each step) called `search` directly, not through the trap overlay it moved to in 22, so it ran whatever page was in the window - during a run, it could switch resting on
+   - checked and already right here: doors bashed open break half the time, the spells you can learn are counted by their own levels, mana never goes below 0, activating nothing takes no turn
+   - left as 1.2: the summon_ typo (it only changes how many tries a summoning takes), the monster confusion counter (a change of rule, not a fix)
 
 ## Memory map
 

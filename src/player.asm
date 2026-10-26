@@ -66,8 +66,7 @@ try_move:
 	jr c,.search
 	call randint
 	dec a
-	call z,search
-	jr .searched
+	jr nz,.searched
 .search:
 	FARCALL PAGE_TRAP, search			; (traps.asm)
 .searched:

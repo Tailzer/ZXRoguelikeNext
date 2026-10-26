@@ -167,6 +167,39 @@ if JUNK is not None:
     print(f"  selling a known {KINDS[JUNK]}:", ms, hg(SELL))
     expect("How dare you!" in ms and "I will not buy that!" in ms and hg(SELL)["insults"] == 1 and gold() == g1, "worthless: 'How dare you!' 'I will not buy that!' (an insult)")
 
+# ---- a bargain sells back as a bargain (1.3: else a special offer was free money)
+SB = 4 if not hg(4)["open"] else 1
+set_hg(SB); set_gold(30000)
+pk = {r["kind"] for r in pack() if r}
+ib, eb = next((i, e) for i, e in enumerate(stock(SB)) if e["kind"] not in pk and not (e["tohit"] or e["todam"] or e["toac"] or e["name2"]))
+in_page(PAGE_STORE, lambda: wr(STORE_INV + SB*312 + ib*13 + 3, bytes([2])))
+in_page(PAGE_STORE, lambda: wr(STORE_INV + SB*312 + ib*13 + 11, bytes(2)))
+visit(SB, "p" + chr(97 + ib) + "\rxxxxxxxx ")
+slot = next(s_ for s_, r in enumerate(pack()) if r and r["kind"] == eb["kind"])
+mk = rd(A["PACK"] + 14*slot + 5, 1)[0]
+print(f"  bought {KINDS[eb['kind']]} at 50% off: marked byte {mk}")
+expect(mk == 1 | 2 << 1, "the item remembers its 50% discount")
+want = sale_price(SB, max(1, KCOST[eb["kind"]] * 50 // 100)); full = sale_price(SB, KCOST[eb["kind"]])
+set_hg(SB); g1 = gold()
+visit(SB, "s" + chr(97 + slot) + "\rxxxxxxxx ")
+print(f"  sold back: {gold() - g1} (on its bargain value: {want}, full value: {full})", said())
+expect(gold() - g1 == want, "and sells back at its bargain value")
+
+# ---- the home keeps no more than 24 of a kind (1.4: more were lost)
+RATION = next(i for i, k in enumerate(KINDS) if k == "Ration~ of Food" or k.startswith("Ration"))
+def home_has(n):
+    in_page(PAGE_STORE, lambda: wr(STORE_INV + 7*312, bytes([RATION & 255, RATION >> 8, n] + [0]*10)))
+    wr(STORE_COUNT + 7, bytes([1]))
+    wr(A["PACK"], bytes([RATION & 255, RATION >> 8, 5, 0, 0, 1, 0, 0, 1 | 4, 0, 0, 0, 0, 0]))
+def home_count(): return in_page(PAGE_STORE, lambda: rd(STORE_INV + 7*312 + 2, 1)[0])
+home_has(24)
+visit(7, "da xxxxxxxx ")
+print("  home with 24:", said(), home_count())
+expect(home_count() == 24 and any("Your home is full." in t for t in said()), "24 rations at home: 'Your home is full.'")
+home_has(23)
+visit(7, "da xxxxxxxx ")
+expect(home_count() == 24, "23: one more goes in")
+
 # ---- every 1000 turns in the dungeon the stores turn over and calm down
 s0 = [stock(sn) for sn in range(7)]
 for sn in range(8): set_hg(sn, insults=3)
@@ -181,5 +214,9 @@ expect(changed >= 5 and all(hg(sn)["insults"] == 0 for sn in range(8)), "at turn
 s1 = [stock(sn) for sn in range(7)]
 wr(A["DUN_LEVEL"], bytes([0])); cmd(10, bytes([2, PAGE_MAGIC])); call(A["STORE_TURNOVER"])
 expect([stock(sn) for sn in range(7)] == s1, "but not in the town")
+# ---- a new game: new shopkeepers with no grudges
+for sn in range(8): set_hg(sn, insults=2, good=5, bad=1, open_=999)
+in_page(PAGE_HAGGLE, lambda: call(A["STORE_INIT"]))
+expect(all(hg(sn) == dict(insults=0, good=0, bad=0, open=0) for sn in range(8)), "store_init forgets every store's insults, bargains and locked doors")
 cmd(2)
 print("ALL OK" if ok else "FAILURES")

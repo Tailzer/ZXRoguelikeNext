@@ -827,6 +827,11 @@ art_tick:
 	call randint
 	dec a
 	jr nz,.next
+	ld hl,(p_exp)						; (none left: nothing to take - 1.3)
+	ld a,(p_exp+2)
+	or h
+	or l
+	jr z,.next
 	push ix
 	ld hl,1
 	ld e,h
@@ -922,7 +927,10 @@ cut_tick:
 	ld l,b
 	ld h,0
 	call take_hit
-	ld a,(p_con_adj)					; cut -= con_adj + 1
+	ld a,(p_con_adj)					; cut -= con_adj + 1 (a poor CON
+	bit 7,a								; counts as 1: else they'd get
+	jr z,$+4							; worse - 1.4)
+	ld a,1
 	inc a
 	ld e,a
 	rla

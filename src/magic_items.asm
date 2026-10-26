@@ -258,9 +258,31 @@ magic_treasure:
 	ret nc
 	ld bc,1*256+40
 	jp .ac_minus
-.dragon:								; always: + m_bonus(1, 30)
-	ld bc,1*256+30
-	jp .ac_plus
+.dragon:								; always: + m_bonus(1, 30); special
+	ld bc,1*256+30						; ones (magik chance and special, or
+	call .ac_plus						; great) + 1d10 more, and 1 in 3 an
+	ld a,(mt_good)						; artifact (always, great): 1.3's
+	cp 2								; rewrite (1.2's never got there:
+	jr z,.dragon_great					; Razorback, Bladeturner)
+	call .magical
+	ret nc
+	call .special
+	ret nc
+	ld a,10
+	call randint
+	call .add_ac
+	ld a,3
+	call randint
+	dec a
+	ret nz
+	jr .dragon_art
+.dragon_great:
+	ld a,10
+	call randint
+	call .add_ac
+.dragon_art:
+	ld hl,art_table
+	jp .unique_art
 
 .weapon:
 	set ID_SHOWHD_BIT,(ix+I_IDENT)		; (weapons always show both)
@@ -625,9 +647,11 @@ magic_treasure:
 	neg
 	jp .set_p1
 
-.cloak:									; only special ones get pluses
-	call .magical
-	jp nc,.cursed_cloak
+.cloak:									; magical: + m_bonus(1, 20) (1.3's
+	call .magical						; fix: 1.2 gave it only to the
+	jp nc,.cursed_cloak					; artifacts)
+	ld bc,1*256+20
+	call .ac_plus
 	call .special
 	ret nc
 	ld a,(mt_kego)						; 1 in 10 Cloaks, 1 in 20 Shadow
@@ -644,9 +668,7 @@ magic_treasure:
 	jr nz,.cloak_ego
 	ld hl,art_cloak_table
 	call .unique_art
-	jr nc,.cloak_ego
-	ld bc,1*256+20						; and + m_bonus(1, 20)
-	jp .ac_plus
+	ret c
 .cloak_ego:
 	ld a,2
 	call randint

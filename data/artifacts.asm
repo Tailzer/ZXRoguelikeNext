@@ -85,7 +85,7 @@ art_table:
 	dw 88				; Adamantite Plate Mail
 	db 1,1, 1,3,SN_SOULKEEPER
 	dw 334				; Multi-Hued Dragon Scale Mail
-	db 1,1, 1,1,SN_RAZORBACK
+	db 1,1, 1,3,SN_RAZORBACK
 	dw 355				; Power Dragon Scale Mail
 	db 1,1, 1,1,SN_BLADETURNER
 	dw 63				; & Pair of Hard Leather Boots

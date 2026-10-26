@@ -37,8 +37,13 @@ pack_combine:
 	call item_is_kind
 	ld a,(comb_try)
 	jr nz,.next
-	ld a,(ix+I_NUMBER)
+	ld a,(ix+I_MARKED)					; (the cheaper price stays)
+	ld b,(ix+I_NUMBER)
 	ld ix,(comb_dst)
+	cp (ix+I_MARKED)
+	jr c,$+5
+	ld (ix+I_MARKED),a
+	ld a,b
 	add a,(ix+I_NUMBER)
 	ld (ix+I_NUMBER),a
 	ld a,(comb_try)

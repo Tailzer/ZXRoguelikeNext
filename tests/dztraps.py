@@ -161,6 +161,12 @@ set_sq(*spot, 1)
 m = keyed(TUNNEL, keys=dkey)
 print("  empty air:", repr(m), rd(A["TURN_TAKEN"], 1)[0], sq(*spot) & 15)
 expect("Tunnel through what?  Empty air?!?" in m and rd(A["TURN_TAKEN"], 1)[0] == 0, "open floor: 'Tunnel through what?  Empty air?!?'")
+JACKAL = next(i for i, n in enumerate(NAMES) if n == "Jackal")
+place(0, JACKAL, *spot, hp=50)
+m = keyed(TUNNEL, keys=dkey)
+print("  at a monster on the floor:", repr(m), mon(0)["hp"])
+expect("Empty air" in m and mon(0)["hp"] == 50 and rd(A["TURN_TAKEN"], 1)[0] == 0, "a monster on open floor: still empty air, and no free blow (1.3)")
+calm()
 set_sq(*spot, 10)
 out = []
 for i in range(40):

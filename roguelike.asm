@@ -75,6 +75,8 @@
 	Milestone 25: The tombstone - DEATH.C's gravestone and graveyard
 	Milestone 26: Haggling, insults and locked doors; the stores turn over
 		every 1000 turns in the dungeon
+	Milestone 27: 1.2's bugs as PC Angband 1.3 and 1.4 fixed them - Razorback
+		and Bladeturner, cloaks, cursed armour, bargains and more
 
 	Memory map (16K view):
 		$0000-$3FFF  ROM (font copied from ROM 3 at start-up)
@@ -125,7 +127,7 @@ enter_dungeon:
 	FARCALL PAGE_MISC, player_init
 	call rand16							; a new town for a new character
 	ld (town_seed),hl
-	FARCALL PAGE_STORE, store_init		; and new shopkeepers
+	FARCALL PAGE_HAGGLE, store_init		; and new shopkeepers
 	xor a								; start in town, as the C does
 	ld (dun_level),a
 	call msg_clear

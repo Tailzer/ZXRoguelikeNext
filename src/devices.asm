@@ -469,6 +469,7 @@ act_effects:
 	dw earthquake, detect_evil, ae_detect_mon						; 33-35
 	dw ae_turn_undead, ae_banish, ae_dispel, rd_detect, probing		; 36-40
 	dw ae_light_area, ae_map_area, ae_wiz_light, ae_fire_bolts		; 41-44
+	dw ae_starball, ae_rage											; 45-46
 
 /* do_effect - one of activate's effects for a spell: sp_entry (16 bytes,
 	as act_table's) and sp_name, in high RAM. -> A = 1 if it was called off
@@ -530,6 +531,29 @@ ae_fire_bolts:							; Cubragol (throw.asm)
 	ret
 ae_wiz_light:							; the Arkenstone: wizard_light(TRUE)
 	XCALL PAGE_MAGIC, wizard_light
+	ret
+ae_starball:							; Razorback: a huge ball of lightning
+	ld hl,p_blind						; each way (starball in SPELLS.C;
+	call get_w							; nothing if blind)
+	ret nz
+	ld a,1
+.dir:
+	cp 5
+	jr z,.next
+	ld (d_dir),a
+	push af
+	call ae_named
+	ld hl,(a_num)
+	ld (d_dam),hl
+	call fire_ball
+	pop af
+.next:
+	inc a
+	cp 10
+	jr c,.dir
+	ret
+ae_rage:								; Bladeturner (potions.asm)
+	XCALL PAGE_MAGIC, rage
 	ret
 ae_detect_mon:
 	xor a
@@ -647,20 +671,8 @@ ae_heal:
 ae_heal_cut:							; heal the dice, and halve cuts - 50
 	ld bc,(a_num)
 	call damroll
-	XCALL PAGE_MAGIC, hp_player
-	ld hl,(p_cut)
-	call positive_w
-	ret z
-	sra h
-	rr l
-	ld de,-50
-	add hl,de
-	bit 7,h
-	jr z,$+5
-	ld hl,0
-	ld (p_cut),hl
-	ld hl,msg_you_wounds
-	jp msg_print
+	XCALL PAGE_MAGIC, heal_cuts
+	ret
 ae_fear_poison:
 	XCALL PAGE_MAGIC, remove_fear
 	XCALL PAGE_MAGIC, cure_poison
@@ -863,7 +875,6 @@ lose_a_level:
 msg_whines:		db "It whines, glows and fades...",0
 msg_fail_activate: db "You fail to activate it properly.",0
 msg_activate_it: db "You activate it...",0
-msg_you_wounds:	db "You wounds heal.",0
 msg_malignant:	db "You are surrounded by a malignant aura",0
 txt_raw_mana_ball: db "huge ball of Raw Mana",0
 txt_raw_mana_bolt: db "bolt of Raw Mana",0
@@ -2562,7 +2573,8 @@ show_monsters:
 	ret
 
 /* earthquake - the ground within 8 heaves: walls fall, floors rise
-	(earthquake in SPELLS.C; a monster that survives keeps its floor) */
+	(earthquake in SPELLS.C; a monster that survives keeps its floor; the
+	stairs, and artifacts and where they lie, are spared) */
 earthquake:
 	ld a,-8
 	ld (d_by),a
@@ -2607,9 +2619,23 @@ earthquake:
 	jp monsters_see_all
 
 quake_square:
+	ld de,(d_sq)						; stairs stand (1.3), and so does a
+	call map_addr						; square with an artifact on it
+	ld a,(hl)
+	and TERRAIN_MASK
+	cp T_STAIR_DOWN
+	ret z
+	cp T_STAIR_UP
+	ret z
 	ld de,(d_sq)
 	call item_at
 	jr nc,.no_item
+	push ix
+	call item_flags
+	pop ix
+	ld a,(it_flags+7)
+	and TR2_ARTIFACT
+	ret nz
 	ld (ix+I_KIND_HI),ITEM_EMPTY
 .no_item:
 	ld de,(d_sq)
@@ -2684,8 +2710,8 @@ quake_square:
 	ld (hl),a
 	ret
 ; floor that heaves up (fval <= MAX_CAVE_FLOOR): floors and corridor, and
-; what stands on them in the C (doors, stairs)
-quake_open:		db 0,1,1,0,0,1,1,1,1,1,0,0,0,0,1,0
+; the doors that stand on them in the C (stairs are left alone since 1.3)
+quake_open:		db 0,1,1,0,0,1,1,1,0,0,0,0,0,0,1,0
 
 ; ---------------------------------------------------------------- text
 

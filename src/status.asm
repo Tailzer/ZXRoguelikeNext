@@ -268,7 +268,7 @@ int_adj:	db 8,0, 15,1, 18,2, 68,3, 88,4, 108,5, 118,6, 119,7, 129,8, 139,9
 			db 149,10, 159,11, 169,12, 179,13, 189,14, 199,15, 219,16, 229,18, 255,20
 
 /* calc_hitpoints - p_mhp = player_hp[lev-1] + con_adj * lev, at least
-	lev + 1, +10 heroic, +20 berserk. When it changes, current hit points
+	lev + 1, +10 heroic, +30 berserk (1.3: 1.2's 20 cost 10 for good). When it changes, current hit points
 	change in proportion (calc_hitpoints in MISC2.C) */
 calc_hitpoints:
 	ld a,(p_lev)
@@ -312,7 +312,7 @@ calc_hitpoints:
 .no_hero:
 	bit PY_SHERO,a
 	jr z,.no_shero
-	ld de,20
+	ld de,30
 	add hl,de
 .no_shero:
 	ld de,(p_mhp)

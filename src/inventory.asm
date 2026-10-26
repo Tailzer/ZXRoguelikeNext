@@ -89,10 +89,8 @@ calc_bonuses:
 	ld a,(ix+I_KIND_HI)
 	cp ITEM_EMPTY
 	jr z,.next
-	call item_kind_addr
-	bit ID_CURSED_BIT,(ix+I_IDENT)		; cursed: no base armour class
-	jr nz,.pluses
-	ld a,(p_ac)
+	call item_kind_addr					; (cursed or not: its pluses take
+	ld a,(p_ac)							; the curse - 1.3)
 	add a,(iy+K_AC)
 	ld (p_ac),a
 .pluses:								; and its own pluses
@@ -1190,7 +1188,7 @@ cmd_drop:
 	ldir								; copy the record to the floor
 	ld ix,(drop_dst)
 	ld (ix+I_NUMBER),1
-	ld (ix+I_MARKED),1
+	set 0,(ix+I_MARKED)					; (bits 1-3: a bargain's discount)
 	ld a,(player_y)
 	ld (ix+I_Y),a
 	ld a,(player_x)

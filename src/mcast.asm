@@ -1398,7 +1398,8 @@ el_cold:
 	ld hl,mcm_shatters
 	jp mx_print
 
-/* el_light - HL = damage of lightning (light_dam) */
+/* el_light - HL = damage of lightning (light_dam); it reaches the pack
+	too, as the other elements do (1.3) */
 el_light:
 	ld de,(p_resist_light)
 	ld a,d
@@ -1411,7 +1412,10 @@ el_light:
 	and TR2_IM_LIGHT
 	jr z,$+5
 	ld hl,1
-	jp take_hit
+	call take_hit
+	ld hl,set_lightning
+	ld a,3
+	jp inven_damage
 
 /* el_acid - HL = damage of acid: armour may take it instead (acid_dam) */
 el_acid:
@@ -1541,6 +1545,9 @@ minus_ac:
 	ld a,(it_flags+2)
 	and TR1_RES_ACID
 	ld hl,mz_resists_damage
+	jr nz,.say
+	ld a,(it_flags+5)					; (immune too - 1.3)
+	and TR2_IM_ACID
 	jr nz,.say
 	call item_kind_addr					; ac + toac > 0
 	ld a,(iy+K_AC)

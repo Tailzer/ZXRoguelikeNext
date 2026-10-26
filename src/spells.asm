@@ -1772,7 +1772,7 @@ ms_det_ench:							; detect_enchantment: magical
 	call sp_positive
 	jr nc,.next
 .magic:
-	ld (ix+I_MARKED),1
+	set 0,(ix+I_MARKED)
 .next:
 	ld de,ITEM_SIZE
 	add ix,de
@@ -2088,7 +2088,7 @@ txt_forgotten_n:	db " forgotten",0
 txt_unknown_n:		db " unknown",0
 txt_untried_n:		db " untried",0
 msg_wounds_heal_s:	db "Your wounds heal.",0
-msg_you_wounds_heal: db "You wounds heal.",0
+msg_you_wounds_heal: db "Your wounds heal.",0	; (1.3: "You")
 msg_feel_better_s:	db "You feel better.",0
 txt_black_sphere:	db "Black Sphere",0
 msg_air_charged_s:	db "The air about you becomes charged.",0

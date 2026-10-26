@@ -26,36 +26,6 @@ STORE_MSG_ROW		equ 28
 STORE_PROMPT_ROW	equ 29
 STORE_CMD_ROW		equ 31
 
-/* store_init - every store gets one of its three possible owners and
-	nothing in stock (store_init in STORE1.C) */
-store_init:
-	ld b,0
-.each:
-	push bc
-	ld a,3
-	call randint
-	dec a
-	add a,a
-	add a,a
-	add a,a								; 8 * (1d3 - 1) + store
-	pop bc
-	push bc
-	add a,b
-	ld hl,STORE_OWNER
-	ld e,b
-	ld d,0
-	add hl,de
-	ld (hl),a
-	ld hl,STORE_COUNT
-	add hl,de
-	ld (hl),0
-	pop bc
-	inc b
-	ld a,b
-	cp NUM_STORES
-	jr c,.each
-	ret
-
 /* store_maint - sell off some stock and make some more, in every store
 	but the home (store_maint in STORE1.C) */
 store_maint:
@@ -280,14 +250,30 @@ stacks:
 store_has_room:
 	ld a,b
 	ld (hr_store),a
+	cp STORE_HOME						; at home, no more than 24 in a
+	jr nz,.count						; stack (1.4: more were lost)
+	call stacks
+	jr nz,.count
+	call .find
+	jr nc,.count
+	inc hl
+	inc hl
+	ld a,(hl)
+	cp 24
+	ret
+.count:
+	ld a,(hr_store)
 	call store_count_a
 	cp STORE_INVEN_MAX
 	ret c								; a free entry
 	call stacks							; or a stack to join
 	ret nz
+.find:
 	ld a,(hr_store)
 	call store_count_a
 	ld c,a
+	or a
+	ret z								; (none: no stack)
 	ld b,0
 .scan:
 	push bc
@@ -456,6 +442,10 @@ entry_to_item:
 	ld a,(hl)
 	ld (ix+I_NUMBER),a
 	inc hl
+	ld a,(hl)							; its discount goes with it (1.3)
+	add a,a
+	inc a
+	ld (ix+I_MARKED),a
 	inc hl
 	ld a,(hl)
 	ld (ix+I_PVAL),a
@@ -484,8 +474,15 @@ entry_to_item:
 	jr z,$+4
 	or 1<<ID_STORE_BIT|1<<ID_KNOWN2_BIT
 	ld (ix+I_IDENT),a
-	ld (ix+I_MARKED),1
 	ld (ix+I_FEEL),FEEL_NONE
+	ret
+
+/* item_disc - IX = a pack item -> C = the discount it was bought at */
+item_disc:
+	ld a,(ix+I_MARKED)
+	rra
+	and 7
+	ld c,a
 	ret
 
 /* store_destroy - A = store, B = position: 1d(number) of it go */
@@ -918,7 +915,7 @@ bp_under:
 	below the first), hgi_least (the most you'd ask) and hgi_purse set for
 	sell_haggle: the value less charisma and race (STORE2.C sell_haggle) */
 sell_prices:
-	ld c,0
+	call item_disc
 	call item_cost
 	ld a,h
 	or l
@@ -1421,6 +1418,10 @@ store_sell:
 	call store_has_room
 	jr c,.room
 	ld hl,txt_store_full
+	ld a,(cur_store)
+	cp STORE_HOME
+	jr nz,$+5
+	ld hl,txt_home_full
 	jp say_text
 .room:
 	ld hl,0
@@ -1458,7 +1459,7 @@ store_sell:
 	ld a,1
 	ld (hgi_said),a
 	ld ix,deal_item						; what it seems worth
-	ld c,0
+	call item_disc
 	call item_cost
 	ld (deal_seemed),hl
 	ld ix,deal_item
@@ -1549,11 +1550,11 @@ store_sell:
 .dropped:
 	ld hl,txt_full_stop
 	call msg_add
-	ld a,(cur_store)					; into the store, out of the pack
+	push ix								; into the store (at its price), out
+	ld ix,deal_item						; of the pack
+	call item_disc
+	ld a,(cur_store)
 	ld b,a
-	ld c,0
-	push ix
-	ld ix,deal_item
 	call store_carry
 	pop ix
 	ld a,(deal_slot)
@@ -1566,7 +1567,7 @@ store_sell:
 	ld hl,msg_buf						; known
 	OVCALL PAGE_HAGGLE, hg_say, PAGE_STORE
 	ld ix,deal_item
-	ld c,0
+	call item_disc
 	call item_cost
 	ld de,(deal_seemed)
 	OVCALL PAGE_HAGGLE, hg_reaction, PAGE_STORE
@@ -1645,6 +1646,7 @@ txt_no_gold:	db "You do not have enough gold for this item.",0
 txt_no_room:	db "You cannot carry that many items.",0
 txt_nothing_to_sell: db "You have nothing that I want.",0
 txt_store_full:	db "I have not the room in my store to keep it.",0
+txt_home_full:	db "Your home is full.",0
 txt_not_interested: db "I am not interested in that.",0
 txt_you_have_s:	db "You have ",0
 txt_you_sold:	db "You sold ",0

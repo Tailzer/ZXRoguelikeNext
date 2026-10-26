@@ -318,6 +318,48 @@ hp_player_i:
 	ret nc
 	jp ident
 
+/* heal_cuts - HL = hit points to heal, and cuts halved less 50 (the
+	device overlay's activations: Lotharang) */
+heal_cuts:
+	call hp_player
+	ld hl,(p_cut)
+	ld a,h
+	or l
+	ret z
+	bit 7,h
+	ret nz
+	sra h
+	rr l
+	ld de,-50
+	add hl,de
+	bit 7,h
+	jr z,$+5
+	ld hl,0
+	ld (p_cut),hl
+	ld hl,msg_your_wounds
+	jp msg_print
+msg_your_wounds: db "Your wounds heal.",0	; (1.3: "You")
+
+/* rage - Bladeturner's activation: heroism, berserk, blessing and
+	resistance to the four elements, 50 + 1d50 turns each (DUNGEON.C) */
+rage:
+	ld hl,p_hero
+	call .more
+	ld hl,p_shero
+	call .more
+	ld hl,p_blessed
+	call .more
+	ld hl,p_resist_heat
+	call .more
+	ld hl,p_resist_cold
+	call .more
+	ld hl,p_resist_light
+	call .more
+	ld hl,p_resist_acid
+.more:
+	ld bc,50*256+50
+	jp add_rand
+
 /* hp_player - HL = hit points to heal -> carry if any were (SPELLS.C) */
 hp_player:
 	ld (hp_num),hl

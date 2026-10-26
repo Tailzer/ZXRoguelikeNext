@@ -51,6 +51,43 @@ store_closed:
 	ld (ix+HG_OPEN+1),a
 	ret
 
+/* store_init - every store gets one of its three possible owners,
+	nothing in stock and no grudges (store_init in STORE1.C; kept here, the
+	store page being full) */
+store_init:
+	ld hl,hg_state
+	ld b,NUM_STORES*HG_SIZE
+.clear:
+	ld (hl),0
+	inc hl
+	djnz .clear
+	ld b,0
+.each:
+	push bc
+	ld a,3
+	call randint
+	dec a
+	add a,a
+	add a,a
+	add a,a								; 8 * (1d3 - 1) + store
+	pop bc
+	push bc
+	add a,b
+	ld hl,STORE_OWNER
+	ld e,b
+	ld d,0
+	add hl,de
+	ld (hl),a
+	ld hl,STORE_COUNT
+	add hl,de
+	ld (hl),0
+	pop bc
+	inc b
+	ld a,b
+	cp NUM_STORES
+	jr c,.each
+	ret
+
 /* hg_door - A = store you're going into -> carry if it's locked ("The
 	doors are locked."), else A = your charisma's price adjustment
 	(chr_adj in MISC2.C) */

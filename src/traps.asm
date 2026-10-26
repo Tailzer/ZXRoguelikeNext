@@ -73,6 +73,8 @@ alloc_traps:
 	and TERRAIN_MASK
 	cp T_CORRIDOR
 	jr nz,.rspot
+	bit F_MON_BIT,(hl)					; (not under a monster: bolts would
+	jr nz,.rspot						; stop short of it - 1.4)
 	call tr_free
 	jr nc,.rspot
 	ld a,(hl)
@@ -844,6 +846,21 @@ cmd_tunnel:
 	push de
 	call map_addr
 	pop de
+	ld a,(hl)							; only rock, rubble or a secret door
+	and TERRAIN_MASK					; (1.3: digging at the floor found
+	cp T_GRANITE						; invisible monsters, for a free
+	jr z,.solid							; blow)
+	cp T_PERMWALL
+	jr z,.solid
+	cp T_MAGMA
+	jr z,.solid
+	cp T_QUARTZ
+	jr z,.solid
+	cp T_RUBBLE
+	jr z,.solid
+	cp T_DOOR_SECRET
+	jp nz,.air
+.solid:
 	bit F_MON_BIT,(hl)
 	jr z,.dig
 	call mon_at							; something's in the way: fight it
@@ -891,6 +908,7 @@ cmd_tunnel:
 	jp z,.rubble
 	cp T_DOOR_SECRET					; (it's a door: digging finds it)
 	jp z,.secret
+.air:
 	push af
 	call free_turn_t
 	pop af

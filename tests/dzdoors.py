@@ -90,7 +90,11 @@ expect("The door crashes open!" in out[-1] and sq(*door) & 15 == 6 and py() == d
 expect(any("The door holds firm." in o for o in out) or len(out) == 1, "'The door holds firm.'")
 reset(1)
 m = keyed(C_BASH, d)
-expect("I do not see anything you can bash there." in m and not turned(), "nothing: 'I do not see anything you can bash there.'")
+expect("You bash at empty space." in m and turned(), "nothing: 'You bash at empty space.', and it takes the turn (1.3)")
+reset(3)
+m = keyed(C_BASH, d)
+expect("You bash it, but nothing interesting happens." in m and turned(), "a wall: 'You bash it, but nothing interesting happens.'")
+reset(1)
 
 # ---- spikes
 SPK = next(i for i, k in enumerate(KINDS) if "Spike" in k)

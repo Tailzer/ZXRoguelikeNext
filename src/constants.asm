@@ -388,7 +388,9 @@ I_Y					equ 3
 I_X					equ 4
 I_ATIME				equ 3				; word: worn artifacts, turns until it
 										; can be activated again (y, x unused)
-I_MARKED			equ 5				; seen on the floor (the C's fm)
+I_MARKED			equ 5				; bit 0: seen on the floor (the C's fm);
+										; bits 1-3: bought at a discount (1-4,
+										; as SE_DISC), so it sells for less
 I_VALUE				equ 6				; word, gold only
 I_PVAL				equ 6				; wands and staffs: charges
 I_TIMEOUT			equ 6				; rods: word, turns until it's ready
@@ -782,6 +784,7 @@ TR2_RES_DISENCHANT	equ $10				; byte 2
 TR2_RES_SHARDS		equ $20				; byte 2
 TR2_RES_NEXUS		equ $40				; byte 2
 TR2_RES_NETHER		equ $01				; byte 3
+TR2_ARTIFACT		equ $02				; byte 3
 OFS_AMULET			equ 0
 OFS_RING			equ 1
 OFS_STAFF			equ 2				; object_offset() for staffs

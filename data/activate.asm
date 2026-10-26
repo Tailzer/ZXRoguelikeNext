@@ -55,7 +55,9 @@ AE_LIGHT_AREA		equ 41
 AE_MAP_AREA		equ 42
 AE_WIZ_LIGHT		equ 43
 AE_FIRE_BOLTS		equ 44
-NUM_ACTS		equ 64
+AE_STARBALL		equ 45
+AE_RAGE		equ 46
+NUM_ACTS		equ 66
 
 act_table:
 	dw SN_NARTHANC
@@ -247,9 +249,15 @@ act_table:
 	dw $8000+354
 	db AE_BREATH,2
 	dw 200,0,0,acb_122,300,300	; Shining Dragon Scale Mail
+	dw SN_RAZORBACK
+	db AE_STARBALL,1
+	dw 150,acs_111,0,acs_110,1000,0	; SN_RAZORBACK
+	dw SN_BLADETURNER
+	db AE_RAGE,0
+	dw 0,acs_112,acs_113,0,400,0	; SN_BLADETURNER
 	dw $8000+355
 	db AE_BALL,0
-	dw 300,acs_111,0,acs_110,300,300	; Power Dragon Scale Mail
+	dw 300,acs_115,0,acs_114,300,300	; Power Dragon Scale Mail
 
 acs_1:	db "Fire Bolt",0
 acs_2:	db "Your Dagger is covered in fire...",0
@@ -395,5 +403,9 @@ acb_122:
 	dw acs_106, acs_107
 	db 0
 	dw acs_108, acs_109
-acs_110:	db "massive ball of the Elements",0
-acs_111:	db "You breathe the Elements...",0
+acs_110:	db "huge ball of Electricity",0
+acs_111:	db "A storm of lightning spikes fires in all directions...",0
+acs_112:	db "Your armour glows many colours...",0
+acs_113:	db "You enter a berserk rage...",0
+acs_114:	db "massive ball of the Elements",0
+acs_115:	db "You breathe the Elements...",0

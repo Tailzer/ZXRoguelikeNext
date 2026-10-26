@@ -47,8 +47,34 @@ TC_COLOURS = ["BLACK", "BLUE", "GREEN", "CYAN", "RED", "MAGENTA", "BROWN", "LIGH
               "LIGHTMAGENTA", "YELLOW", "WHITE"]
 
 
+# Plain mistakes in 1.2's tables that PC Angband 1.3 and 1.4 put right
+# (CHANGES.130, .140), applied to its source as it's read: file, old, new
+FIXES = [
+    # Razorback and Bladeturner (1.3): named properly, Razorback rarer,
+    # Bladeturner's armour class and its activation
+    ("MISC1.C", "if (RAZORBACK) return 0;", "if (RAZORBACK) return 0;\n    if (randint(3)>1) return 0;"),
+    ("MISC1.C", "|TR_ARTIFACT);\n    t_ptr->toac += 35;", "|TR_ARTIFACT|TR_ACTIVATE);\n    t_ptr->toac += 17;"),
+    # Glamdring and Aeglin search and sneak by 3 and 4 (1.3: no pval)
+    ("MISC1.C", "t_ptr->name2 = SN_GLAMDRING;", "t_ptr->name2 = SN_GLAMDRING;\n      t_ptr->p1 = 3;"),
+    ("MISC1.C", "t_ptr->name2 = SN_AEGLIN;", "t_ptr->name2 = SN_AEGLIN;\n      t_ptr->p1 = 4;"),
+    # Tuor's acid immunity was in the wrong flags (1.3)
+    ("MISC1.C", re.compile(r"(TR_STEALTH\|)TR_IM_ACID\|(\s*TR_FREE_ACT\|TR_SEE_INVIS\|TR_RES_ACID\);"
+                           r"\s*t_ptr->flags2 \|= \()(TR_ARTIFACT\);)"), r"\1\2TR_IM_ACID|\3"),
+]
+
+
 def read(name):
-    return open(os.path.join(SRC, name), encoding="latin-1").read()
+    text = open(os.path.join(SRC, name), encoding="latin-1").read()
+    for f, old, new in FIXES:
+        if f != name:
+            continue
+        if isinstance(old, str):
+            assert old in text, old
+            text = text.replace(old, new, 1)
+        else:
+            text, n = old.subn(new, text, 1)
+            assert n, old.pattern
+    return text
 
 
 def strip_comments(text):
@@ -890,6 +916,12 @@ ACTS = [
     ("Balance Dragon Scale Mail", "", "", "BREATH", [("MM", "Chaos", "ball"), ("MM", "Disenchantment", "ball"),
         ("MM", "Sound", "blast"), ("MM", "Shards", "ball")], 250, "", 300, 300),
     ("Shining Dragon Scale Mail", "", "", "BREATH", [("MM", "Light", "flash"), ("MM", "Darkness", "sphere")], 200, "", 300, 300),
+    # the two dragon scale mail artifacts, ahead of their kinds (1.3 lets
+    # them be made: unique_armour)
+    ("SN_RAZORBACK", "A storm of lightning spikes fires in all directions...", "", "STARBALL", "LT", 150,
+        "huge ball of Electricity", 1000, 0),
+    ("SN_BLADETURNER", "Your armour glows many colours...", "You enter a berserk rage...", "RAGE", "MM", 0,
+        "", 400, 0),
     ("Power Dragon Scale Mail", "You breathe the Elements...", "", "BALL", "MM", 300, "massive ball of the Elements", 300, 300),
 ]
 AE = ["BOLT", "BALL", "DRAIN", "MUD", "TELE_MON", "CONF_MON", "FAST", "FAST0", "HEAL", "HEAL_CUT",
@@ -898,7 +930,7 @@ AE = ["BOLT", "BALL", "DRAIN", "MUD", "TELE_MON", "CONF_MON", "FAST", "FAST0", "
       # (spells use these too, through do_effect)
       "SLEEP_ONE", "POLY", "SLOW_ONE", "LIGHT_LINE", "SLEEP_ADJ", "EARTHQUAKE", "DETECT_EVIL", "DETECT_MON",
       "TURN_UNDEAD", "BANISH", "DISPEL", "DETECT_ALL", "PROBE_ALL",
-      "LIGHT_AREA", "MAP_AREA", "WIZ_LIGHT", "FIRE_BOLTS"]
+      "LIGHT_AREA", "MAP_AREA", "WIZ_LIGHT", "FIRE_BOLTS", "STARBALL", "RAGE"]
 
 
 def activate_tables(note, kinds):
