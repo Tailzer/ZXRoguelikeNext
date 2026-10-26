@@ -536,9 +536,10 @@ pe_infra:
 /* say_if_zero - HL = counter, DE = message: say it and identify if the
 	counter is 0 */
 say_if_zero:
+	push de								; (get_w answers in DE)
 	call get_w
+	pop hl
 	ret nz
-	ex de,hl
 	call msg_print
 	jp ident
 

@@ -108,8 +108,20 @@ expect(r8("P_TOHIT") - th0 == 24 and r16("P_MHP") - mhp0 == 30 and ac0 - rd(A["P
 w16("P_SHERO", 1); tick()
 expect(r8("P_TOHIT") == th0 and rd(A["P_AC"], 1)[0] == ac0, "and back again")
 heal(); setstat(0, 17)
+# ---- what a potion says when it starts something (say_if_zero once
+# printed from address 0: garbage)
+def logged():								# the message log (page 70, at $E000 here)
+    cmd(10, bytes([7, 70])); t = bytes(rd(0xE000, 32*80)).decode("latin-1"); cmd(10, bytes([7, 33])); return t
+def log_clear(): cmd(10, bytes([7, 70])); wr(0xE000, bytes(32*80)); cmd(10, bytes([7, 33]))
+for name, said, ctr in (("Infra-vision", "Your eyes begin to tingle.", "P_TIM_INFRA"),
+                        ("Confusion", "Hey!  This is good stuff!  * Hick! *", "P_CONFUSED"),
+                        ("Poison", "You feel very sick.", "P_POISONED")):
+    w16(ctr, 0); log_clear(); quaff(kind(name)); m = logged()
+    expect(said in m and r16(ctr) > 0, f"{name}: '{said}'")
+    w16(ctr, 1); tick(); heal()
 # ---- blindness, cured
-quaff(kind("Blindness")); tick()
+log_clear(); quaff(kind("Blindness")); m = logged(); tick()
+expect("You are covered by a veil of darkness." in m, "Blindness: 'You are covered by a veil of darkness.'")
 sc = screen()
 view = "".join(sc[1:31]).replace(" ", "")
 print("  blind: status", status().strip(), "| view shows", repr(view))
