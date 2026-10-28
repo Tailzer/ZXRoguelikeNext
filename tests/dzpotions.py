@@ -119,6 +119,12 @@ for name, said, ctr in (("Infra-vision", "Your eyes begin to tingle.", "P_TIM_IN
     w16(ctr, 0); log_clear(); quaff(kind(name)); m = logged()
     expect(said in m and r16(ctr) > 0, f"{name}: '{said}'")
     w16(ctr, 1); tick(); heal()
+# ---- what's said when protection runs out (count_down once printed from
+# address 0: garbage)
+for ctr, said in (("P_PROTEVIL", "evil"), ("P_RESIST_HEAT", "flame"), ("P_RESIST_COLD", "cold"),
+                  ("P_RESIST_ACID", "acid"), ("P_RESIST_LIGHT", "lightning"), ("P_RESIST_POISON", "poison")):
+    w16(ctr, 1); log_clear(); tick()
+    expect(f"You no longer feel safe from {said}." in logged() and r16(ctr) == 0, f"'You no longer feel safe from {said}.'")
 # ---- blindness, cured
 log_clear(); quaff(kind("Blindness")); m = logged(); tick()
 expect("You are covered by a veil of darkness." in m, "Blindness: 'You are covered by a veil of darkness.'")

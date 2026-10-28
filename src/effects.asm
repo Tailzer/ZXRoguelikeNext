@@ -779,9 +779,10 @@ count_down:
 	call get_w
 	pop de
 	ret z
+	push de								; (dec_w counts in DE)
 	call dec_w
+	pop hl
 	ret nz
-	ex de,hl
 	jp msg_print
 
 /* dec_w - HL = word: one less -> Z if now 0. Preserves HL */
